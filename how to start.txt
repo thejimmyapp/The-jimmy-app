@@ -1,0 +1,7 @@
+Double-click:
+
+start_bughouse_coach.bat
+
+Or run manually from this folder:
+
+.\.venv\Scripts\python.exe -m streamlit run app.py
