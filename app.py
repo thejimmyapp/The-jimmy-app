@@ -15,6 +15,7 @@ from src.board_renderer import render_game_replay_html, render_pattern_puzzle_ht
 from src.bughouse_reconstructor import reconstruct_main_board
 from src.chesscom_api import ChessComApiError, ChessComClient
 from src.chesscom_pgn_info import PgnInfoClient, PgnInfoError, has_partner_board_data, merge_pgn_info
+from src.chesstempo_motifs import all_motifs, family_names
 from src.db import Database
 from src.engine import EngineConfig, EngineError
 from src.opening_lab import analyze_opening_batch
@@ -237,6 +238,16 @@ def render_pattern_academy(db: Database, username: str) -> None:
     metrics[3].metric("Mastered", summary.get("mastered", 0))
     metrics[4].metric("Due now", summary.get("due", 0))
 
+    academy_tabs = st.tabs(["Practice", "Motif Library", "Weakness Map"])
+    with academy_tabs[0]:
+        render_pattern_practice(db, username)
+    with academy_tabs[1]:
+        render_motif_library()
+    with academy_tabs[2]:
+        render_motif_weakness_map(db, username)
+
+
+def render_pattern_practice(db: Database, username: str) -> None:
     progress = db.get_pattern_progress(username)
     controls = st.columns([2, 2, 1])
     category = controls[0].selectbox("Pattern category", ["All"] + pattern_categories())
@@ -349,6 +360,62 @@ def render_pattern_academy(db: Database, username: str) -> None:
     if motif_stats:
         st.caption("Pattern mastery by motif")
         st.dataframe(motif_stats, use_container_width=True, hide_index=True)
+
+
+def render_motif_library() -> None:
+    st.caption(
+        "ChessTempo motif definitions, organized by family. Use this like a vocabulary map: "
+        "one position may contain several motifs, but training should focus on the motif that actually made the move hard to find."
+    )
+    families = ["All"] + family_names()
+    controls = st.columns([2, 3])
+    selected_family = controls[0].selectbox("Motif family", families)
+    query = controls[1].text_input("Search motifs", placeholder="fork, clearance, defender, back rank...")
+    query_lower = query.strip().lower()
+    rows = []
+    for motif in all_motifs():
+        if selected_family != "All" and motif.get("family") != selected_family:
+            continue
+        haystack = f"{motif.get('name')} {motif.get('family')} {motif.get('definition')}".lower()
+        if query_lower and query_lower not in haystack:
+            continue
+        rows.append(
+            {
+                "family": motif.get("family"),
+                "motif": motif.get("name"),
+                "definition": motif.get("definition"),
+            }
+        )
+    st.caption(f"{len(rows)} motif(s) shown")
+    st.dataframe(rows, use_container_width=True, hide_index=True)
+
+
+def render_motif_weakness_map(db: Database, username: str) -> None:
+    st.caption(
+        "Inspired by the Lichess improvement-area problem: avoid treating every tag as equal. "
+        "Use repeated failures plus sample size to decide what to train first."
+    )
+    mistake_rows = db.get_tactical_motif_stats(username)
+    drill_rows = db.get_drill_category_stats(username)
+    motif_stats = db.get_pattern_motif_stats(username)
+    if not mistake_rows and not drill_rows and not motif_stats:
+        st.info("No motif data yet. Run coach analysis or practice puzzles to build your weakness map.")
+        return
+
+    if mistake_rows:
+        st.write("Engine-labelled mistake motifs")
+        st.dataframe(mistake_rows, use_container_width=True, hide_index=True)
+    if drill_rows:
+        st.write("Drill accuracy by category")
+        st.dataframe(drill_rows, use_container_width=True, hide_index=True)
+    if motif_stats:
+        st.write("Puzzle mastery by motif")
+        st.dataframe(motif_stats, use_container_width=True, hide_index=True)
+
+    st.info(
+        "Training rule: prioritize motifs with enough examples, low accuracy/mastery, and recent real-game mistakes. "
+        "A motif that appears once is a clue; a motif that repeats is a leak."
+    )
 
 
 def _render_context_table(title: str, rows: list[dict[str, object]]) -> None:

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from src.chesstempo_motifs import motif_names
+
 try:
     import chess
     import chess.variant
@@ -9,23 +11,16 @@ except ImportError:  # pragma: no cover - surfaced by the app at runtime.
     chess = None
 
 
-TACTICAL_MOTIFS = [
-    "pin",
-    "fork",
-    "skewer",
-    "discovered attack",
-    "double check",
-    "deflection",
-    "decoy",
-    "removal of defender",
-    "overloading",
-    "interference",
-    "zwischenzug",
-    "hanging piece",
-    "king pressure",
-    "drop tactic",
-    "quiet improvement",
+BUGHOUSE_MOTIFS = [
+    "Drop Tactic",
+    "King Pressure",
+    "Defensive Drop",
+    "Partner Danger",
+    "Feeding Dangerous Material",
+    "Quiet Improvement",
 ]
+
+TACTICAL_MOTIFS = sorted(set(motif_names() + BUGHOUSE_MOTIFS))
 
 
 PIECE_VALUES = {
@@ -74,11 +69,11 @@ def _classify_board_motif(
     category: str | None,
 ) -> str:
     if chess is None:
-        return "quiet improvement"
+        return "Quiet Improvement"
     if board.is_capture(move):
         captured = _captured_piece(board, move)
         if captured and _is_hanging(board, move.to_square, captured.color):
-            return "hanging piece"
+            return "Hanging Piece"
 
     after = board.copy(stack=False)
     after.push(move)
@@ -86,21 +81,21 @@ def _classify_board_motif(
     gives_check = after.is_check()
 
     if gives_check and _king_must_move(after):
-        return "double check"
+        return "Double Check"
     if moved_piece and _attacked_high_value_targets(after, move.to_square, not moved_piece.color) >= 2:
-        return "fork"
+        return "Fork"
     if gives_check and _is_line_piece(moved_piece):
-        return "pin" if _text_has_check(reason, played_move) else "skewer"
+        return "Absolute Pin" if _text_has_check(reason, played_move) else "Skewer of King"
     if board.is_capture(move):
         captured = _captured_piece(board, move)
         if captured and PIECE_VALUES.get(captured.piece_type, 0) >= 300:
-            return "removal of defender"
-        return "deflection"
+            return "Capturing Defender"
+        return "Deflection"
     if getattr(move, "drop", None):
         if gives_check:
-            return "drop tactic"
+            return "Drop Tactic"
         if _attacked_high_value_targets(after, move.to_square, not board.turn) >= 1:
-            return "fork"
+            return "Fork"
     return _text_fallback(getattr(move, "uci", lambda: "")(), played_move, reason, category)
 
 
@@ -176,18 +171,38 @@ def _text_fallback(
     category: str | None,
 ) -> str:
     text = f"{bestmove or ''} {played_move or ''} {reason or ''} {category or ''}".lower()
+    if "partner" in text:
+        return "Partner Danger"
+    if "defensive drop" in text or "bad defensive drop" in text:
+        return "Defensive Drop"
+    if "feed" in text or "feeding" in text:
+        return "Feeding Dangerous Material"
+    if "back rank" in text:
+        return "Weak Back Rank"
     if "double check" in text:
-        return "double check"
+        return "Double Check"
     if "pin" in text:
-        return "pin"
+        return "Pin"
     if "skewer" in text:
-        return "skewer"
+        return "Skewer"
+    if "fork" in text:
+        return "Fork"
+    if "overload" in text:
+        return "Overloading"
+    if "interference" in text:
+        return "Interference"
+    if "zwischenzug" in text or "in-between" in text:
+        return "Zwischenzug"
+    if "deflection" in text:
+        return "Deflection"
+    if "decoy" in text or "attraction" in text:
+        return "Attraction"
     if "defender" in text:
-        return "removal of defender"
+        return "Capturing Defender"
     if "x" in text or "capture" in text or "trade" in text:
-        return "hanging piece"
+        return "Hanging Piece"
     if "@" in text:
-        return "drop tactic"
+        return "Drop Tactic"
     if "mate" in text or "check" in text or "+" in text or "#" in text:
-        return "king pressure"
-    return "quiet improvement"
+        return "King Pressure"
+    return "Quiet Improvement"

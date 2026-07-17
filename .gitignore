@@ -18,4 +18,5 @@ secrets/*
 *.avi
 *.mkv
 *.docx
+*.xlsx
 *.zip
