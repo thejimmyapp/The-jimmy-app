@@ -490,18 +490,46 @@ class Database:
             ).fetchall()
         return [str(row["opponent"]) for row in rows]
 
+    def get_opening_partners(self, username: str, depth: int, min_positions: int = 3) -> list[str]:
+        with closing(self.connect()) as conn:
+            rows = conn.execute(
+                """
+                SELECT COALESCE(NULLIF(g.partner, ''), 'Unknown') AS partner, COUNT(*) AS positions
+                FROM opening_move_analysis oma
+                JOIN games g ON g.id = oma.game_id
+                WHERE oma.username = ? AND oma.depth = ?
+                GROUP BY COALESCE(NULLIF(g.partner, ''), 'Unknown')
+                HAVING COUNT(*) >= ?
+                ORDER BY positions DESC, partner ASC
+                """,
+                (username.lower(), depth, min_positions),
+            ).fetchall()
+        return [str(row["partner"]) for row in rows]
+
     def get_opening_line_stats(
         self,
         username: str,
         depth: int,
         limit: int = 30,
         opponent: str | None = None,
+        partner: str | None = None,
+        min_opponent_rating: int | None = None,
+        max_opponent_rating: int | None = None,
     ) -> list[dict[str, object]]:
         clauses = ["oma.username = ?", "oma.depth = ?"]
         values: list[object] = [username.lower(), depth]
         if opponent and opponent != "All opponents":
             clauses.append("LOWER(COALESCE(g.opponent, 'Unknown')) = LOWER(?)")
             values.append(opponent)
+        if partner and partner != "All partners":
+            clauses.append("LOWER(COALESCE(g.partner, 'Unknown')) = LOWER(?)")
+            values.append(partner)
+        if min_opponent_rating is not None:
+            clauses.append("g.opponent_rating >= ?")
+            values.append(min_opponent_rating)
+        if max_opponent_rating is not None:
+            clauses.append("g.opponent_rating <= ?")
+            values.append(max_opponent_rating)
         values.append(limit)
         with closing(self.connect()) as conn:
             rows = conn.execute(
@@ -511,8 +539,12 @@ class Database:
                     oma.line_label,
                     COUNT(*) AS positions,
                     COUNT(DISTINCT oma.game_id) AS games,
+                    ROUND(AVG(g.opponent_rating), 0) AS avg_rating,
                     ROUND(AVG(COALESCE(oma.estimated_loss_cp, 0)), 1) AS avg_loss,
                     SUM(CASE WHEN oma.quality IN ('mistake', 'blunder') THEN 1 ELSE 0 END) AS mistakes,
+                    MIN(oma.before_fen) AS sample_fen,
+                    MIN(oma.game_id) AS sample_game_id,
+                    MIN(oma.ply) AS sample_ply,
                     ROUND(100.0 * SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 1) AS winrate
                 FROM opening_move_analysis
                 oma JOIN games g ON g.id = oma.game_id
@@ -532,6 +564,9 @@ class Database:
         line_key: str | None = None,
         limit: int = 100,
         opponent: str | None = None,
+        partner: str | None = None,
+        min_opponent_rating: int | None = None,
+        max_opponent_rating: int | None = None,
     ) -> list[dict[str, object]]:
         clauses = ["oma.username = ?", "oma.depth = ?"]
         values: list[object] = [username.lower(), depth]
@@ -541,6 +576,15 @@ class Database:
         if opponent and opponent != "All opponents":
             clauses.append("LOWER(COALESCE(g.opponent, 'Unknown')) = LOWER(?)")
             values.append(opponent)
+        if partner and partner != "All partners":
+            clauses.append("LOWER(COALESCE(g.partner, 'Unknown')) = LOWER(?)")
+            values.append(partner)
+        if min_opponent_rating is not None:
+            clauses.append("g.opponent_rating >= ?")
+            values.append(min_opponent_rating)
+        if max_opponent_rating is not None:
+            clauses.append("g.opponent_rating <= ?")
+            values.append(max_opponent_rating)
         values.append(limit)
         with closing(self.connect()) as conn:
             rows = conn.execute(
@@ -550,6 +594,7 @@ class Database:
                     oma.line_label,
                     oma.played_move,
                     COUNT(*) AS games,
+                    ROUND(AVG(g.opponent_rating), 0) AS avg_rating,
                     ROUND(AVG(COALESCE(oma.estimated_loss_cp, 0)), 1) AS avg_loss,
                     SUM(CASE WHEN oma.quality = 'best' THEN 1 ELSE 0 END) AS best_count,
                     SUM(CASE WHEN oma.quality = 'good' THEN 1 ELSE 0 END) AS good_count,
@@ -565,6 +610,131 @@ class Database:
                 WHERE {" AND ".join(clauses)}
                 GROUP BY oma.line_key, oma.line_label, oma.played_move, oma.bestmove
                 ORDER BY games DESC, blunders DESC, mistakes DESC, avg_loss DESC
+                LIMIT ?
+                """,
+                values,
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def get_opening_position_summary(
+        self,
+        username: str,
+        depth: int,
+        line_key: str,
+    ) -> dict[str, object]:
+        with closing(self.connect()) as conn:
+            row = conn.execute(
+                """
+                SELECT
+                    COUNT(*) AS positions,
+                    COUNT(DISTINCT game_id) AS games,
+                    MIN(line_label) AS line_label,
+                    MIN(before_fen) AS sample_fen,
+                    MIN(game_id) AS sample_game_id,
+                    MIN(ply) AS sample_ply,
+                    ROUND(AVG(COALESCE(estimated_loss_cp, 0)), 1) AS avg_loss,
+                    SUM(CASE WHEN quality = 'best' THEN 1 ELSE 0 END) AS best_count,
+                    SUM(CASE WHEN quality IN ('mistake', 'blunder') THEN 1 ELSE 0 END) AS mistakes
+                FROM opening_move_analysis
+                WHERE username = ? AND depth = ? AND line_key = ?
+                """,
+                (username.lower(), depth, line_key),
+            ).fetchone()
+            bestmove = conn.execute(
+                """
+                SELECT bestmove, COUNT(*) AS count
+                FROM opening_move_analysis
+                WHERE username = ? AND depth = ? AND line_key = ? AND bestmove IS NOT NULL AND bestmove != ''
+                GROUP BY bestmove
+                ORDER BY count DESC, bestmove ASC
+                LIMIT 1
+                """,
+                (username.lower(), depth, line_key),
+            ).fetchone()
+        data = dict(row) if row else {}
+        data["engine_bestmove"] = None if not bestmove else bestmove["bestmove"]
+        data["engine_bestmove_count"] = 0 if not bestmove else bestmove["count"]
+        return data
+
+    def get_opening_benchmark_moves(
+        self,
+        depth: int,
+        line_key: str,
+        min_opponent_rating: int = 2200,
+        limit: int = 20,
+    ) -> list[dict[str, object]]:
+        with closing(self.connect()) as conn:
+            rows = conn.execute(
+                """
+                SELECT
+                    oma.played_move,
+                    COUNT(*) AS games,
+                    ROUND(AVG(g.opponent_rating), 0) AS avg_rating,
+                    ROUND(100.0 * SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 1) AS winrate,
+                    ROUND(AVG(COALESCE(oma.estimated_loss_cp, 0)), 1) AS avg_loss,
+                    SUM(CASE WHEN oma.quality = 'best' THEN 1 ELSE 0 END) AS best_count,
+                    SUM(CASE WHEN oma.quality IN ('mistake', 'blunder') THEN 1 ELSE 0 END) AS mistakes
+                FROM opening_move_analysis oma
+                JOIN games g ON g.id = oma.game_id
+                WHERE oma.depth = ?
+                    AND oma.line_key = ?
+                    AND g.opponent_rating >= ?
+                GROUP BY oma.played_move
+                ORDER BY games DESC, winrate DESC, avg_loss ASC
+                LIMIT ?
+                """,
+                (depth, line_key, min_opponent_rating, limit),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def get_opening_position_games(
+        self,
+        username: str,
+        depth: int,
+        line_key: str,
+        opponent: str | None = None,
+        partner: str | None = None,
+        min_opponent_rating: int | None = None,
+        max_opponent_rating: int | None = None,
+        limit: int = 50,
+    ) -> list[dict[str, object]]:
+        clauses = ["oma.username = ?", "oma.depth = ?", "oma.line_key = ?"]
+        values: list[object] = [username.lower(), depth, line_key]
+        if opponent and opponent != "All opponents":
+            clauses.append("LOWER(COALESCE(g.opponent, 'Unknown')) = LOWER(?)")
+            values.append(opponent)
+        if partner and partner != "All partners":
+            clauses.append("LOWER(COALESCE(g.partner, 'Unknown')) = LOWER(?)")
+            values.append(partner)
+        if min_opponent_rating is not None:
+            clauses.append("g.opponent_rating >= ?")
+            values.append(min_opponent_rating)
+        if max_opponent_rating is not None:
+            clauses.append("g.opponent_rating <= ?")
+            values.append(max_opponent_rating)
+        values.append(limit)
+        with closing(self.connect()) as conn:
+            rows = conn.execute(
+                f"""
+                SELECT
+                    g.id,
+                    datetime(g.end_time, 'unixepoch') AS played_at,
+                    g.result,
+                    g.user_color,
+                    g.opponent,
+                    g.opponent_rating,
+                    g.partner,
+                    g.time_control,
+                    oma.ply,
+                    oma.played_move,
+                    oma.bestmove,
+                    oma.quality,
+                    oma.estimated_loss_cp,
+                    g.url
+                FROM opening_move_analysis oma
+                JOIN games g ON g.id = oma.game_id
+                WHERE {" AND ".join(clauses)}
+                ORDER BY g.end_time DESC
                 LIMIT ?
                 """,
                 values,

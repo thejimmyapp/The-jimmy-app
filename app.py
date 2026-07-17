@@ -139,91 +139,220 @@ def render_phase4_dashboard(db: Database, username: str) -> None:
 
 
 def render_opening_lab(db: Database, username: str, engine_depth: int) -> None:
-    st.subheader("Opening Lab")
+    st.subheader("Opening Explorer")
     coverage = db.get_opening_coverage(username, engine_depth)
-    st.caption(
-        f"Analyzed at depth {engine_depth}: "
-        f"{coverage.get('analyzed_games', 0)} games, "
-        f"{coverage.get('analyzed_moves', 0)} opening decisions."
-    )
+    metrics = st.columns(4)
+    metrics[0].metric("Analyzed games", coverage.get("analyzed_games", 0))
+    metrics[1].metric("Opening decisions", coverage.get("analyzed_moves", 0))
+    metrics[2].metric("Engine depth", engine_depth)
+    metrics[3].metric("Total games", coverage.get("total_games", 0))
+    st.caption("Explore your opening decisions by position, opponent, partner, rating band, and engine recommendation.")
+
     opponents = ["All opponents"] + db.get_opening_opponents(username, engine_depth, min_positions=3)
-    control_cols = st.columns([2, 1])
-    selected_opponent = control_cols[0].selectbox("Opponent prep", opponents)
-    line_limit = control_cols[1].number_input("Opening lines", min_value=10, max_value=100, value=30, step=10)
+    partners = ["All partners"] + db.get_opening_partners(username, engine_depth, min_positions=3)
+    filters = st.columns([2, 2, 1, 1, 1])
+    selected_opponent = filters[0].selectbox("Opponent", opponents)
+    selected_partner = filters[1].selectbox("Partner", partners)
+    min_rating = filters[2].number_input("Min rating", min_value=0, max_value=3500, value=0, step=50, key="opening_min_rating")
+    max_rating = filters[3].number_input("Max rating", min_value=0, max_value=3500, value=3500, step=50, key="opening_max_rating")
+    line_limit = filters[4].number_input("Positions", min_value=10, max_value=300, value=50, step=10)
+    min_rating_filter = None if int(min_rating) <= 0 else int(min_rating)
+    max_rating_filter = None if int(max_rating) >= 3500 else int(max_rating)
+
     line_rows = db.get_opening_line_stats(
         username,
         engine_depth,
         limit=int(line_limit),
         opponent=selected_opponent,
+        partner=selected_partner,
+        min_opponent_rating=min_rating_filter,
+        max_opponent_rating=max_rating_filter,
     )
     if not line_rows:
-        st.info("No opening analysis stored for this opponent yet. Run an Opening Lab batch from the sidebar.")
+        st.info("No opening analysis matches these filters yet. Run an Opening Lab batch from Advanced settings.")
         return
 
-    cols = st.columns([2, 1])
-    with cols[0]:
-        caption = "Most frequent opening positions before your move"
-        if selected_opponent != "All opponents":
-            caption += f" vs {selected_opponent}"
-        st.caption(caption)
-        st.dataframe(line_rows, use_container_width=True, hide_index=True)
     line_labels = [
-        f"{row.get('positions')}x | {row.get('line_label')}"
+        f"{row.get('positions')}x | WR {row.get('winrate') or 'N/A'}% | {row.get('line_label')}"
         for row in line_rows
     ]
-    selected_label = cols[1].selectbox("Study line", line_labels)
-    selected_index = line_labels.index(selected_label)
-    selected_line = line_rows[selected_index]
-    move_rows = db.get_opening_move_stats(
-        username=username,
-        depth=engine_depth,
-        line_key=str(selected_line.get("line_key") or ""),
-        limit=100,
-        opponent=selected_opponent,
-    )
-    reply_caption = "Your most common replies in this position"
-    if selected_opponent != "All opponents":
-        reply_caption += f" vs {selected_opponent}"
-    st.caption(reply_caption)
-    st.dataframe(move_rows, use_container_width=True, hide_index=True)
+    selected_label = st.selectbox("Position before your move", line_labels)
+    selected_line = line_rows[line_labels.index(selected_label)]
+    line_key = str(selected_line.get("line_key") or "")
+    summary = db.get_opening_position_summary(username, engine_depth, line_key)
 
-    if not move_rows:
-        return
-    sample = move_rows[0]
-    game = db.get_game(int(sample.get("sample_game_id") or 0))
-    if not game:
-        return
-    suggestions = [
-        {
-            "ply": max(0, int(row.get("ply") or 0) - 1),
-            "bestmove": row.get("bestmove"),
-            "move": row.get("played_move"),
-            "reason": row.get("quality"),
-        }
-        for row in db.get_opening_game_suggestions(
-            game_id=int(game["id"]),
+    summary_cols = st.columns(5)
+    summary_cols[0].metric("Games here", summary.get("games") or selected_line.get("games") or 0)
+    summary_cols[1].metric("Position WR", "N/A" if selected_line.get("winrate") is None else f"{selected_line.get('winrate')}%")
+    summary_cols[2].metric("Avg rating", "N/A" if selected_line.get("avg_rating") is None else int(selected_line.get("avg_rating") or 0))
+    summary_cols[3].metric("Avg loss", f"{summary.get('avg_loss') or selected_line.get('avg_loss') or 0} cp")
+    summary_cols[4].metric("Engine move", summary.get("engine_bestmove") or "N/A")
+
+    position_tabs = st.tabs(["Explorer", "Games at this position", "All positions"])
+    with position_tabs[0]:
+        move_rows = db.get_opening_move_stats(
             username=username,
             depth=engine_depth,
+            line_key=line_key,
+            limit=100,
+            opponent=selected_opponent,
+            partner=selected_partner,
+            min_opponent_rating=min_rating_filter,
+            max_opponent_rating=max_rating_filter,
         )
-        if row.get("bestmove")
+        benchmark_min = st.slider("Top-rated local sample rating floor", min_value=1000, max_value=3000, value=2200, step=50)
+        benchmark_rows = db.get_opening_benchmark_moves(
+            depth=engine_depth,
+            line_key=line_key,
+            min_opponent_rating=int(benchmark_min),
+            limit=20,
+        )
+        left, right = st.columns([1.2, 1])
+        with left:
+            st.caption("Your move choices from this position")
+            st.dataframe(_opening_move_display_rows(move_rows), use_container_width=True, hide_index=True)
+        with right:
+            st.caption("Top-rated local sample")
+            if benchmark_rows:
+                st.dataframe(_opening_benchmark_display_rows(benchmark_rows), use_container_width=True, hide_index=True)
+            else:
+                st.info("No benchmark sample at this rating floor yet.")
+
+        compare = _opening_compare_text(move_rows, benchmark_rows, summary.get("engine_bestmove"))
+        if compare:
+            st.info(compare)
+
+        sample_game_id = int(summary.get("sample_game_id") or selected_line.get("sample_game_id") or 0)
+        sample_ply = int(summary.get("sample_ply") or selected_line.get("sample_ply") or 0)
+        game = db.get_game(sample_game_id) if sample_game_id else None
+        if game:
+            suggestions = [
+                {
+                    "ply": max(0, int(row.get("ply") or 0) - 1),
+                    "bestmove": row.get("bestmove"),
+                    "move": row.get("played_move"),
+                    "reason": row.get("quality"),
+                }
+                for row in db.get_opening_game_suggestions(
+                    game_id=int(game["id"]),
+                    username=username,
+                    depth=engine_depth,
+                )
+                if row.get("bestmove")
+            ]
+            parsed = parse_game_data(str(game.get("pgn") or ""), str(game.get("raw_json") or ""))
+            partner = parse_partner_tcn(str(game.get("raw_json") or ""))
+            st.caption("Interactive replay sample with Fairy-Stockfish opening best moves highlighted")
+            components.html(
+                render_game_replay_html(
+                    parsed.moves,
+                    critical=[],
+                    partner_moves=partner.moves if partner else None,
+                    engine_suggestions=suggestions,
+                    player_labels=player_labels_for_game(game),
+                    selected_ply=max(0, sample_ply - 1),
+                    orientation=str(game.get("user_color") or "white"),
+                    title="Opening Explorer",
+                ),
+                height=820,
+                scrolling=True,
+            )
+
+    with position_tabs[1]:
+        game_limit = st.number_input("Games to show", min_value=10, max_value=300, value=50, step=10, key="opening_games_limit")
+        games = db.get_opening_position_games(
+            username=username,
+            depth=engine_depth,
+            line_key=line_key,
+            opponent=selected_opponent,
+            partner=selected_partner,
+            min_opponent_rating=min_rating_filter,
+            max_opponent_rating=max_rating_filter,
+            limit=int(game_limit),
+        )
+        if games:
+            st.dataframe(games, use_container_width=True, hide_index=True)
+        else:
+            st.info("No games match this position and filter set.")
+
+    with position_tabs[2]:
+        st.caption("Most common positions before your move")
+        st.dataframe(line_rows, use_container_width=True, hide_index=True)
+
+
+def _opening_move_display_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    total = sum(int(row.get("games") or 0) for row in rows)
+    output = []
+    for row in rows:
+        games = int(row.get("games") or 0)
+        best_count = int(row.get("best_count") or 0)
+        output.append(
+            {
+                "move": row.get("played_move"),
+                "games": games,
+                "share": None if total == 0 else round(100 * games / total, 1),
+                "winrate": row.get("winrate"),
+                "avg_rating": row.get("avg_rating"),
+                "avg_loss_cp": row.get("avg_loss"),
+                "engine_bestmove": row.get("engine_bestmove"),
+                "engine_match": None if games == 0 else round(100 * best_count / games, 1),
+                "mistakes": int(row.get("mistakes") or 0) + int(row.get("blunders") or 0),
+            }
+        )
+    return output
+
+
+def _opening_benchmark_display_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    total = sum(int(row.get("games") or 0) for row in rows)
+    return [
+        {
+            "move": row.get("played_move"),
+            "games": row.get("games"),
+            "share": None if total == 0 else round(100 * int(row.get("games") or 0) / total, 1),
+            "winrate": row.get("winrate"),
+            "avg_rating": row.get("avg_rating"),
+            "avg_loss_cp": row.get("avg_loss"),
+            "engine_match": None if int(row.get("games") or 0) == 0 else round(100 * int(row.get("best_count") or 0) / int(row.get("games") or 1), 1),
+            "mistakes": row.get("mistakes"),
+        }
+        for row in rows
     ]
-    parsed = parse_game_data(str(game.get("pgn") or ""), str(game.get("raw_json") or ""))
-    partner = parse_partner_tcn(str(game.get("raw_json") or ""))
-    selected_ply = max(0, int(sample.get("sample_ply") or 0) - 1)
-    st.caption("Replay sample with Fairy-Stockfish opening best moves highlighted")
-    components.html(
-        render_game_replay_html(
-            parsed.moves,
-            critical=[],
-            partner_moves=partner.moves if partner else None,
-            engine_suggestions=suggestions,
-            player_labels=player_labels_for_game(game),
-            selected_ply=selected_ply,
-            orientation=str(game.get("user_color") or "white"),
-            title="Opening Lab",
-        ),
-        height=760,
-        scrolling=True,
+
+
+def _opening_compare_text(
+    move_rows: list[dict[str, object]],
+    benchmark_rows: list[dict[str, object]],
+    engine_bestmove: object,
+) -> str:
+    if not move_rows:
+        return ""
+    your_top = str(move_rows[0].get("played_move") or "")
+    engine = str(engine_bestmove or move_rows[0].get("engine_bestmove") or "")
+    benchmark_top = str(benchmark_rows[0].get("played_move") or "") if benchmark_rows else ""
+    parts = [f"Your most common move here is {your_top}."]
+    if engine:
+        parts.append(f"Fairy-Stockfish most often recommends {engine}.")
+    if benchmark_top:
+        parts.append(f"The top-rated local sample most often plays {benchmark_top}.")
+    if engine and _normalize_opening_move(your_top) == _normalize_opening_move(engine):
+        parts.append("Good sign: your main choice matches the engine recommendation.")
+    elif benchmark_top and _normalize_opening_move(your_top) == _normalize_opening_move(benchmark_top):
+        parts.append("Your main choice matches the top-rated sample, but compare it with the engine move before trusting it blindly.")
+    else:
+        parts.append("This is a study candidate: your habit, the benchmark, and/or the engine disagree.")
+    return " ".join(parts)
+
+
+def _normalize_opening_move(value: str) -> str:
+    return (
+        str(value or "")
+        .replace("+", "")
+        .replace("#", "")
+        .replace("x", "")
+        .replace("-", "")
+        .replace("=", "")
+        .strip()
+        .lower()
     )
 
 
