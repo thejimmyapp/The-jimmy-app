@@ -14,7 +14,14 @@ from src.analyzer import analyze_critical_moments
 from src.board_renderer import render_game_replay_html, render_pattern_puzzle_html
 from src.bughouse_reconstructor import reconstruct_main_board
 from src.chesscom_api import ChessComApiError, ChessComClient
-from src.chesscom_pgn_info import PgnInfoClient, PgnInfoError, has_partner_board_data, merge_pgn_info
+from src.chesscom_pgn_info import (
+    PgnInfoClient,
+    PgnInfoCurlValidation,
+    PgnInfoError,
+    has_partner_board_data,
+    merge_pgn_info,
+    validate_curl_text,
+)
 from src.chesstempo_motifs import all_motifs, family_names
 from src.db import Database
 from src.engine import EngineConfig, EngineError
@@ -1450,6 +1457,82 @@ def render_training_tab(db: Database, username: str) -> None:
     render_mistake_drill(db, username)
 
 
+def render_pgn_info_curl_setup(default_path: Path) -> Path:
+    pgn_info_path_text = st.text_input(
+        "Chess.com pgn-info cURL file",
+        str(default_path),
+        help="Optional: enables partner-board enrichment from your authenticated Chess.com session.",
+    )
+    pgn_info_path = Path(pgn_info_path_text).expanduser()
+    st.caption("Cookies stay on this machine. The `secrets/` folder is ignored by Git.")
+
+    if pgn_info_path.exists():
+        try:
+            existing_text = pgn_info_path.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            st.warning(f"Could not read the saved cURL file: {exc}")
+        else:
+            render_pgn_info_curl_validation(validate_curl_text(existing_text), "Saved cURL")
+    else:
+        st.info("No saved cURL file yet. Public import still works, so you can add this later.")
+
+    uploaded_curl = st.file_uploader(
+        "Upload cURL text file",
+        key="pgn_info_curl_upload",
+        help="Upload a text file containing the request copied from Chess.com DevTools.",
+    )
+    pasted_curl = st.text_area(
+        "Or paste cURL here",
+        "",
+        height=100,
+        key="pgn_info_curl_paste",
+        help="The app validates it locally and never displays your cookies back to you.",
+    )
+
+    candidate_text = ""
+    if uploaded_curl is not None:
+        candidate_text = uploaded_curl.getvalue().decode("utf-8", errors="replace")
+    elif pasted_curl.strip():
+        candidate_text = pasted_curl
+
+    if candidate_text:
+        validation = validate_curl_text(candidate_text)
+        render_pgn_info_curl_validation(validation, "New cURL")
+        if st.button("Save validated cURL", disabled=not validation.ok):
+            try:
+                pgn_info_path.parent.mkdir(parents=True, exist_ok=True)
+                pgn_info_path.write_text(candidate_text.strip() + "\n", encoding="utf-8")
+                try:
+                    pgn_info_path.chmod(0o600)
+                except OSError:
+                    pass
+                st.success(f"Saved cURL to `{pgn_info_path}`.")
+            except OSError as exc:
+                st.error(f"Could not save cURL file: {exc}")
+
+    return pgn_info_path
+
+
+def render_pgn_info_curl_validation(validation: PgnInfoCurlValidation, label: str) -> None:
+    if validation.ok:
+        st.success(f"{label}: {validation.message}")
+    else:
+        st.error(f"{label}: {validation.message}")
+    checks = [
+        ("endpoint", validation.endpoint_found),
+        ("cookie", validation.cookie_found),
+        ("token", validation.token_found),
+        ("body", validation.data_found),
+    ]
+    st.caption(
+        "Checks: "
+        + " | ".join(f"{name} {'ok' if passed else 'missing'}" for name, passed in checks)
+        + f" | headers kept: {validation.header_count}"
+    )
+    for issue in validation.issues:
+        st.caption(f"Note: {issue}")
+
+
 def render_advanced_sidebar(db: Database, username: str) -> tuple[Path, int, Path]:
     with st.sidebar:
         st.header("Player")
@@ -1463,15 +1546,10 @@ def render_advanced_sidebar(db: Database, username: str) -> tuple[Path, int, Pat
         engine_depth = st.slider("Engine strength", min_value=4, max_value=18, value=DEFAULT_ENGINE_DEPTH)
 
         with st.expander("Advanced paths and maintenance"):
-            pgn_info_path_text = st.text_input(
-                "Chess.com pgn-info cURL file",
-                str(DEFAULT_PGN_INFO_PATH),
-                help="Optional but recommended: enables partner-board enrichment from your authenticated Chess.com session.",
-            )
+            pgn_info_path = render_pgn_info_curl_setup(DEFAULT_PGN_INFO_PATH)
             engine_path_text = st.text_input("Fairy-Stockfish path", str(DEFAULT_ENGINE_PATH))
             st.write(f"Database: `{DB_PATH}`")
             st.write(f"Logs: `{LOG_PATH}`")
-        pgn_info_path = Path(pgn_info_path_text)
         engine_path = Path(engine_path_text)
 
         with st.expander("Refresh game data"):

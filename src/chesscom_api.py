@@ -3,11 +3,14 @@ from __future__ import annotations
 import json
 import logging
 import re
+import ssl
 import time
 from dataclasses import dataclass
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+
+import certifi
 
 
 LOGGER = logging.getLogger(__name__)
@@ -64,7 +67,7 @@ class ChessComClient:
             },
         )
         try:
-            with urlopen(request, timeout=self.timeout_seconds) as response:
+            with urlopen(request, timeout=self.timeout_seconds, context=_ssl_context()) as response:
                 raw = response.read().decode("utf-8")
         except HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace") if exc.fp else ""
@@ -82,6 +85,10 @@ class ChessComClient:
         if not isinstance(parsed, dict):
             raise ChessComApiError(f"Chess.com API returned an unexpected payload for {url}.")
         return parsed
+
+
+def _ssl_context() -> ssl.SSLContext:
+    return ssl.create_default_context(cafile=certifi.where())
 
 
 PGN_HEADER_RE = re.compile(r'^\[(?P<key>[A-Za-z0-9_]+)\s+"(?P<value>.*)"\]$')
