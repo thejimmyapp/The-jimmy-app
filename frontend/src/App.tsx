@@ -29,6 +29,7 @@ export default function App() {
   const boardB = store.explorationPositions?.boardB ?? currentPosition(store.game, store.globalPly, "B");
   const userIsWhite = store.game?.game.user_color !== "black";
   const players = store.game?.players;
+  const secondBoardAvailable = Boolean(store.game?.second_board_available);
   const selectGame = (game: GameSummary) => { gameMutation.mutate(game.id); sendRoomEvent("game.select", { game_id: game.id }); };
   const connect = (event: FormEvent) => { event.preventDefault(); const clean = usernameDraft.trim(); if (!clean) return; store.setUsername(clean); connectMutation.mutate(clean); };
 
@@ -49,9 +50,8 @@ export default function App() {
       <section className="workspace">
         <div className="boards-zone">
           <BoardPanel boardId="A" position={boardA} orientation={userIsWhite ? "white" : "black"} title="BOARD A · YOUR BOARD" playerTop={userIsWhite ? players?.board_a_black ?? "Opponent" : players?.board_a_white ?? "Opponent"} playerBottom={userIsWhite ? players?.board_a_white ?? store.username : players?.board_a_black ?? store.username} />
-          <BoardPanel boardId="B" position={boardB} orientation={userIsWhite ? "black" : "white"} title="BOARD B · PARTNER BOARD" playerTop={userIsWhite ? players?.board_b_white ?? "Opponent partner" : players?.board_b_black ?? "Opponent partner"} playerBottom={userIsWhite ? players?.board_b_black ?? "Partner" : players?.board_b_white ?? "Partner"} />
+          <BoardPanel boardId="B" position={boardB} orientation={userIsWhite ? "black" : "white"} title="BOARD B · PARTNER BOARD" playerTop={secondBoardAvailable ? (userIsWhite ? players?.board_b_white ?? "Opponent partner" : players?.board_b_black ?? "Opponent partner") : "Opponent partner"} playerBottom={secondBoardAvailable ? (userIsWhite ? players?.board_b_black ?? "Partner" : players?.board_b_white ?? "Partner") : "Partner"} />
           {!store.game && <div className="empty-workspace"><strong>Select a Bughouse game</strong><span>Choose a game from the Games panel.</span></div>}
-          {store.game && !store.game.second_board_available && <div className="second-board-warning">Second board unavailable · import authenticated pgn-info or a second-board PGN</div>}
         </div>
         <SidePanel onSelectGame={selectGame} loadingGame={gameMutation.isPending} />
       </section>

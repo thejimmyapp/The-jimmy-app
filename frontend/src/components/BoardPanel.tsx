@@ -172,6 +172,12 @@ export function BoardPanel({ boardId, position, orientation, title, playerTop, p
             </button>
           );
         }))}
+        {boardId === "B" && !position && (
+            <div className="board-unavailable" role="status">
+              <strong>Second board unavailable</strong>
+              <span>Load authenticated pgn-info or import a second-board PGN.</span>
+            </div>
+          )}
           <svg className="annotation-layer" viewBox="0 0 800 800" aria-label="Board annotations">
             {visible.filter((item) => item.type === "arrow" && item.to).map((item) => <Arrow key={item.id} annotation={item} orientation={orientation} onRemove={() => removeDrawing(item)} />)}
           </svg>
@@ -179,7 +185,7 @@ export function BoardPanel({ boardId, position, orientation, title, playerTop, p
         <PocketRail color="Black" value={position?.black_pocket ?? "-"} draggable={position?.side_to_move === "Black"} onDragPiece={eventDropPiece} />
       </div>
       <PlayerBar name={playerBottom} clock={orientation === "white" ? position?.white_clock : position?.black_clock} bottom />
-      <div className="board-footer"><button className="analyze-button" title="Analyze this position" onClick={analyze} disabled={!game}><BrainCircuit size={15} /> {analysis.bestmove ? `${analysis.bestmove} · ${analysis.score}` : analysis.status === "idle" ? "Analyze position" : analysis.status}</button><span className="interaction-status">{interactionStatus}</span></div>
+      <div className="board-footer"><button className="analyze-button" title="Analyze this position" onClick={analyze} disabled={!game || !position}><BrainCircuit size={15} /> {analysis.bestmove ? `${analysis.bestmove} · ${analysis.score}` : analysis.status === "idle" ? "Analyze position" : analysis.status}</button><span className="interaction-status">{interactionStatus}</span></div>
     </section>
   );
 
