@@ -1,0 +1,92 @@
+import { create } from "zustand";
+import type { Annotation, BoardId, ChatItem, ExplorationPair, GamePayload, GameSummary, ReplayPosition } from "./types";
+
+interface CoachState {
+  username: string;
+  games: GameSummary[];
+  game: GamePayload | null;
+  globalPly: number;
+  mode: "review" | "exploration";
+  explorationStartPly: number | null;
+  explorationPositions: ExplorationPair | null;
+  explorationHistory: ExplorationPair[];
+  variationMoves: string[];
+  roomId: string | null;
+  clientId: string;
+  displayName: string;
+  followPartner: boolean;
+  annotations: Annotation[];
+  messages: ChatItem[];
+  setUsername: (username: string) => void;
+  setGames: (games: GameSummary[]) => void;
+  setGame: (game: GamePayload | null) => void;
+  seek: (ply: number) => void;
+  applyExploration: (boardA: ReplayPosition, boardB: ReplayPosition, notation: string) => void;
+  undoExploration: () => void;
+  returnToGame: () => void;
+  setRoom: (roomId: string, clientId: string, displayName: string) => void;
+  toggleFollow: () => void;
+  addAnnotation: (annotation: Annotation) => void;
+  removeAnnotation: (id: string) => void;
+  addMessage: (message: ChatItem) => void;
+}
+
+export const useCoachStore = create<CoachState>((set) => ({
+  username: localStorage.getItem("bughouse.username") ?? "",
+  games: [],
+  game: null,
+  globalPly: 0,
+  mode: "review",
+  explorationStartPly: null,
+  explorationPositions: null,
+  explorationHistory: [],
+  variationMoves: [],
+  roomId: new URLSearchParams(location.search).get("room"),
+  clientId: crypto.randomUUID(),
+  displayName: "Coach",
+  followPartner: true,
+  annotations: [],
+  messages: [],
+  setUsername: (username) => {
+    localStorage.setItem("bughouse.username", username);
+    set({ username });
+  },
+  setGames: (games) => set({ games }),
+  setGame: (game) => set({ game, globalPly: 0, mode: "review", explorationStartPly: null, explorationPositions: null, explorationHistory: [], variationMoves: [] }),
+  seek: (globalPly) => set({ globalPly, mode: "review", explorationStartPly: null, explorationPositions: null, explorationHistory: [], variationMoves: [] }),
+  applyExploration: (boardA, boardB, notation) => set((state) => ({
+    mode: "exploration",
+    explorationStartPly: state.explorationStartPly ?? state.globalPly,
+    explorationHistory: state.explorationPositions ? [...state.explorationHistory, state.explorationPositions] : state.explorationHistory,
+    explorationPositions: { boardA, boardB },
+    variationMoves: [...state.variationMoves, notation],
+  })),
+  undoExploration: () => set((state) => {
+    if (!state.explorationHistory.length) {
+      return { mode: "review", explorationStartPly: null, explorationPositions: null, variationMoves: [] };
+    }
+    const previous = state.explorationHistory[state.explorationHistory.length - 1];
+    return {
+      explorationPositions: previous,
+      explorationHistory: state.explorationHistory.slice(0, -1),
+      variationMoves: state.variationMoves.slice(0, -1),
+    };
+  }),
+  returnToGame: () => set({ mode: "review", explorationStartPly: null, explorationPositions: null, explorationHistory: [], variationMoves: [] }),
+  setRoom: (roomId, clientId, displayName) => set({ roomId, clientId, displayName }),
+  toggleFollow: () => set((state) => ({ followPartner: !state.followPartner })),
+  addAnnotation: (annotation) => set((state) => ({ annotations: [...state.annotations.filter((item) => item.id !== annotation.id), annotation] })),
+  removeAnnotation: (id) => set((state) => ({ annotations: state.annotations.filter((item) => item.id !== id) })),
+  addMessage: (message) => set((state) => ({ messages: [...state.messages.filter((item) => item.id !== message.id), message] })),
+}));
+
+export const currentPosition = (game: GamePayload | null, ply: number, board: BoardId) => {
+  if (!game) return null;
+  if (game.timeline.length) {
+    const frame = game.timeline[Math.min(ply, game.timeline.length - 1)];
+    return board === "A" ? frame.board_a : frame.board_b;
+  }
+  const main = game.positions_a[Math.min(ply, game.positions_a.length - 1)] ?? null;
+  if (board === "A") return main;
+  return main?.partner_index == null ? null : game.positions_b[main.partner_index] ?? null;
+};

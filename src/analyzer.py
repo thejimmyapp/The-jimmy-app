@@ -2,12 +2,20 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass
+from pathlib import Path
 
 from src.bughouse_reconstructor import reconstruct_main_board
 from src.board_renderer import ReplayPosition
 from src.db import Database
 from src.engine import EngineAnalysis, EngineConfig, FairyStockfishEngine
 from src.pgn_parser import CriticalMoment, ParsedGame
+from src.versioning import ANALYSIS_VERSION
+
+try:
+    import chess
+    import chess.variant
+except ImportError:  # pragma: no cover
+    chess = None
 
 
 @dataclass(slots=True)
@@ -75,7 +83,7 @@ def analyze_critical_moments(
                     reason=moment.reason,
                     before_fen=before_fen,
                     after_fen=after_fen if after_fen and not after.failed_moves else None,
-                    bestmove=before_analysis.bestmove,
+                    bestmove=_legal_bestmove(before_fen, before_analysis.bestmove),
                     score_before=before_analysis.score_label,
                     score_after=after_analysis.score_label if after_analysis else "not analyzed",
                     estimated_loss_cp=estimated_loss,
@@ -127,7 +135,7 @@ def analyze_critical_positions(
                     reason=moment.reason,
                     before_fen=before_fen,
                     after_fen=after_fen,
-                    bestmove=before_analysis.bestmove,
+                    bestmove=_legal_bestmove(before_fen, before_analysis.bestmove),
                     score_before=before_analysis.score_label,
                     score_after=after_analysis.score_label if after_analysis else "not analyzed",
                     estimated_loss_cp=estimated_loss,
@@ -141,7 +149,10 @@ def analyze_critical_positions(
 
 
 def _analyze_with_cache(db: Database, engine: FairyStockfishEngine, fen: str, config: EngineConfig) -> EngineAnalysis:
-    cache_key = f"{config.path}|{config.variant}|depth={config.depth}|{fen}"
+    cache_key = (
+        f"{ANALYSIS_VERSION}|{_engine_fingerprint(config.path)}|{config.variant}|"
+        f"depth={config.depth}|threads={config.threads}|hash={config.hash_mb}|multipv={config.multipv}|{fen}"
+    )
     cached = db.get_engine_cache(cache_key)
     if cached:
         payload = json.loads(cached)
@@ -155,10 +166,37 @@ def _analyze_with_cache(db: Database, engine: FairyStockfishEngine, fen: str, co
 def _estimated_loss(before: EngineAnalysis, after: EngineAnalysis | None) -> int | None:
     if after is None:
         return None
-    if before.score_cp is None or after.score_cp is None:
+    before_value = _normalized_score(before)
+    after_value = _normalized_score(after)
+    if before_value is None or after_value is None:
         return None
-    after_from_mover_pov = -after.score_cp
-    return before.score_cp - after_from_mover_pov
+    return before_value + after_value
+
+
+def _normalized_score(analysis: EngineAnalysis) -> int | None:
+    if analysis.mate_in is not None:
+        sign = 1 if analysis.mate_in > 0 else -1
+        return sign * (100_000 - min(abs(analysis.mate_in), 999))
+    return analysis.score_cp
+
+
+def _engine_fingerprint(path: Path) -> str:
+    try:
+        stat = path.resolve().stat()
+        return f"{path.resolve()}:{stat.st_size}:{stat.st_mtime_ns}"
+    except OSError:
+        return str(path.resolve())
+
+
+def _legal_bestmove(fen: str, bestmove: str | None) -> str | None:
+    if not bestmove or chess is None:
+        return None if not bestmove else bestmove
+    try:
+        board = chess.variant.CrazyhouseBoard(fen)
+        move = chess.Move.from_uci(bestmove if "@" in bestmove else bestmove.lower())
+        return bestmove if move in board.legal_moves else None
+    except (TypeError, ValueError):
+        return None
 
 
 def _skipped(

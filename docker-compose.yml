@@ -1,0 +1,24 @@
+services:
+  app:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://bughouse:bughouse@postgres:5432/bughouse
+      REDIS_URL: redis://redis:6379/0
+      CORS_ORIGINS: http://localhost:8000
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: bughouse
+      POSTGRES_USER: bughouse
+      POSTGRES_PASSWORD: bughouse
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bughouse"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  redis:
+    image: redis:7-alpine

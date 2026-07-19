@@ -11,9 +11,9 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from src.analyzer import analyze_critical_moments
-from src.board_renderer import render_game_replay_html, render_pattern_puzzle_html
+from src.board_renderer import render_dual_position_html, render_game_replay_html, render_pattern_puzzle_html
 from src.bughouse_reconstructor import reconstruct_main_board
-from src.chesscom_api import ChessComApiError, ChessComClient
+from src.chesscom_api import ChessComApiError, ChessComClient, normalize_username
 from src.chesscom_pgn_info import PgnInfoClient, PgnInfoError, has_partner_board_data, merge_pgn_info
 from src.chesstempo_motifs import all_motifs, family_names
 from src.db import Database
@@ -68,7 +68,6 @@ def get_database() -> Database:
 def render_metric_grid(stats: dict[str, object]) -> None:
     total_games = int(stats.get("total_games", 0))
     winrate = stats.get("winrate")
-    avg_blunders = stats.get("average_blunders_per_game")
     losing_pattern = stats.get("most_common_losing_pattern")
     tactical_miss = stats.get("most_common_tactical_miss")
     time_trouble = stats.get("time_trouble_frequency")
@@ -97,7 +96,7 @@ def render_phase4_dashboard(db: Database, username: str) -> None:
     priorities = db.get_coaching_priorities(username)
     if priorities:
         st.caption("Current coaching priorities")
-        st.dataframe(priorities, use_container_width=True, hide_index=True)
+        st.dataframe(priorities, width="stretch", hide_index=True)
 
     category_rows = db.get_mistake_category_stats(username)
     mistake_rows = db.get_mistake_rows(username, limit=100)
@@ -112,13 +111,13 @@ def render_phase4_dashboard(db: Database, username: str) -> None:
         filtered_rows = render_mistake_filters(db, username)
         if category_rows:
             st.caption("Most frequent mistake patterns.")
-            st.dataframe(category_rows, use_container_width=True, hide_index=True)
+            st.dataframe(category_rows, width="stretch", hide_index=True)
         motif_rows = db.get_tactical_motif_stats(username)
         if motif_rows:
             st.caption("Tactical motifs")
-            st.dataframe(motif_rows, use_container_width=True, hide_index=True)
+            st.dataframe(motif_rows, width="stretch", hide_index=True)
         st.caption("Filtered mistakes")
-        st.dataframe(filtered_rows, use_container_width=True, hide_index=True)
+        st.dataframe(filtered_rows, width="stretch", hide_index=True)
 
     with tabs[1]:
         context_tabs = st.tabs(["Partner", "Opponent", "Rating", "Clock", "Result"])
@@ -210,11 +209,11 @@ def render_opening_lab(db: Database, username: str, engine_depth: int) -> None:
         left, right = st.columns([1.2, 1])
         with left:
             st.caption("Your move choices from this position")
-            st.dataframe(_opening_move_display_rows(move_rows), use_container_width=True, hide_index=True)
+            st.dataframe(_opening_move_display_rows(move_rows), width="stretch", hide_index=True)
         with right:
             st.caption("Top-rated local sample")
             if benchmark_rows:
-                st.dataframe(_opening_benchmark_display_rows(benchmark_rows), use_container_width=True, hide_index=True)
+                st.dataframe(_opening_benchmark_display_rows(benchmark_rows), width="stretch", hide_index=True)
             else:
                 st.info("No benchmark sample at this rating floor yet.")
 
@@ -271,13 +270,13 @@ def render_opening_lab(db: Database, username: str, engine_depth: int) -> None:
             limit=int(game_limit),
         )
         if games:
-            st.dataframe(games, use_container_width=True, hide_index=True)
+            st.dataframe(games, width="stretch", hide_index=True)
         else:
             st.info("No games match this position and filter set.")
 
     with position_tabs[2]:
         st.caption("Most common positions before your move")
-        st.dataframe(line_rows, use_container_width=True, hide_index=True)
+        st.dataframe(line_rows, width="stretch", hide_index=True)
 
 
 def _opening_move_display_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
@@ -488,7 +487,7 @@ def render_pattern_practice(db: Database, username: str) -> None:
     motif_stats = db.get_pattern_motif_stats(username)
     if motif_stats:
         st.caption("Pattern mastery by motif")
-        st.dataframe(motif_stats, use_container_width=True, hide_index=True)
+        st.dataframe(motif_stats, width="stretch", hide_index=True)
 
 
 def render_motif_library() -> None:
@@ -516,7 +515,7 @@ def render_motif_library() -> None:
             }
         )
     st.caption(f"{len(rows)} motif(s) shown")
-    st.dataframe(rows, use_container_width=True, hide_index=True)
+    st.dataframe(rows, width="stretch", hide_index=True)
 
 
 def render_motif_weakness_map(db: Database, username: str) -> None:
@@ -533,13 +532,13 @@ def render_motif_weakness_map(db: Database, username: str) -> None:
 
     if mistake_rows:
         st.write("Engine-labelled mistake motifs")
-        st.dataframe(mistake_rows, use_container_width=True, hide_index=True)
+        st.dataframe(mistake_rows, width="stretch", hide_index=True)
     if drill_rows:
         st.write("Drill accuracy by category")
-        st.dataframe(drill_rows, use_container_width=True, hide_index=True)
+        st.dataframe(drill_rows, width="stretch", hide_index=True)
     if motif_stats:
         st.write("Puzzle mastery by motif")
-        st.dataframe(motif_stats, use_container_width=True, hide_index=True)
+        st.dataframe(motif_stats, width="stretch", hide_index=True)
 
     st.info(
         "Training rule: prioritize motifs with enough examples, low accuracy/mastery, and recent real-game mistakes. "
@@ -552,7 +551,7 @@ def _render_context_table(title: str, rows: list[dict[str, object]]) -> None:
     if not rows:
         st.info("No stored mistakes for this breakdown yet.")
         return
-    st.dataframe(rows, use_container_width=True, hide_index=True)
+    st.dataframe(rows, width="stretch", hide_index=True)
 
 
 def render_session_report(db: Database, username: str) -> None:
@@ -561,15 +560,15 @@ def render_session_report(db: Database, username: str) -> None:
     priorities = report.get("priorities") if isinstance(report.get("priorities"), list) else []
     if priorities:
         st.write("Focus of the day")
-        st.dataframe(priorities[:1], use_container_width=True, hide_index=True)
+        st.dataframe(priorities[:1], width="stretch", hide_index=True)
     top_leaks = report.get("top_leaks") if isinstance(report.get("top_leaks"), list) else []
     if top_leaks:
         st.write("Top 3 leaks")
-        st.dataframe(top_leaks, use_container_width=True, hide_index=True)
+        st.dataframe(top_leaks, width="stretch", hide_index=True)
     review_positions = report.get("review_positions") if isinstance(report.get("review_positions"), list) else []
     if review_positions:
         st.write("5 positions to review")
-        st.dataframe(review_positions, use_container_width=True, hide_index=True)
+        st.dataframe(review_positions, width="stretch", hide_index=True)
 
 
 def render_mistake_filters(db: Database, username: str) -> list[dict[str, object]]:
@@ -771,11 +770,11 @@ def render_drill_stats(db: Database, username: str) -> None:
     stats = db.get_drill_category_stats(username)
     if stats:
         st.caption("Drill accuracy by category")
-        st.dataframe(stats, use_container_width=True, hide_index=True)
+        st.dataframe(stats, width="stretch", hide_index=True)
     recent = db.get_recent_drill_attempts(username, limit=10)
     if recent:
         st.caption("Recent attempts")
-        st.dataframe(recent, use_container_width=True, hide_index=True)
+        st.dataframe(recent, width="stretch", hide_index=True)
 
 
 def score_drill_move(attempted: str, expected: str) -> str:
@@ -808,7 +807,7 @@ def render_partner_stats(partner_rows: list[dict[str, object]]) -> None:
     if not partner_rows:
         st.info("No partner metadata found yet in imported Bughouse games.")
         return
-    st.dataframe(partner_rows, use_container_width=True, hide_index=True)
+    st.dataframe(partner_rows, width="stretch", hide_index=True)
 
 
 def render_opponent_stats(opponent_rows: list[dict[str, object]]) -> None:
@@ -816,7 +815,7 @@ def render_opponent_stats(opponent_rows: list[dict[str, object]]) -> None:
     if not opponent_rows:
         st.info("No opponent metadata found yet in imported Bughouse games.")
         return
-    st.dataframe(opponent_rows, use_container_width=True, hide_index=True)
+    st.dataframe(opponent_rows, width="stretch", hide_index=True)
 
 
 def render_game_table(db: Database, username: str) -> list[dict[str, object]]:
@@ -845,7 +844,7 @@ def render_game_table(db: Database, username: str) -> list[dict[str, object]]:
         st.info("No games match the current filters.")
         return []
 
-    st.dataframe(rows, use_container_width=True, hide_index=True)
+    st.dataframe(rows, width="stretch", hide_index=True)
     return rows
 
 
@@ -901,12 +900,12 @@ def render_game_viewer(db: Database, game_rows: list[dict[str, object]], engine_
                     }
                     for item in critical
                 ],
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
 
     with tabs[1]:
-        st.caption("Phase 3: Fairy-Stockfish analyzes reconstructible critical positions only.")
+        st.caption("Fairy-Stockfish analyzes reconstructible critical positions only.")
         if not critical:
             st.info("No critical moments available to send to the engine.")
         else:
@@ -956,7 +955,7 @@ def render_game_viewer(db: Database, game_rows: list[dict[str, object]], engine_
                             }
                             for row in engine_rows
                         ],
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                     )
                     engine_critical = [
@@ -1016,7 +1015,7 @@ def render_game_viewer(db: Database, game_rows: list[dict[str, object]], engine_
                     }
                     for move in parsed.moves
                 ],
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
 
@@ -1249,17 +1248,25 @@ def render_username_landing() -> str:
         """,
         unsafe_allow_html=True,
     )
-    username = st.text_input(
-        "Chess.com username",
-        value=st.session_state.get("active_username", ""),
-        placeholder="Your Chess.com username",
-        label_visibility="collapsed",
-        key="landing_username_input",
-    ).strip()
-    if username:
-        st.session_state["active_username"] = username
+    with st.form("username_setup", border=False):
+        username = st.text_input(
+            "Chess.com username",
+            value=st.session_state.get("active_username", ""),
+            placeholder="Your Chess.com username",
+            label_visibility="collapsed",
+            key="landing_username_input",
+            max_chars=25,
+        ).strip()
+        submitted = st.form_submit_button("Build my coach", type="primary", width="stretch")
+    if submitted:
+        try:
+            normalized = normalize_username(username)
+        except ChessComApiError as exc:
+            st.error(str(exc))
+            return ""
+        st.session_state["active_username"] = normalized
         st.rerun()
-    return username
+    return ""
 
 
 def render_loading_tip(step_index: int) -> None:
@@ -1425,15 +1432,15 @@ def render_statistics_tab(db: Database, username: str) -> None:
         motif_rows = db.get_tactical_motif_stats(username)
         if category_rows:
             st.caption("Repeated Bughouse leaks")
-            st.dataframe(category_rows, use_container_width=True, hide_index=True)
+            st.dataframe(category_rows, width="stretch", hide_index=True)
         else:
             st.info("No stored coach mistakes yet. The app will fill this after engine analysis.")
         if motif_rows:
             st.caption("Tactical motifs")
-            st.dataframe(motif_rows, use_container_width=True, hide_index=True)
+            st.dataframe(motif_rows, width="stretch", hide_index=True)
     with table_tabs[3]:
         if color_rows:
-            st.dataframe(color_rows, use_container_width=True, hide_index=True)
+            st.dataframe(color_rows, width="stretch", hide_index=True)
         else:
             st.info("No color split available yet.")
 
@@ -1448,6 +1455,278 @@ def render_training_tab(db: Database, username: str) -> None:
     render_session_report(db, username)
     st.divider()
     render_mistake_drill(db, username)
+
+
+INITIAL_CRAZYHOUSE_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR[] w KQkq - 0 1"
+
+
+def render_study_workspace(db: Database, username: str, engine_depth: int) -> None:
+    st.subheader("Study Workspace")
+    mode = st.segmented_control(
+        "Study mode",
+        ["Game Review", "Training", "Opening Explorer", "Free Study"],
+        default="Game Review",
+        key="study_workspace_mode",
+        label_visibility="collapsed",
+    )
+    if mode == "Training":
+        _render_workspace_training(db, username)
+    elif mode == "Opening Explorer":
+        _render_workspace_opening(db, username, engine_depth)
+    elif mode == "Free Study":
+        _render_workspace_free_study(username)
+    else:
+        _render_workspace_game_review(db, username)
+
+
+def _render_workspace_game_review(db: Database, username: str) -> None:
+    rows = db.list_games(username=username, limit=500)
+    if not rows:
+        st.info("No games are available yet.")
+        return
+    labels = [_game_label(row) for row in rows]
+    index_key = "workspace_game_index"
+    index = max(0, min(int(st.session_state.get(index_key, 0)), len(rows) - 1))
+    board_col, tools_col = st.columns([3.5, 1.15], gap="medium")
+    with tools_col:
+        st.markdown("#### Game Review")
+        nav = st.columns(2)
+        if nav[0].button("< Previous", disabled=index == 0, use_container_width=True, key="workspace_game_prev"):
+            index -= 1
+            st.session_state["workspace_game_select"] = labels[index]
+        if nav[1].button("Next >", disabled=index >= len(rows) - 1, use_container_width=True, key="workspace_game_next"):
+            index += 1
+            st.session_state["workspace_game_select"] = labels[index]
+        selected = st.selectbox("Game", labels, index=index, key="workspace_game_select")
+        index = labels.index(selected)
+        st.session_state[index_key] = index
+        game = db.get_game(int(rows[index]["id"]))
+        if not game:
+            st.error("This game could not be loaded.")
+            return
+        parsed = parse_game_data(str(game.get("pgn") or ""), str(game.get("raw_json") or ""))
+        partner = parse_partner_tcn(str(game.get("raw_json") or ""))
+        critical = extract_critical_moments(parsed)
+        st.metric("Result", str(game.get("result") or parsed.result))
+        st.metric("Opponent", str(game.get("opponent") or "Unknown"))
+        st.metric("Partner", str(game.get("partner") or "Unknown"))
+        st.metric("Critical moments", len(critical))
+        if partner is None:
+            st.warning("Partner board unavailable for this game.")
+        if critical:
+            with st.expander("Critical moments", expanded=False):
+                st.dataframe(
+                    [{"ply": row.ply, "move": row.move, "reason": row.reason} for row in critical],
+                    hide_index=True,
+                    width="stretch",
+                )
+    with board_col:
+        components.html(
+            render_game_replay_html(
+                moves=parsed.moves,
+                critical=critical,
+                partner_moves=partner.moves if partner else None,
+                player_labels=player_labels_for_game(game),
+                orientation=str(game.get("user_color") or "white"),
+                title="Your board",
+            ),
+            height=730,
+            scrolling=False,
+        )
+
+
+def _render_workspace_training(db: Database, username: str) -> None:
+    categories = ["All"] + db.get_mistake_categories(username)
+    board_col, tools_col = st.columns([3.5, 1.15], gap="medium")
+    with tools_col:
+        st.markdown("#### Training")
+        queue_mode = st.selectbox(
+            "Queue",
+            ["smart queue", "largest mistakes", "recent mistakes", "weak categories", "missed before"],
+            key="workspace_queue_mode",
+        )
+        category = st.selectbox("Pattern", categories, key="workspace_queue_category")
+        rows = db.get_training_queue(username, limit=100, mode=queue_mode, category=category)
+        if not rows:
+            st.info("No analyzed training positions match this queue.")
+            return
+        labels = [_mistake_label(row) for row in rows]
+        index_key = "workspace_training_index"
+        index = max(0, min(int(st.session_state.get(index_key, 0)), len(rows) - 1))
+        nav = st.columns(2)
+        if nav[0].button("< Previous", disabled=index == 0, use_container_width=True, key="workspace_training_prev"):
+            index -= 1
+            st.session_state["workspace_training_select"] = labels[index]
+        if nav[1].button("Next >", disabled=index >= len(rows) - 1, use_container_width=True, key="workspace_training_next"):
+            index += 1
+            st.session_state["workspace_training_select"] = labels[index]
+        selected = st.selectbox("Position", labels, index=index, key="workspace_training_select")
+        index = labels.index(selected)
+        st.session_state[index_key] = index
+        mistake = db.get_mistake(int(rows[index]["id"]))
+        if not mistake:
+            st.error("This training position could not be loaded.")
+            return
+        st.metric("Loss", f"{mistake.get('estimated_loss_cp') or 0} cp")
+        st.metric("Category", str(mistake.get("category") or "Unknown"))
+        st.caption(str(mistake.get("tactical_motif") or "Unknown motif"))
+        attempt_key = f"workspace_attempt_{mistake['id']}"
+        attempt = st.text_input("Your move", key=attempt_key, placeholder="N@f4 or e2e4")
+        if st.button("Check move", disabled=not attempt.strip(), use_container_width=True, key=f"workspace_check_{mistake['id']}"):
+            score = score_drill_move(attempt, str(mistake.get("bestmove") or ""))
+            db.record_drill_attempt(
+                mistake_id=int(mistake["id"]),
+                username=str(mistake.get("username") or username),
+                category=str(mistake.get("category") or "unknown"),
+                expected_move=mistake.get("bestmove") if isinstance(mistake.get("bestmove"), str) else None,
+                attempted_move=attempt.strip(),
+                score=score,
+            )
+            {"correct": st.success, "close": st.warning}.get(score, st.error)(score.title())
+        reveal = st.toggle("Reveal Fairy-Stockfish move", key=f"workspace_reveal_{mistake['id']}")
+        if reveal:
+            st.success(str(mistake.get("bestmove") or "No move stored"))
+        if mistake.get("partner_danger"):
+            st.warning(str(mistake.get("partner_danger")))
+        parsed = parse_game_data(str(mistake.get("pgn") or ""), str(mistake.get("raw_json") or ""))
+        partner = parse_partner_tcn(str(mistake.get("raw_json") or ""))
+        ply = max(0, int(mistake.get("ply") or 0) - 1)
+        suggestions = []
+        if reveal and mistake.get("bestmove"):
+            suggestions.append({"ply": ply, "bestmove": mistake.get("bestmove"), "move": mistake.get("move")})
+    with board_col:
+        components.html(
+            render_game_replay_html(
+                moves=parsed.moves,
+                critical=[],
+                partner_moves=partner.moves if partner else None,
+                engine_suggestions=suggestions,
+                player_labels=player_labels_for_game(mistake),
+                selected_ply=ply,
+                orientation=str(mistake.get("user_color") or "white"),
+                title="Training position",
+            ),
+            height=730,
+            scrolling=False,
+        )
+
+
+def _render_workspace_opening(db: Database, username: str, engine_depth: int) -> None:
+    opponents = ["All opponents"] + db.get_opening_opponents(username, engine_depth, min_positions=3)
+    partners = ["All partners"] + db.get_opening_partners(username, engine_depth, min_positions=3)
+    board_col, tools_col = st.columns([3.5, 1.15], gap="medium")
+    with tools_col:
+        st.markdown("#### Opening Explorer")
+        opponent = st.selectbox("Opponent", opponents, key="workspace_opening_opponent")
+        partner_filter = st.selectbox("Partner", partners, key="workspace_opening_partner")
+        lines = db.get_opening_line_stats(
+            username,
+            engine_depth,
+            limit=100,
+            opponent=opponent,
+            partner=partner_filter,
+        )
+        if not lines:
+            st.info("No opening analysis matches these filters.")
+            return
+        line_labels = [f"{row.get('positions')}x | {row.get('line_label')}" for row in lines]
+        selected_label = st.selectbox("Position", line_labels, key="workspace_opening_position")
+        selected_line = lines[line_labels.index(selected_label)]
+        line_key = str(selected_line.get("line_key") or "")
+        summary = db.get_opening_position_summary(username, engine_depth, line_key)
+        move_rows = db.get_opening_move_stats(
+            username=username,
+            depth=engine_depth,
+            line_key=line_key,
+            limit=20,
+            opponent=opponent,
+            partner=partner_filter,
+        )
+        st.metric("Games here", int(summary.get("games") or selected_line.get("games") or 0))
+        st.metric("Fairy-Stockfish", str(summary.get("engine_bestmove") or "N/A"))
+        st.dataframe(_opening_move_display_rows(move_rows)[:8], hide_index=True, width="stretch")
+        sample_game_id = int(summary.get("sample_game_id") or selected_line.get("sample_game_id") or 0)
+        sample_ply = int(summary.get("sample_ply") or selected_line.get("sample_ply") or 0)
+        game = db.get_game(sample_game_id) if sample_game_id else None
+        if not game:
+            st.info("No replay sample is stored for this position.")
+            return
+        parsed = parse_game_data(str(game.get("pgn") or ""), str(game.get("raw_json") or ""))
+        partner_parsed = parse_partner_tcn(str(game.get("raw_json") or ""))
+        suggestions = [
+            {"ply": max(0, int(row.get("ply") or 0) - 1), "bestmove": row.get("bestmove"), "move": row.get("played_move")}
+            for row in db.get_opening_game_suggestions(int(game["id"]), username, engine_depth)
+            if row.get("bestmove")
+        ]
+    with board_col:
+        components.html(
+            render_game_replay_html(
+                parsed.moves,
+                critical=[],
+                partner_moves=partner_parsed.moves if partner_parsed else None,
+                engine_suggestions=suggestions,
+                player_labels=player_labels_for_game(game),
+                selected_ply=max(0, sample_ply - 1),
+                orientation=str(game.get("user_color") or "white"),
+                title="Opening position",
+            ),
+            height=730,
+            scrolling=False,
+        )
+
+
+def _render_workspace_free_study(username: str) -> None:
+    board_col, tools_col = st.columns([3.5, 1.15], gap="medium")
+    with tools_col:
+        st.markdown("#### Free Study")
+        orientation = st.radio("Your color", ["white", "black"], horizontal=True, key="workspace_study_orientation")
+        main_fen = st.text_area("Your board FEN", INITIAL_CRAZYHOUSE_FEN, key="workspace_main_fen", height=100)
+        partner_fen = st.text_area("Partner board FEN", INITIAL_CRAZYHOUSE_FEN, key="workspace_partner_fen", height=100)
+        if st.button("Reset boards", use_container_width=True):
+            st.session_state["workspace_main_fen"] = INITIAL_CRAZYHOUSE_FEN
+            st.session_state["workspace_partner_fen"] = INITIAL_CRAZYHOUSE_FEN
+            st.rerun()
+    with board_col:
+        try:
+            if orientation == "white":
+                study_labels = {
+                    "main_white": username,
+                    "main_black": "Opponent",
+                    "partner_white": "Opponent partner",
+                    "partner_black": "Partner",
+                    "main_white_role": "You",
+                    "main_black_role": "Opponent",
+                    "partner_white_role": "Opponent partner",
+                    "partner_black_role": "Partner",
+                }
+            else:
+                study_labels = {
+                    "main_white": "Opponent",
+                    "main_black": username,
+                    "partner_white": "Partner",
+                    "partner_black": "Opponent partner",
+                    "main_white_role": "Opponent",
+                    "main_black_role": "You",
+                    "partner_white_role": "Partner",
+                    "partner_black_role": "Opponent partner",
+                }
+            board_html = render_dual_position_html(
+                main_fen,
+                partner_fen,
+                orientation=orientation,
+                title="Free study",
+                player_labels={
+                    **study_labels,
+                    "user": username,
+                    "partner": "Partner",
+                    "opponent": "Opponent",
+                    "opponent_partner": "Opponent partner",
+                },
+            )
+        except (IndexError, ValueError) as exc:
+            st.error(f"Invalid FEN: {exc}")
+            return
+        components.html(board_html, height=730, scrolling=False)
 
 
 def render_advanced_sidebar(db: Database, username: str) -> tuple[Path, int, Path]:
@@ -1566,20 +1845,17 @@ def main() -> None:
     run_guided_setup(db, username, pgn_info_path, engine_path, engine_depth)
 
     st.title("Bughouse Coach AI")
-    st.caption("Your personal Bughouse dashboard, training board, opening lab, and partner review.")
+    st.caption("Review both boards, train recurring mistakes, and explore your openings from one workspace.")
 
-    tabs = st.tabs(["Statistics", "Training Board", "Pattern Academy", "Opening Lab", "Games"])
+    tabs = st.tabs(["Study Workspace", "Statistics", "Pattern Academy", "Game Library"])
     with tabs[0]:
-        render_statistics_tab(db, username)
+        render_study_workspace(db, username, int(engine_depth))
     with tabs[1]:
-        render_training_tab(db, username)
+        render_statistics_tab(db, username)
     with tabs[2]:
         render_pattern_academy(db, username)
     with tabs[3]:
-        render_opening_lab(db, username, int(engine_depth))
-    with tabs[4]:
-        game_rows = render_game_table(db, username)
-        render_game_viewer(db, game_rows, engine_path, int(engine_depth))
+        render_game_table(db, username)
 
 
 def _game_label(row: dict[str, object]) -> str:
@@ -1640,6 +1916,10 @@ def render_full_data_status(db: Database, game: dict[str, object]) -> None:
             report_json=json.dumps(asdict(report), ensure_ascii=False),
         )
 
+    if report is None and not st.button("Check public Chess.com sources", key=f"discover_{game_id}"):
+        st.info("No public-source check has been run for this game yet.")
+        return
+
     if report is None:
         try:
             with st.spinner("Auto-checking Chess.com public archive/page sources for this game..."):
@@ -1677,12 +1957,12 @@ def render_full_data_status(db: Database, game: dict[str, object]) -> None:
             }
             for item in report.sources
         ],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
     if report.candidates:
         st.caption("Current-board or near-time archive records checked during automatic enrichment.")
-        st.dataframe(report.candidates, use_container_width=True, hide_index=True)
+        st.dataframe(report.candidates, width="stretch", hide_index=True)
 
 
 def _chesscom_game_id(game: dict[str, object]) -> str | None:

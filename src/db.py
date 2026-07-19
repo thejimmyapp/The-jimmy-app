@@ -9,6 +9,7 @@ from typing import Any
 
 from src.chesscom_api import parse_pgn_headers
 from src.chesscom_pgn_info import has_partner_board_data
+from src.versioning import ANALYSIS_VERSION
 
 
 class Database:
@@ -17,9 +18,10 @@ class Database:
 
     def connect(self) -> sqlite3.Connection:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(self.path)
+        conn = sqlite3.connect(self.path, timeout=30.0)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("PRAGMA busy_timeout = 30000")
         return conn
 
     def initialize(self) -> None:
@@ -111,6 +113,7 @@ class Database:
                     partner_score_before TEXT,
                     partner_mate_in INTEGER,
                     partner_danger TEXT,
+                    analysis_version TEXT NOT NULL DEFAULT 'timeline-v2',
                     created_at TEXT NOT NULL,
                     FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE,
                     UNIQUE(game_id, ply, depth)
@@ -129,6 +132,7 @@ class Database:
                     critical_positions INTEGER NOT NULL,
                     mistakes_found INTEGER NOT NULL,
                     status TEXT NOT NULL,
+                    analysis_version TEXT NOT NULL DEFAULT 'timeline-v2',
                     analyzed_at TEXT NOT NULL,
                     FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE,
                     PRIMARY KEY(game_id, depth)
@@ -170,6 +174,7 @@ class Database:
                     estimated_loss_cp INTEGER,
                     quality TEXT NOT NULL,
                     depth INTEGER NOT NULL,
+                    analysis_version TEXT NOT NULL DEFAULT 'timeline-v2',
                     created_at TEXT NOT NULL,
                     FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE,
                     UNIQUE(game_id, ply, depth)
@@ -221,7 +226,32 @@ class Database:
                     "partner_mate_in": "INTEGER",
                     "partner_danger": "TEXT",
                     "tactical_motif": "TEXT NOT NULL DEFAULT 'unknown'",
+                    "analysis_version": "TEXT NOT NULL DEFAULT 'legacy'",
                 },
+            )
+            _ensure_columns(
+                conn,
+                "game_analysis_runs",
+                {"analysis_version": "TEXT NOT NULL DEFAULT 'legacy'"},
+            )
+            _ensure_columns(
+                conn,
+                "opening_move_analysis",
+                {"analysis_version": "TEXT NOT NULL DEFAULT 'legacy'"},
+            )
+            conn.execute("PRAGMA journal_mode = WAL")
+            conn.executescript(
+                f"""
+                DROP VIEW IF EXISTS current_mistakes;
+                DROP VIEW IF EXISTS current_game_analysis_runs;
+                DROP VIEW IF EXISTS current_opening_move_analysis;
+                CREATE VIEW current_mistakes AS
+                    SELECT * FROM mistakes WHERE analysis_version = '{ANALYSIS_VERSION}';
+                CREATE VIEW current_game_analysis_runs AS
+                    SELECT * FROM game_analysis_runs WHERE analysis_version = '{ANALYSIS_VERSION}';
+                CREATE VIEW current_opening_move_analysis AS
+                    SELECT * FROM opening_move_analysis WHERE analysis_version = '{ANALYSIS_VERSION}';
+                """
             )
             conn.commit()
 
@@ -373,7 +403,7 @@ class Database:
                 """
                 NOT EXISTS (
                     SELECT 1
-                    FROM opening_move_analysis oma
+                    FROM current_opening_move_analysis oma
                     WHERE oma.game_id = games.id
                         AND oma.depth = ?
                 )
@@ -413,8 +443,8 @@ class Database:
     def replace_opening_move_analysis(self, game_id: int, depth: int, rows: list[dict[str, Any]]) -> None:
         with closing(self.connect()) as conn:
             conn.execute(
-                "DELETE FROM opening_move_analysis WHERE game_id = ? AND depth = ?",
-                (game_id, depth),
+                "DELETE FROM opening_move_analysis WHERE game_id = ? AND depth = ? AND analysis_version = ?",
+                (game_id, depth, ANALYSIS_VERSION),
             )
             for row in rows:
                 conn.execute(
@@ -423,9 +453,9 @@ class Database:
                         game_id, username, ply, move_number, color, played_move,
                         line_key, line_label, before_fen, after_fen, bestmove,
                         score_before, score_after, estimated_loss_cp, quality,
-                        depth, created_at
+                        depth, analysis_version, created_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         game_id,
@@ -444,6 +474,7 @@ class Database:
                         row.get("estimated_loss_cp"),
                         row["quality"],
                         depth,
+                        ANALYSIS_VERSION,
                         _utc_now(),
                     ),
                 )
@@ -459,7 +490,7 @@ class Database:
             analyzed = conn.execute(
                 """
                 SELECT COUNT(DISTINCT game_id) AS count
-                FROM opening_move_analysis
+                FROM current_opening_move_analysis
                 WHERE username = ? AND depth = ?
                 """,
                 (normalized, depth),
@@ -467,7 +498,7 @@ class Database:
             moves = conn.execute(
                 """
                 SELECT COUNT(*) AS count
-                FROM opening_move_analysis
+                FROM current_opening_move_analysis
                 WHERE username = ? AND depth = ?
                 """,
                 (normalized, depth),
@@ -479,7 +510,7 @@ class Database:
             rows = conn.execute(
                 """
                 SELECT COALESCE(NULLIF(g.opponent, ''), 'Unknown') AS opponent, COUNT(*) AS positions
-                FROM opening_move_analysis oma
+                FROM current_opening_move_analysis oma
                 JOIN games g ON g.id = oma.game_id
                 WHERE oma.username = ? AND oma.depth = ?
                 GROUP BY COALESCE(NULLIF(g.opponent, ''), 'Unknown')
@@ -495,7 +526,7 @@ class Database:
             rows = conn.execute(
                 """
                 SELECT COALESCE(NULLIF(g.partner, ''), 'Unknown') AS partner, COUNT(*) AS positions
-                FROM opening_move_analysis oma
+                FROM current_opening_move_analysis oma
                 JOIN games g ON g.id = oma.game_id
                 WHERE oma.username = ? AND oma.depth = ?
                 GROUP BY COALESCE(NULLIF(g.partner, ''), 'Unknown')
@@ -546,7 +577,7 @@ class Database:
                     MIN(oma.game_id) AS sample_game_id,
                     MIN(oma.ply) AS sample_ply,
                     ROUND(100.0 * SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 1) AS winrate
-                FROM opening_move_analysis
+                FROM current_opening_move_analysis
                 oma JOIN games g ON g.id = oma.game_id
                 WHERE {" AND ".join(clauses)}
                 GROUP BY oma.line_key, oma.line_label
@@ -605,7 +636,7 @@ class Database:
                     ROUND(100.0 * SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 1) AS winrate,
                     MIN(oma.game_id) AS sample_game_id,
                     MIN(oma.ply) AS sample_ply
-                FROM opening_move_analysis oma
+                FROM current_opening_move_analysis oma
                 JOIN games g ON g.id = oma.game_id
                 WHERE {" AND ".join(clauses)}
                 GROUP BY oma.line_key, oma.line_label, oma.played_move, oma.bestmove
@@ -635,7 +666,7 @@ class Database:
                     ROUND(AVG(COALESCE(estimated_loss_cp, 0)), 1) AS avg_loss,
                     SUM(CASE WHEN quality = 'best' THEN 1 ELSE 0 END) AS best_count,
                     SUM(CASE WHEN quality IN ('mistake', 'blunder') THEN 1 ELSE 0 END) AS mistakes
-                FROM opening_move_analysis
+                FROM current_opening_move_analysis
                 WHERE username = ? AND depth = ? AND line_key = ?
                 """,
                 (username.lower(), depth, line_key),
@@ -643,7 +674,7 @@ class Database:
             bestmove = conn.execute(
                 """
                 SELECT bestmove, COUNT(*) AS count
-                FROM opening_move_analysis
+                FROM current_opening_move_analysis
                 WHERE username = ? AND depth = ? AND line_key = ? AND bestmove IS NOT NULL AND bestmove != ''
                 GROUP BY bestmove
                 ORDER BY count DESC, bestmove ASC
@@ -674,7 +705,7 @@ class Database:
                     ROUND(AVG(COALESCE(oma.estimated_loss_cp, 0)), 1) AS avg_loss,
                     SUM(CASE WHEN oma.quality = 'best' THEN 1 ELSE 0 END) AS best_count,
                     SUM(CASE WHEN oma.quality IN ('mistake', 'blunder') THEN 1 ELSE 0 END) AS mistakes
-                FROM opening_move_analysis oma
+                FROM current_opening_move_analysis oma
                 JOIN games g ON g.id = oma.game_id
                 WHERE oma.depth = ?
                     AND oma.line_key = ?
@@ -731,7 +762,7 @@ class Database:
                     oma.quality,
                     oma.estimated_loss_cp,
                     g.url
-                FROM opening_move_analysis oma
+                FROM current_opening_move_analysis oma
                 JOIN games g ON g.id = oma.game_id
                 WHERE {" AND ".join(clauses)}
                 ORDER BY g.end_time DESC
@@ -751,7 +782,7 @@ class Database:
             rows = conn.execute(
                 """
                 SELECT ply, played_move, bestmove, quality, estimated_loss_cp
-                FROM opening_move_analysis
+                FROM current_opening_move_analysis
                 WHERE game_id = ? AND username = ? AND depth = ?
                 ORDER BY ply ASC
                 """,
@@ -842,7 +873,7 @@ class Database:
             most_common_miss = conn.execute(
                 """
                 SELECT category, COUNT(*) AS count
-                FROM mistakes
+                FROM current_mistakes
                 WHERE username = ?
                 GROUP BY category
                 ORDER BY count DESC
@@ -853,7 +884,7 @@ class Database:
             losing_pattern = conn.execute(
                 """
                 SELECT m.category, COUNT(*) AS count
-                FROM mistakes m
+                FROM current_mistakes m
                 JOIN games g ON g.id = m.game_id
                 WHERE m.username = ?
                     AND g.result = 'loss'
@@ -868,7 +899,7 @@ class Database:
                 SELECT
                     COUNT(DISTINCT g.id) AS games_with_clocks,
                     COUNT(DISTINCT CASE WHEN m.clock_seconds <= 30 THEN g.id END) AS games_with_time_trouble
-                FROM mistakes m
+                FROM current_mistakes m
                 JOIN games g ON g.id = m.game_id
                 WHERE m.username = ?
                     AND m.clock_seconds IS NOT NULL
@@ -1174,7 +1205,7 @@ class Database:
                 """
                 NOT EXISTS (
                     SELECT 1
-                    FROM game_analysis_runs gar
+                    FROM current_game_analysis_runs gar
                     WHERE gar.game_id = games.id
                         AND gar.depth = ?
                         AND gar.status = 'complete'
@@ -1227,9 +1258,9 @@ class Database:
                 """
                 INSERT OR REPLACE INTO game_analysis_runs (
                     game_id, username, depth, max_positions, critical_positions,
-                    mistakes_found, status, analyzed_at
+                    mistakes_found, status, analysis_version, analyzed_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     game_id,
@@ -1239,6 +1270,7 @@ class Database:
                     critical_positions,
                     mistakes_found,
                     status,
+                    ANALYSIS_VERSION,
                     _utc_now(),
                 ),
             )
@@ -1262,7 +1294,7 @@ class Database:
             analyzed = conn.execute(
                 """
                 SELECT COUNT(*) AS count
-                FROM game_analysis_runs
+                FROM current_game_analysis_runs
                 WHERE username = ? AND depth = ? AND status = 'complete'
                 """,
                 (normalized, depth),
@@ -1297,8 +1329,8 @@ class Database:
     def replace_game_mistakes(self, game_id: int, depth: int | None, mistakes: list[dict[str, Any]]) -> None:
         with closing(self.connect()) as conn:
             conn.execute(
-                "DELETE FROM mistakes WHERE game_id = ? AND COALESCE(depth, -1) = COALESCE(?, -1)",
-                (game_id, depth),
+                "DELETE FROM mistakes WHERE game_id = ? AND COALESCE(depth, -1) = COALESCE(?, -1) AND analysis_version = ?",
+                (game_id, depth, ANALYSIS_VERSION),
             )
             for item in mistakes:
                 conn.execute(
@@ -1309,9 +1341,9 @@ class Database:
                         confidence, note, before_fen, after_fen, clock_seconds,
                         time_spent_seconds, partner_ply, partner_fen,
                         partner_score_before, partner_mate_in, partner_danger,
-                        created_at
+                        analysis_version, created_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         game_id,
@@ -1339,6 +1371,7 @@ class Database:
                         item.get("partner_score_before"),
                         item.get("partner_mate_in"),
                         item.get("partner_danger"),
+                        ANALYSIS_VERSION,
                         _utc_now(),
                     ),
                 )
@@ -1347,15 +1380,15 @@ class Database:
     def get_mistake_summary(self, username: str) -> dict[str, object]:
         with closing(self.connect()) as conn:
             total = conn.execute(
-                "SELECT COUNT(*) AS count FROM mistakes WHERE username = ?",
+                "SELECT COUNT(*) AS count FROM current_mistakes WHERE username = ?",
                 (username.lower(),),
             ).fetchone()["count"]
             blunders = conn.execute(
-                "SELECT COUNT(*) AS count FROM mistakes WHERE username = ? AND severity = 'blunder'",
+                "SELECT COUNT(*) AS count FROM current_mistakes WHERE username = ? AND severity = 'blunder'",
                 (username.lower(),),
             ).fetchone()["count"]
             avg_loss = conn.execute(
-                "SELECT ROUND(AVG(estimated_loss_cp), 1) AS avg_loss FROM mistakes WHERE username = ?",
+                "SELECT ROUND(AVG(estimated_loss_cp), 1) AS avg_loss FROM current_mistakes WHERE username = ?",
                 (username.lower(),),
             ).fetchone()["avg_loss"]
         return {"mistakes": total, "blunders": blunders, "avg_loss": avg_loss}
@@ -1420,7 +1453,7 @@ class Database:
                     m.partner_score_before,
                     m.partner_mate_in,
                     m.partner_danger
-                FROM mistakes m
+                FROM current_mistakes m
                 JOIN games g ON g.id = m.game_id
                 WHERE """ + " AND ".join(clauses) + """
                 ORDER BY m.estimated_loss_cp DESC, g.end_time DESC
@@ -1435,7 +1468,7 @@ class Database:
             rows = conn.execute(
                 """
                 SELECT DISTINCT category
-                FROM mistakes
+                FROM current_mistakes
                 WHERE username = ?
                 ORDER BY category
                 """,
@@ -1448,7 +1481,7 @@ class Database:
             rows = conn.execute(
                 """
                 SELECT DISTINCT tactical_motif
-                FROM mistakes
+                FROM current_mistakes
                 WHERE username = ? AND tactical_motif IS NOT NULL AND tactical_motif != ''
                 ORDER BY tactical_motif
                 """,
@@ -1475,7 +1508,7 @@ class Database:
                     MAX(m.estimated_loss_cp) AS max_loss,
                     ROUND(AVG(g.opponent_rating), 0) AS avg_rating,
                     COUNT(DISTINCT m.game_id) AS games_with_mistakes
-                FROM mistakes m
+                FROM current_mistakes m
                 JOIN games g ON g.id = m.game_id
                 WHERE m.username = ?
                 GROUP BY COALESCE(NULLIF(g.opponent, ''), 'Unknown')
@@ -1517,7 +1550,7 @@ class Database:
                     ROUND(AVG(m.estimated_loss_cp), 1) AS avg_loss,
                     MAX(m.estimated_loss_cp) AS max_loss,
                     COUNT(DISTINCT m.game_id) AS games_with_mistakes
-                FROM mistakes m
+                FROM current_mistakes m
                 JOIN games g ON g.id = m.game_id
                 WHERE m.username = ?
                 GROUP BY rating_range
@@ -1554,7 +1587,7 @@ class Database:
                     ROUND(AVG(m.estimated_loss_cp), 1) AS avg_loss,
                     MAX(m.estimated_loss_cp) AS max_loss,
                     ROUND(AVG(m.time_spent_seconds), 1) AS avg_spent_seconds
-                FROM mistakes m
+                FROM current_mistakes m
                 WHERE m.username = ?
                 GROUP BY clock_bucket
                 ORDER BY
@@ -1587,7 +1620,7 @@ class Database:
                     ROUND(AVG(m.estimated_loss_cp), 1) AS avg_loss,
                     MAX(m.estimated_loss_cp) AS max_loss,
                     COUNT(DISTINCT m.game_id) AS games_with_mistakes
-                FROM mistakes m
+                FROM current_mistakes m
                 JOIN games g ON g.id = m.game_id
                 WHERE m.username = ?
                 GROUP BY {label_sql}
@@ -1612,7 +1645,7 @@ class Database:
                     g.pgn,
                     g.raw_json,
                     g.url
-                FROM mistakes m
+                FROM current_mistakes m
                 JOIN games g ON g.id = m.game_id
                 WHERE m.id = ?
                 """,
@@ -1630,7 +1663,7 @@ class Database:
                     COUNT(*) AS count,
                     ROUND(AVG(estimated_loss_cp), 1) AS avg_loss,
                     MAX(estimated_loss_cp) AS max_loss
-                FROM mistakes
+                FROM current_mistakes
                 WHERE username = ?
                 GROUP BY category, severity
                 ORDER BY count DESC, avg_loss DESC
@@ -1649,7 +1682,7 @@ class Database:
                     COUNT(*) AS count,
                     ROUND(AVG(estimated_loss_cp), 1) AS avg_loss,
                     MAX(estimated_loss_cp) AS max_loss
-                FROM mistakes
+                FROM current_mistakes
                 WHERE username = ?
                 GROUP BY tactical_motif, severity
                 ORDER BY count DESC, avg_loss DESC
@@ -1665,7 +1698,7 @@ class Database:
                 SELECT
                     id, move, bestmove, reason, category, before_fen,
                     clock_seconds, time_spent_seconds, partner_danger
-                FROM mistakes
+                FROM current_mistakes
                 WHERE username = ?
                 """,
                 (username.lower(),),
@@ -1700,7 +1733,7 @@ class Database:
                     SUM(CASE WHEN severity = 'blunder' THEN 1 ELSE 0 END) AS blunders,
                     ROUND(AVG(estimated_loss_cp), 1) AS avg_loss,
                     MAX(estimated_loss_cp) AS max_loss
-                FROM mistakes
+                FROM current_mistakes
                 WHERE username = ?
                 GROUP BY category
                 ORDER BY blunders DESC, mistakes DESC, avg_loss DESC
@@ -1728,7 +1761,7 @@ class Database:
                     SUM(CASE WHEN m.severity = 'blunder' THEN 1 ELSE 0 END) AS blunders,
                     ROUND(AVG(m.estimated_loss_cp), 1) AS avg_loss,
                     MAX(m.estimated_loss_cp) AS max_loss
-                FROM mistakes m
+                FROM current_mistakes m
                 JOIN games g ON g.id = m.game_id
                 WHERE m.username = ?
                 GROUP BY COALESCE(NULLIF(g.partner, ''), 'Unknown'), m.category
@@ -1765,7 +1798,7 @@ class Database:
                         m.category,
                         m.severity,
                         m.estimated_loss_cp
-                    FROM mistakes m
+                    FROM current_mistakes m
                     JOIN games g ON g.id = m.game_id
                     WHERE m.username = ?
                 )
@@ -1991,7 +2024,7 @@ class Database:
                     a.last_attempt_at,
                     COALESCE(c.category_attempts, 0) AS category_attempts,
                     c.category_accuracy
-                FROM mistakes m
+                FROM current_mistakes m
                 JOIN games g ON g.id = m.game_id
                 LEFT JOIN attempt_stats a ON a.mistake_id = m.id
                 LEFT JOIN category_stats c ON c.category = m.category

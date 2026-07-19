@@ -1,1 +1,1 @@
-"""Bughouse Coach AI Phase 1 package."""
+"""Bughouse Coach AI application package."""

@@ -50,6 +50,16 @@ class ReplayPosition:
     to_square: str | None
 
 
+@dataclass(slots=True)
+class GlobalReplayFrame:
+    global_ply: int
+    board: str
+    local_ply: int
+    move: str
+    board_a: ReplayPosition
+    board_b: ReplayPosition
+
+
 def render_game_replay_html(
     moves: list[MoveRecord],
     critical: list[CriticalMoment],
@@ -128,6 +138,59 @@ def render_pattern_puzzle_html(
     )
 
 
+def render_dual_position_html(
+    main_fen: str,
+    partner_fen: str,
+    orientation: str = "white",
+    title: str = "Free study",
+    player_labels: dict[str, object] | None = None,
+) -> str:
+    """Render a static two-board Bughouse workspace from variant FEN strings."""
+    main_position = _position_from_variant_fen(main_fen, title)
+    partner_position = _position_from_variant_fen(partner_fen, "Partner board")
+    main_position.partner_index = 0
+    partner_position.partner_index = 0
+    return _html(
+        positions=[asdict(main_position)],
+        partner_positions=[asdict(partner_position)],
+        critical=[],
+        engine_suggestions=[],
+        player_labels=player_labels or {},
+        initial_ply=0,
+        orientation="black" if orientation == "black" else "white",
+        title=title,
+    )
+
+
+def _position_from_variant_fen(fen: str, label: str) -> ReplayPosition:
+    placement, pockets, side_to_move = _split_variant_fen(fen)
+    return ReplayPosition(
+        ply=0,
+        label=label,
+        board=_placement_to_matrix(placement),
+        side_to_move="White" if side_to_move == "w" else "Black",
+        fen=_strip_pockets_from_fen(fen),
+        variant_fen=fen,
+        white_pocket=pockets.get("white", "-"),
+        black_pocket=pockets.get("black", "-"),
+        white_clock="-",
+        black_clock="-",
+        elapsed_seconds=None,
+        partner_index=0,
+        confidence="study",
+        warning="",
+        from_square=None,
+        to_square=None,
+    )
+
+
+def replay_position_from_variant_fen(fen: str, label: str = "Position") -> ReplayPosition:
+    """Public API for serializing a validated Crazyhouse/Bughouse FEN."""
+    if chess is not None:
+        chess.variant.CrazyhouseBoard(fen)
+    return _position_from_variant_fen(fen, label)
+
+
 def build_replay_positions(moves: list[MoveRecord]) -> list[ReplayPosition]:
     positions: list[ReplayPosition] = []
     for ply in range(0, len(moves) + 1):
@@ -148,33 +211,221 @@ def build_bughouse_pair_positions(
     partner_board = chess.variant.CrazyhouseBoard()
     main_positions = [_position_from_live_board(main_board, 0, None, [], "")]
     partner_positions = [_position_from_live_board(partner_board, 0, None, [], "")]
+    main_positions[0].partner_index = 0
+    partner_positions[0].partner_index = 0
     main_warning = ""
     partner_warning = ""
     main_stopped = False
     partner_stopped = False
-    max_ply = max(len(main_moves), len(partner_moves))
+    main_debt: dict[tuple[bool, int], int] = {}
+    partner_debt: dict[tuple[bool, int], int] = {}
+    main_played: list[MoveRecord] = []
+    partner_played: list[MoveRecord] = []
+    last_partner_move: MoveRecord | None = None
+    timeline, clock_confident = _combined_timeline(main_moves, partner_moves)
 
-    for idx in range(1, max_ply + 1):
-        if idx <= len(main_moves) and not main_stopped:
+    for board_name, local_ply, current_move in timeline:
+        if board_name == "main":
+            main_played.append(current_move)
+            inferred = False
+            if not main_stopped:
+                try:
+                    inferred = _apply_bughouse_move(
+                        main_board,
+                        partner_board,
+                        current_move,
+                        transfer_to_partner=True,
+                        drop_debt=main_debt,
+                        partner_drop_debt=partner_debt,
+                    )
+                except Exception as exc:
+                    main_warning = f"Stopped before {current_move.display_move}: {exc}"
+                    main_stopped = True
+            if inferred:
+                main_warning = _merge_warning(
+                    main_warning,
+                    "A drop arrived before its matching capture in the available timeline; pocket confidence is low.",
+                )
+            if not clock_confident:
+                main_warning = _merge_warning(
+                    main_warning,
+                    "Exact cross-board clocks were unavailable; equal-ply ordering is approximate.",
+                )
+
+            main_position = _position_from_live_board(
+                main_board,
+                local_ply,
+                current_move,
+                main_played,
+                main_warning,
+            )
+            partner_position = _position_from_live_board(
+                partner_board,
+                len(partner_played),
+                last_partner_move,
+                partner_played,
+                partner_warning or main_warning,
+            )
+            main_position.partner_index = len(partner_positions)
+            partner_position.partner_index = len(main_positions)
+            main_positions.append(main_position)
+            partner_positions.append(partner_position)
+            continue
+
+        partner_played.append(current_move)
+        last_partner_move = current_move
+        inferred = False
+        if not partner_stopped:
             try:
-                _apply_bughouse_move(main_board, partner_board, main_moves[idx - 1], transfer_to_partner=True)
+                inferred = _apply_bughouse_move(
+                    partner_board,
+                    main_board,
+                    current_move,
+                    transfer_to_partner=True,
+                    drop_debt=partner_debt,
+                    partner_drop_debt=main_debt,
+                )
             except Exception as exc:
-                main_warning = f"Stopped before {main_moves[idx - 1].display_move}: {exc}"
-                main_stopped = True
-        if idx <= len(partner_moves) and not partner_stopped:
-            try:
-                _apply_bughouse_move(partner_board, main_board, partner_moves[idx - 1], transfer_to_partner=True)
-            except Exception as exc:
-                partner_warning = f"Stopped before {partner_moves[idx - 1].display_move}: {exc}"
+                partner_warning = f"Stopped before {current_move.display_move}: {exc}"
                 partner_stopped = True
+        if inferred:
+            partner_warning = _merge_warning(
+                partner_warning,
+                "A drop arrived before its matching capture in the available timeline; pocket confidence is low.",
+            )
 
-        main_move = main_moves[idx - 1] if idx <= len(main_moves) else None
-        partner_move = partner_moves[idx - 1] if idx <= len(partner_moves) else None
-        main_positions.append(_position_from_live_board(main_board, idx, main_move, main_moves[:idx], main_warning))
-        partner_positions.append(_position_from_live_board(partner_board, idx, partner_move, partner_moves[:idx], partner_warning))
-
-    _attach_partner_indices(main_positions, partner_positions)
     return main_positions, partner_positions
+
+
+def build_global_replay_frames(
+    main_moves: list[MoveRecord],
+    partner_moves: list[MoveRecord],
+) -> list[GlobalReplayFrame]:
+    """Build deterministic two-board snapshots after every move on either board."""
+    if chess is None:
+        return []
+    main_board = chess.variant.CrazyhouseBoard()
+    partner_board = chess.variant.CrazyhouseBoard()
+    main_played: list[MoveRecord] = []
+    partner_played: list[MoveRecord] = []
+    main_debt: dict[tuple[bool, int], int] = {}
+    partner_debt: dict[tuple[bool, int], int] = {}
+    main_warning = ""
+    partner_warning = ""
+    main_position = _position_from_live_board(main_board, 0, None, [], "")
+    partner_position = _position_from_live_board(partner_board, 0, None, [], "")
+    frames = [
+        GlobalReplayFrame(
+            global_ply=0,
+            board="A",
+            local_ply=0,
+            move="Start",
+            board_a=main_position,
+            board_b=partner_position,
+        )
+    ]
+    for global_ply, (board_name, local_ply, move) in enumerate(_combined_timeline(main_moves, partner_moves)[0], start=1):
+        if board_name == "main":
+            main_played.append(move)
+            try:
+                _apply_bughouse_move(
+                    main_board,
+                    partner_board,
+                    move,
+                    transfer_to_partner=True,
+                    drop_debt=main_debt,
+                    partner_drop_debt=partner_debt,
+                )
+            except Exception as exc:
+                main_warning = f"Stopped before {move.display_move}: {exc}"
+        else:
+            partner_played.append(move)
+            try:
+                _apply_bughouse_move(
+                    partner_board,
+                    main_board,
+                    move,
+                    transfer_to_partner=True,
+                    drop_debt=partner_debt,
+                    partner_drop_debt=main_debt,
+                )
+            except Exception as exc:
+                partner_warning = f"Stopped before {move.display_move}: {exc}"
+        main_position = _position_from_live_board(
+            main_board,
+            len(main_played),
+            main_played[-1] if main_played else None,
+            main_played,
+            main_warning,
+        )
+        partner_position = _position_from_live_board(
+            partner_board,
+            len(partner_played),
+            partner_played[-1] if partner_played else None,
+            partner_played,
+            partner_warning,
+        )
+        main_position.partner_index = global_ply
+        partner_position.partner_index = global_ply
+        frames.append(
+            GlobalReplayFrame(
+                global_ply=global_ply,
+                board="A" if board_name == "main" else "B",
+                local_ply=local_ply,
+                move=move.display_move,
+                board_a=main_position,
+                board_b=partner_position,
+            )
+        )
+    return frames
+
+
+def _combined_timeline(
+    main_moves: list[MoveRecord],
+    partner_moves: list[MoveRecord],
+) -> tuple[list[tuple[str, int, MoveRecord]], bool]:
+    main_times, main_has_clocks = _event_times(main_moves)
+    partner_times, partner_has_clocks = _event_times(partner_moves)
+    events = [
+        (main_times[index], 0, move.ply, "main", move)
+        for index, move in enumerate(main_moves)
+    ]
+    events.extend(
+        (partner_times[index], 1, move.ply, "partner", move)
+        for index, move in enumerate(partner_moves)
+    )
+    events.sort(key=lambda item: (item[0], item[1], item[2]))
+    return [(board_name, ply, move) for _, _, ply, board_name, move in events], main_has_clocks and partner_has_clocks
+
+
+def _event_times(moves: list[MoveRecord]) -> tuple[list[float], bool]:
+    if moves and all(move.elapsed_seconds is not None for move in moves):
+        return [float(move.elapsed_seconds or 0.0) for move in moves], True
+
+    clocks = [move.clock_seconds for move in moves if move.clock_seconds is not None]
+    if not clocks:
+        return [float(move.ply) for move in moves], False
+
+    initial_clock = max(clocks)
+    previous = {"white": initial_clock, "black": initial_clock}
+    elapsed = 0.0
+    values: list[float] = []
+    for move in moves:
+        if move.clock_seconds is None:
+            elapsed += 0.001
+        else:
+            elapsed += max(0.0, previous.get(move.color, initial_clock) - move.clock_seconds)
+            previous[move.color] = move.clock_seconds
+        values.append(elapsed)
+    return values, True
+
+
+def _merge_warning(current: str, addition: str) -> str:
+    if not current:
+        return addition
+    if addition in current:
+        return current
+    return f"{current} {addition}"
 
 
 def _position_from_snapshot(
@@ -242,19 +493,40 @@ def _apply_bughouse_move(
     partner_board: object,
     move: MoveRecord,
     transfer_to_partner: bool,
-) -> None:
+    drop_debt: dict[tuple[bool, int], int] | None = None,
+    partner_drop_debt: dict[tuple[bool, int], int] | None = None,
+) -> bool:
     chess_move = _move_record_to_chess_move(board, move)
+    inferred_drop = False
     if move.is_drop and chess_move not in board.legal_moves:
-        _ensure_drop_piece(board, move)
+        piece_type = _ensure_drop_piece(board, move)
+        if chess_move in board.legal_moves:
+            inferred_drop = True
+            if drop_debt is not None:
+                key = (board.turn, piece_type)
+                drop_debt[key] = drop_debt.get(key, 0) + 1
     if chess_move not in board.legal_moves:
         raise ValueError("move is not legal in reconstructed board")
 
     capturer = board.turn
     captured_type = _captured_piece_type_for_bughouse_transfer(board, chess_move)
+    move.is_capture = captured_type is not None
     board.push(chess_move)
+    move.is_check = bool(board.is_check())
+    move.is_mate = bool(board.is_checkmate())
     if captured_type is not None and transfer_to_partner:
         _remove_from_pocket(board, capturer, captured_type)
-        partner_board.pockets[not capturer].add(captured_type)
+        partner_color = not capturer
+        debt_key = (partner_color, captured_type)
+        debt = partner_drop_debt.get(debt_key, 0) if partner_drop_debt is not None else 0
+        if debt > 0 and partner_drop_debt is not None:
+            if debt == 1:
+                partner_drop_debt.pop(debt_key, None)
+            else:
+                partner_drop_debt[debt_key] = debt - 1
+        else:
+            partner_board.pockets[partner_color].add(captured_type)
+    return inferred_drop
 
 
 def _move_record_to_chess_move(board: object, move: MoveRecord) -> object:
@@ -269,7 +541,7 @@ def _move_record_to_chess_move(board: object, move: MoveRecord) -> object:
     return board.parse_san(move.san)
 
 
-def _ensure_drop_piece(board: object, move: MoveRecord) -> None:
+def _ensure_drop_piece(board: object, move: MoveRecord) -> int:
     if chess is None:
         raise ValueError("python-chess is not installed")
     piece_symbol = (move.drop_piece or move.san.split("@", 1)[0]).upper()
@@ -283,6 +555,7 @@ def _ensure_drop_piece(board: object, move: MoveRecord) -> None:
     if piece_type is None:
         raise ValueError(f"unknown drop piece {piece_symbol!r}")
     board.pockets[board.turn].add(piece_type)
+    return piece_type
 
 
 def _captured_piece_type_for_bughouse_transfer(board: object, move: object) -> int | None:
@@ -374,6 +647,8 @@ def _position_clocks(moves: list[MoveRecord]) -> dict[str, str]:
 
 
 def _position_elapsed_seconds(moves: list[MoveRecord]) -> float | None:
+    if moves and moves[-1].elapsed_seconds is not None:
+        return moves[-1].elapsed_seconds
     clocks = [move.clock_seconds for move in moves if move.clock_seconds is not None]
     if not clocks:
         return None
@@ -407,6 +682,10 @@ def _closest_elapsed_index(values: list[float | None], target: float) -> int:
     return best_index
 
 
+def _json_for_script(value: object) -> str:
+    return json.dumps(value, ensure_ascii=False).replace("</", "<\\/")
+
+
 def _html(
     positions: list[dict[str, object]],
     partner_positions: list[dict[str, object]],
@@ -417,11 +696,11 @@ def _html(
     orientation: str,
     title: str,
 ) -> str:
-    positions_json = json.dumps(positions, ensure_ascii=False)
-    partner_positions_json = json.dumps(partner_positions, ensure_ascii=False)
-    critical_json = json.dumps(critical, ensure_ascii=False)
-    engine_suggestions_json = json.dumps(engine_suggestions, ensure_ascii=False)
-    player_labels_json = json.dumps(player_labels, ensure_ascii=False)
+    positions_json = _json_for_script(positions)
+    partner_positions_json = _json_for_script(partner_positions)
+    critical_json = _json_for_script(critical)
+    engine_suggestions_json = _json_for_script(engine_suggestions)
+    player_labels_json = _json_for_script(player_labels)
     safe_title = html.escape(title)
     return f"""
 <!doctype html>
@@ -544,6 +823,15 @@ def _html(
     gap: 8px;
     margin-bottom: 10px;
   }}
+  /* Legacy duplicate pocket cards are intentionally hidden. Pocket inventory
+     is displayed only on the rails beside each board. */
+  .pockets,
+  #whitePocketVisual,
+  #blackPocketVisual,
+  #partnerWhitePocketVisual,
+  #partnerBlackPocketVisual {{
+    display: none !important;
+  }}
   .player-card {{
     border: 1px solid var(--line);
     background: #101722;
@@ -575,12 +863,6 @@ def _html(
     color: #b9d2ff;
     font-size: 11px;
   }}
-  .pockets {{
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-bottom: 10px;
-  }}
   .clock-row {{
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -599,48 +881,6 @@ def _html(
     color: var(--light);
     font-family: Consolas, monospace;
     font-size: 15px;
-  }}
-  .pocket {{
-    min-height: 54px;
-    border: 1px solid var(--line);
-    background: var(--panel-2);
-    border-radius: 6px;
-    padding: 6px 8px;
-    font-size: 13px;
-    color: var(--muted);
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }}
-  .pocket strong {{
-    color: var(--light);
-  }}
-  .pocket-text {{
-    display: block;
-    margin-top: 2px;
-    font-family: Consolas, monospace;
-    font-size: 11px;
-    color: var(--muted);
-  }}
-  .pocket-pieces {{
-    display: flex;
-    flex-wrap: wrap;
-    gap: 3px;
-    min-height: 24px;
-    align-items: center;
-  }}
-  .pocket-chip {{
-    position: relative;
-    width: 26px;
-    height: 26px;
-    display: grid;
-    place-items: center;
-  }}
-  .pocket-chip img {{
-    width: 28px;
-    height: 28px;
-    object-fit: contain;
-    filter: drop-shadow(0 1px 1px rgba(0,0,0,.42));
   }}
   .pocket-count {{
     position: absolute;
@@ -862,7 +1102,7 @@ def _html(
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="wrap" data-renderer-version="compact-pocket-rails-v1">
   <div class="topline">
     <div class="status">
       <div id="moveTitle" class="move-title"></div>
@@ -880,6 +1120,14 @@ def _html(
       <div id="theirTeam" class="team-names">Unknown + Unknown</div>
     </div>
   </div>
+  <div class="controls">
+    <button id="startBtn" title="Start">|&lt;</button>
+    <button id="prevBtn" title="Previous">&lt;</button>
+    <button id="playBtn" title="Play or pause">Play</button>
+    <button id="nextBtn" title="Next">&gt;</button>
+    <input id="plySlider" type="range" min="0" max="0" value="0" />
+  </div>
+  <div id="criticalButtons" class="critical"></div>
   <div class="boards">
     <section class="board-panel">
       <div class="board-header">
@@ -897,10 +1145,6 @@ def _html(
           <div id="mainBlackName" class="player-name">Unknown</div>
           <span id="mainBlackRole" class="player-role"></span>
         </div>
-      </div>
-      <div class="pockets">
-        <div class="pocket"><strong>White pocket</strong><div id="whitePocketVisual" class="pocket-pieces"></div><span id="whitePocket" class="pocket-text"></span></div>
-        <div class="pocket"><strong>Black pocket</strong><div id="blackPocketVisual" class="pocket-pieces"></div><span id="blackPocket" class="pocket-text"></span></div>
       </div>
       <div class="clock-row">
         <div class="clock">White<br><strong id="whiteClock"></strong></div>
@@ -933,10 +1177,6 @@ def _html(
             <span id="partnerBlackRole" class="player-role"></span>
           </div>
         </div>
-        <div class="pockets">
-          <div class="pocket"><strong>White pocket</strong><div id="partnerWhitePocketVisual" class="pocket-pieces"></div><span id="partnerWhitePocket" class="pocket-text"></span></div>
-          <div class="pocket"><strong>Black pocket</strong><div id="partnerBlackPocketVisual" class="pocket-pieces"></div><span id="partnerBlackPocket" class="pocket-text"></span></div>
-        </div>
         <div class="clock-row">
           <div class="clock">White<br><strong id="partnerWhiteClock"></strong></div>
           <div class="clock">Black<br><strong id="partnerBlackClock"></strong></div>
@@ -954,14 +1194,6 @@ def _html(
       </div>
     </section>
   </div>
-  <div class="controls">
-    <button id="startBtn" title="Start">|&lt;</button>
-    <button id="prevBtn" title="Previous">&lt;</button>
-    <button id="playBtn" title="Play or pause">Play</button>
-    <button id="nextBtn" title="Next">&gt;</button>
-    <input id="plySlider" type="range" min="0" max="0" value="0" />
-  </div>
-  <div id="criticalButtons" class="critical"></div>
 </div>
 <script>
 const positions = {positions_json};
@@ -974,7 +1206,7 @@ const partnerOrientation = orientation === "white" ? "black" : "white";
 let index = Math.min({initial_ply}, Math.max(0, positions.length - 1));
 let timer = null;
 
-const pieceMap = {json.dumps(PIECES, ensure_ascii=False)};
+const pieceMap = {_json_for_script(PIECES)};
 const pieceThemeBase = "https://www.chess.com/chess-themes/pieces/neo/150/";
 const boardEl = document.getElementById("board");
 const partnerBoardEl = document.getElementById("partnerBoard");
@@ -1039,32 +1271,6 @@ function pocketCounts(text, color) {{
   }});
   const order = color === "white" ? ["Q","R","B","N","P"] : ["q","r","b","n","p"];
   return order.filter((piece) => counts[piece]).map((piece) => [piece, counts[piece]]);
-}}
-
-function renderPocketVisual(targetId, text, color) {{
-  const target = document.getElementById(targetId);
-  if (!target) return;
-  target.innerHTML = "";
-  const entries = pocketCounts(text, color);
-  if (!entries.length) {{
-    const empty = document.createElement("span");
-    empty.className = "pocket-text";
-    empty.textContent = "-";
-    target.appendChild(empty);
-    return;
-  }}
-  entries.forEach(([piece, count]) => {{
-    const chip = document.createElement("span");
-    chip.className = "pocket-chip";
-    chip.appendChild(makePieceElement(piece, "rail-piece"));
-    if (count > 1) {{
-      const badge = document.createElement("span");
-      badge.className = "pocket-count";
-      badge.textContent = count;
-      chip.appendChild(badge);
-    }}
-    target.appendChild(chip);
-  }});
 }}
 
 function renderPocketRail(targetId, text, color) {{
@@ -1175,10 +1381,6 @@ function renderPartner() {{
     ? " · synced " + Math.round(currentMain.elapsed_seconds) + "s"
     : "";
   document.getElementById("partnerMeta").textContent = "Ply " + position.ply + " / " + (partnerPositions.length - 1) + mainElapsed;
-  document.getElementById("partnerWhitePocket").textContent = position.white_pocket || "-";
-  document.getElementById("partnerBlackPocket").textContent = position.black_pocket || "-";
-  renderPocketVisual("partnerWhitePocketVisual", position.white_pocket, "white");
-  renderPocketVisual("partnerBlackPocketVisual", position.black_pocket, "black");
   renderPocketRail("partnerWhitePocketRail", position.white_pocket, "white");
   renderPocketRail("partnerBlackPocketRail", position.black_pocket, "black");
   document.getElementById("partnerWhiteClock").textContent = position.white_clock || "-";
@@ -1208,10 +1410,6 @@ function render() {{
   document.getElementById("moveTitle").textContent = position.label;
   document.getElementById("moveMeta").textContent = "Ply " + position.ply + " / " + (positions.length - 1) + " · " + position.side_to_move + " to move";
   document.getElementById("confidence").textContent = "confidence: " + position.confidence;
-  document.getElementById("whitePocket").textContent = position.white_pocket || "-";
-  document.getElementById("blackPocket").textContent = position.black_pocket || "-";
-  renderPocketVisual("whitePocketVisual", position.white_pocket, "white");
-  renderPocketVisual("blackPocketVisual", position.black_pocket, "black");
   renderPocketRail("whitePocketRail", position.white_pocket, "white");
   renderPocketRail("blackPocketRail", position.black_pocket, "black");
   document.getElementById("whiteClock").textContent = position.white_clock || "-";

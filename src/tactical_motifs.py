@@ -13,6 +13,7 @@ except ImportError:  # pragma: no cover - surfaced by the app at runtime.
 
 BUGHOUSE_MOTIFS = [
     "Drop Tactic",
+    "Tactical Opportunity",
     "King Pressure",
     "Defensive Drop",
     "Partner Danger",
@@ -80,17 +81,17 @@ def _classify_board_motif(
     moved_piece = after.piece_at(move.to_square) if not getattr(move, "drop", None) else after.piece_at(move.to_square)
     gives_check = after.is_check()
 
-    if gives_check and _king_must_move(after):
+    if gives_check and len(after.checkers()) >= 2:
         return "Double Check"
     if moved_piece and _attacked_high_value_targets(after, move.to_square, not moved_piece.color) >= 2:
         return "Fork"
     if gives_check and _is_line_piece(moved_piece):
-        return "Absolute Pin" if _text_has_check(reason, played_move) else "Skewer of King"
+        return "King Pressure"
     if board.is_capture(move):
         captured = _captured_piece(board, move)
         if captured and PIECE_VALUES.get(captured.piece_type, 0) >= 300:
             return "Capturing Defender"
-        return "Deflection"
+        return "Tactical Opportunity"
     if getattr(move, "drop", None):
         if gives_check:
             return "Drop Tactic"
@@ -143,25 +144,10 @@ def _attacked_high_value_targets(board: object, square: int, target_color: bool)
     return count
 
 
-def _king_must_move(board: object) -> bool:
-    if chess is None or not board.is_check():
-        return False
-    king_square = board.king(board.turn)
-    if king_square is None:
-        return False
-    legal = list(board.legal_moves)
-    return bool(legal) and all(move.from_square == king_square for move in legal)
-
-
 def _is_line_piece(piece: object | None) -> bool:
     if chess is None or piece is None:
         return False
     return piece.piece_type in {chess.BISHOP, chess.ROOK, chess.QUEEN}
-
-
-def _text_has_check(reason: str | None, played_move: str | None) -> bool:
-    text = f"{reason or ''} {played_move or ''}".lower()
-    return "check" in text or "+" in text or "#" in text
 
 
 def _text_fallback(

@@ -63,7 +63,7 @@ PUZZLES: tuple[PatternPuzzle, ...] = (
         fen="6k1/5ppp/8/8/8/8/8/6K1[R] w - - 0 1",
         orientation="white",
         prompt="White to move and mate in one.",
-        solutions=("R@e8", "R@f8", "R@a8", "R@b8", "R@c8", "R@d8"),
+        solutions=("R@e8", "R@a8", "R@b8", "R@c8", "R@d8"),
         hint="The king has no flight square and the eighth rank is open.",
         explanation="A rook drop on the eighth rank gives mate because the king is boxed in by its own pawns.",
         follow_up="Whenever three pawns trap a king, scan every legal rook or queen drop on the back rank.",
@@ -104,10 +104,10 @@ PUZZLES: tuple[PatternPuzzle, ...] = (
         difficulty=2,
         fen="4k3/5q2/4n3/8/2B5/8/8/4K3[] w - - 0 1",
         orientation="white",
-        prompt="White to move. Remove the piece protecting the queen.",
+        prompt="White to move. Remove a key defender with tempo.",
         solutions=("c4e6", "Bxe6"),
         hint="The knight on e6 is overloaded as a defender.",
-        explanation="Bxe6 removes the defender and leaves the queen on d5 exposed to the next capture.",
+        explanation="Bxe6 removes the knight and attacks the queen on f7, gaining time for the follow-up.",
         follow_up="When a valuable piece seems defended, ask whether the defender can be captured with tempo.",
     ),
     PatternPuzzle(
@@ -116,7 +116,7 @@ PUZZLES: tuple[PatternPuzzle, ...] = (
         category="Defensive drops",
         motif="failed defensive drop",
         difficulty=2,
-        fen="4k3/8/8/8/8/5q2/6P1/6K1[P] w - - 0 1",
+        fen="4k3/8/1q6/8/8/8/8/6K1[P] w - - 0 1",
         orientation="white",
         prompt="White to move. Block the immediate queen check safely.",
         solutions=("P@f2",),
@@ -130,12 +130,12 @@ PUZZLES: tuple[PatternPuzzle, ...] = (
         category="Material management",
         motif="feeding dangerous material",
         difficulty=2,
-        fen="6k1/5ppp/8/8/8/8/3q4/3RK3[] w - - 0 1",
+        fen="6k1/5ppp/8/8/8/8/3q4/3R2K1[] w - - 0 1",
         orientation="white",
         prompt="White to move. Avoid the automatic trade and save the rook.",
-        solutions=("d1d2", "Rd2", "d1e1", "Re1"),
+        solutions=("d1f1", "Rf1"),
         hint="Capturing the queen may send a queen to the other board. Look for a safe retreat.",
-        explanation="In Bughouse, a favorable-looking trade can feed the most dangerous attacking piece to the other board. Preserve coordination first.",
+        explanation="Rf1 declines the queen capture and keeps the rook safe. In Bughouse, a favorable-looking trade can feed the most dangerous attacking piece to the other board.",
         follow_up="Before every queen capture, ask whether your partner can survive the transferred queen.",
     ),
     PatternPuzzle(
@@ -197,9 +197,20 @@ def validate_library() -> list[str]:
             errors.append(f"{puzzle.id}: invalid FEN ({exc})")
             continue
         legal = {_normalize(move.uci()) for move in board.legal_moves}
-        accepted = {_normalize(solution) for solution in puzzle.solutions}
-        if not legal.intersection(accepted):
+        accepted_uci = {
+            normalized
+            for solution in puzzle.solutions
+            if (normalized := _normalize(solution)) in legal
+        }
+        if not accepted_uci:
             errors.append(f"{puzzle.id}: no accepted solution is legal")
+        if puzzle.id in {"rook_back_rank", "knight_drop_mate"}:
+            for solution in accepted_uci:
+                move = next(move for move in board.legal_moves if _normalize(move.uci()) == solution)
+                after = board.copy(stack=False)
+                after.push(move)
+                if not after.is_checkmate():
+                    errors.append(f"{puzzle.id}: {solution} is accepted but is not mate")
     return errors
 
 

@@ -1,4 +1,8 @@
 .venv/
+.pnpm-store/
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
 __pycache__/
 *.pyc
 .DS_Store

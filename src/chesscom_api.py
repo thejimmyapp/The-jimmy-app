@@ -13,6 +13,7 @@ from urllib.request import Request, urlopen
 LOGGER = logging.getLogger(__name__)
 API_BASE = "https://api.chess.com/pub"
 USER_AGENT = "BughouseCoachAI/0.1 (+local Streamlit app)"
+USERNAME_RE = re.compile(r"^[A-Za-z0-9_-]{3,25}$")
 
 
 class ChessComApiError(RuntimeError):
@@ -25,9 +26,7 @@ class ChessComClient:
     polite_delay_seconds: float = 0.25
 
     def get_archives(self, username: str) -> list[str]:
-        safe_username = username.strip().lower()
-        if not safe_username:
-            raise ChessComApiError("Chess.com username is required.")
+        safe_username = normalize_username(username)
 
         url = f"{API_BASE}/player/{safe_username}/games/archives"
         payload = self._get_json(url)
@@ -82,6 +81,15 @@ class ChessComClient:
         if not isinstance(parsed, dict):
             raise ChessComApiError(f"Chess.com API returned an unexpected payload for {url}.")
         return parsed
+
+
+def normalize_username(username: str) -> str:
+    value = str(username or "").strip()
+    if not USERNAME_RE.fullmatch(value):
+        raise ChessComApiError(
+            "Enter a valid Chess.com username (3-25 letters, numbers, underscores, or hyphens)."
+        )
+    return value.lower()
 
 
 PGN_HEADER_RE = re.compile(r'^\[(?P<key>[A-Za-z0-9_]+)\s+"(?P<value>.*)"\]$')

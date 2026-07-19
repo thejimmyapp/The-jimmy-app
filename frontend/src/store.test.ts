@@ -1,0 +1,23 @@
+import { beforeEach, describe, expect, it } from "vitest";
+import { useCoachStore } from "./store";
+
+describe("coach store", () => {
+  beforeEach(() => useCoachStore.setState({ globalPly: 0, mode: "review", annotations: [], messages: [] }));
+
+  it("separates exploration from the official game", () => {
+    const position = { ply: 0, label: "", board: [], side_to_move: "White", variant_fen: "", white_pocket: "-", black_pocket: "-", white_clock: "-", black_clock: "-", partner_index: 0, from_square: null, to_square: null };
+    useCoachStore.getState().seek(12);
+    useCoachStore.getState().applyExploration(position, position, "e4");
+    expect(useCoachStore.getState().mode).toBe("exploration");
+    expect(useCoachStore.getState().explorationStartPly).toBe(12);
+    expect(useCoachStore.getState().globalPly).toBe(12);
+    useCoachStore.getState().returnToGame();
+    expect(useCoachStore.getState().mode).toBe("review");
+    expect(useCoachStore.getState().globalPly).toBe(12);
+  });
+
+  it("stores position-scoped annotations", () => {
+    useCoachStore.getState().addAnnotation({ id: "one", board: "A", ply: 3, author: "Alex", color: "cyan", type: "highlight", from: "f7" });
+    expect(useCoachStore.getState().annotations[0].ply).toBe(3);
+  });
+});

@@ -1,5 +1,78 @@
 # Bughouse Coach AI
 
+## New Collaborative Web MVP
+
+The repository now contains a parallel FastAPI + React/TypeScript application named **Bughouse AI Coach**. The original Streamlit coach remains available while the web migration is validated.
+
+### Web architecture
+
+- `backend/`: FastAPI API, SQLAlchemy collaboration storage, Chess.com HTTPX client, background Fairy-Stockfish jobs, and versioned room WebSockets.
+- `frontend/`: strict React/TypeScript single-page workspace with two synchronized boards, side pockets, global A+B timeline, review/exploration states, annotations, chat, and notes.
+- `src/`: existing tested Bughouse parser, coupled transfer reconstruction, engine adapter, and coaching logic reused by FastAPI.
+- `backend/alembic/`: production database migrations.
+
+### Run locally
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+cd frontend
+pnpm install
+pnpm run build
+cd ..
+.\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+```
+
+Then open `http://127.0.0.1:8000`. After the first build, Windows users can also run `start_web_app.bat`.
+
+For frontend development, run FastAPI on port `8000` and `pnpm dev` in `frontend/`; Vite proxies API and WebSocket traffic.
+
+### Tests
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\ruff.exe check backend src tests app.py
+cd frontend
+pnpm run test
+pnpm run lint
+pnpm run build
+```
+
+### Docker and Railway
+
+`Dockerfile` builds the React bundle, compiles the official Fairy-Stockfish `fairy_sf_14` Linux engine, installs the Python service, runs Alembic, and serves the complete app through FastAPI.
+
+```powershell
+docker compose up --build
+```
+
+For Railway, create a project from this repository, add PostgreSQL and Redis services, copy the variables from `.env.example`, set `DATABASE_URL` to the Railway PostgreSQL URL, and deploy. Railway uses `railway.json` and checks `/health`.
+
+Important current limitation: the existing imported-game library still uses `data/bughouse.db` so the current 395 MB local archive is immediately reusable. A public deployment must attach persistent storage for `data/`, or complete the planned migration of imported games into PostgreSQL. Chess.com PubAPI can omit the partner board; the UI reports `Second board unavailable` instead of fabricating it.
+
+### Exploration and legal annotations
+
+- Drag a piece belonging to the player to move to explore a legal alternative.
+- Drag a pocket piece to a legal drop square.
+- Captures in exploration transfer the captured piece to the partner board.
+- The orange `EXPLORATION` badge shows the official move where the branch began and its move sequence.
+- Undo walks back through the branch; `Return to move` discards the branch and restores the untouched official position.
+- Right-drag arrows are accepted only when they represent a legal move in the current position.
+- Click an arrow to remove it.
+
+### Complete two-board Chess.com import
+
+The public Chess.com API does not consistently expose the authenticated `pgn-info` payload containing the partner board. A normal web page also cannot read another site's Chess.com cookies because of browser origin isolation.
+
+The connection modal therefore provides a safe one-time connector:
+
+1. Open the Chess.com archive and sign in.
+2. In browser Network tools, copy one `pgn-info` request as cURL (bash).
+3. Paste it into `Load complete two-board data`.
+4. The backend enriches all missing games in batches and discards the request credentials immediately.
+
+No Chess.com password is requested or stored. A fully one-click public flow requires a separately installed/published browser extension or an official Chess.com OAuth/data API that exposes the partner-board payload.
+
 Local Streamlit app for importing Chess.com Bughouse games, enriching partner-board data when available, and building a practical coaching dashboard with stats, training drills, opening review, and Fairy-Stockfish analysis.
 
 The app is designed to run locally first. A GitHub copy should contain code and setup files only, not private Chess.com cookies, imported games, engine binaries, logs, or personal reports.
@@ -23,99 +96,24 @@ secrets/chesscom_pgn_info_curl.example.txt
 
 Basic public game import can work without the cURL file, but many Bughouse games will not have partner-board replay data.
 
-## Phase 1 Features
+## Product Features
 
-- Enter a Chess.com username.
-- Fetch the user's public monthly archives through Chess.com PubAPI.
-- Filter imported data to Bughouse games only.
-- Store games locally in SQLite at `data/bughouse.db`.
-- Avoid duplicate imports with a unique `(username, url)` key.
-- Extract basic game metadata when available:
-  - result
-  - opponent
-  - opponent rating
-  - color
-  - partner from PGN headers if Chess.com exposes it
-  - time control and time class
-- Show a dark Streamlit dashboard with:
-  - total games
-  - winrate
-  - winrate by partner when partner metadata exists
-  - game table with opponent/result filters
-- Log import errors to `logs/app.log`.
+- Guided username-first setup and public Chess.com archive import.
+- Optional authenticated enrichment with both boards, four player names, pockets, and clocks.
+- Chronological two-board replay with captured pieces transferred to the partner board.
+- Fairy-Stockfish mistake analysis, legal best-move overlays, mate-aware scoring, and versioned caching.
+- Coaching priorities, context filters, session reports, smart training queue, and spaced repetition.
+- Pattern Academy with validated Bughouse and classical tactical exercises.
+- Opening Explorer grouped by the complete two-board position, including pockets, with opponent, partner, and rating filters.
+- Local SQLite storage, duplicate protection, WAL concurrency, and no required cloud account.
 
-## Phase 2 Features
+## Analysis Integrity
 
-- Parse stored PGN headers and main-line move text.
-- Decode Chess.com `tcn` move lists when Bughouse games have no PGN payload.
-- Extract move clocks from PGN comments when Chess.com includes `%clk`.
-- Show a selectable game viewer inside the dashboard.
-- Show a move list with:
-  - ply
-  - SAN move
-  - clock
-  - estimated time spent
-  - drop/capture/check/mate flags
-  - PGN comments
-- Extract heuristic critical moments:
-  - checks and mates
-  - piece drops
-  - major-piece captures
-  - time trouble
-  - long thinks and large clock drops
-- Reconstruct the main board with `python-chess` when the PGN line is standard enough to apply.
+The current analysis generation is `timeline-v2`. It reconstructs both boards on a shared clock timeline and transfers every captured piece to the capturer's partner. Captured promoted pieces return as pawns.
 
-When Chess.com only provides `tcn`, the app can list moves and drops, but clocks may be unavailable.
+Older analysis rows remain stored in SQLite but are excluded from current dashboards and training. Run new Coach Analysis and Opening Explorer batches to rebuild trusted results. When exact cross-board clocks or partner data are absent, the replay is explicitly marked lower confidence instead of presenting an inferred state as certain.
 
-## Phase 3 Features
-
-- Configurable Fairy-Stockfish path in the Streamlit sidebar.
-- Default expected Windows path: `engines/fairy-stockfish.exe`.
-- UCI subprocess integration with timeout protection.
-- UCI handshake and best-move analysis.
-- Tries `setoption name UCI_Variant value bughouse` when the engine exposes `UCI_Variant`.
-- Graceful error message when the executable is missing or cannot be started.
-- Engine analysis tab for selected games.
-- Analyzes reconstructible critical positions from Phase 2.
-- Caches analyzed FEN positions in SQLite to avoid repeating the same engine work.
-
-Phase 3 still does **not** classify mistakes into final coaching categories. That starts in Phase 4. Engine output is shown as tactical evidence, with low confidence whenever Bughouse pockets or partner-board context are missing.
-
-## Phase 3.5 Features
-
-- Reconstruct Chess.com Bughouse `tcn` games beyond the first drop.
-- Replay games in a visual board component instead of a text board.
-- Jump directly to decoded critical moments from replay buttons.
-- Show a second board panel; it is marked unavailable when Chess.com PubAPI does not provide partner-board state.
-- Use `python-chess` Crazyhouse-style board support to apply drop moves.
-- Infer pocket pieces when Chess.com does not expose partner-board capture sources.
-- Show both:
-  - board-only FEN
-  - Bughouse/Crazyhouse FEN with pockets
-- Show reconstruction confidence and pocket summaries in the board tab.
-- Send pocket FENs to Fairy-Stockfish when available.
-- Keep low confidence whenever pockets were inferred.
-
-This is still a best-effort single-board reconstruction. True Bughouse certainty requires partner-board move/capture timing, which Chess.com PubAPI does not always expose in the imported payload.
-
-## Phase 3.6 Features
-
-- Optional authenticated Chess.com `pgn-info` enrichment during import.
-- When a copied `pgn-info` cURL is available, imported Bughouse games can store:
-  - main-board TCN
-  - partner-board TCN
-  - both board clocks
-  - all four player names exposed by Chess.com
-- The visual replay can show both boards when partner-board TCN is available.
-- Automatically checks public sources for extra Bughouse context when a game is opened, then caches the report:
-  - `https://www.chess.com/games/archive/...`
-  - Chess.com game page HTML
-  - monthly JSON archives for the two known board players
-  - monthly PGN exports for the two known board players
-- Reports whether a partner candidate or second board was found.
-- Avoids broad guesses: only current-board or near-time archive records are treated as candidates.
-
-Public sources alone are incomplete for Bughouse. The authenticated `pgn-info` endpoint is the source that exposed `bughousePartnerTcnMoves` in testing.
+Public Chess.com sources do not consistently include the second board. The authenticated `pgn-info` request is currently the most complete source observed for `bughousePartnerTcnMoves` and both clock streams.
 
 ## Chess.com pgn-info Setup
 
@@ -185,7 +183,7 @@ streamlit run app.py
 
 ## Fairy-Stockfish Setup
 
-Phase 3 expects a local Fairy-Stockfish executable.
+Engine coaching expects a local Fairy-Stockfish executable.
 
 1. Download a Windows Fairy-Stockfish release from:
    `https://github.com/fairy-stockfish/Fairy-Stockfish`
@@ -215,7 +213,7 @@ Bughouse detection is conservative:
 - `variant == "bughouse"`
 - PGN header containing `Variant "Bughouse"` or `Rules "Bughouse"`
 
-If Chess.com omits partner-board or pocket data in a game payload, Phase 1 stores what is available and leaves deeper diagnosis for later phases.
+If Chess.com omits partner-board or pocket data, the app stores what is available and labels dependent analysis as incomplete or lower confidence.
 
 ## Project Layout
 
@@ -230,6 +228,8 @@ src/
   db.py
   engine.py
   pgn_parser.py
+  versioning.py
+tests/
 data/
   bughouse.db
 logs/

@@ -30,6 +30,7 @@ class MoveRecord:
     comment: str | None = None
     clock_seconds: float | None = None
     time_spent_seconds: float | None = None
+    elapsed_seconds: float | None = None
     is_capture: bool = False
     is_check: bool = False
     is_mate: bool = False
@@ -95,7 +96,7 @@ def parse_pgn(pgn: str) -> ParsedGame:
             continue
 
         san = _clean_move_token(token)
-        if not san:
+        if not san or san.lower() in {"e.p.", "e.p", "ep"}:
             continue
         if san in RESULT_TOKENS:
             continue
@@ -121,7 +122,7 @@ def parse_pgn(pgn: str) -> ParsedGame:
             current_move_number += 1
             next_color = "white"
 
-    _attach_time_spent(moves)
+    _attach_time_spent(moves, headers.get("TimeControl"))
     if not moves:
         warnings.append("No moves could be parsed from this PGN.")
     return ParsedGame(headers=headers, moves=moves, result=_detect_result(headers, move_text), parse_warnings=warnings)
@@ -195,32 +196,44 @@ def parse_tcn(tcn: str, raw: dict[str, Any] | None = None) -> ParsedGame:
             source="tcn",
         )
 
-    board = chess.Board() if chess is not None else None
+    board = _initial_tcn_board(raw or {})
     moves: list[MoveRecord] = []
-    san_confidence = True
+    inferred_pockets = 0
     for item in decoded:
         if not isinstance(item, dict):
             continue
         color = "white" if len(moves) % 2 == 0 else "black"
         move_number = (len(moves) // 2) + 1
-        san = _tcn_item_to_notation(item, board, san_confidence)
         uci = _tcn_item_to_uci(item)
-        if "drop" in item:
-            san_confidence = False
-        elif board is not None and san_confidence:
+        san = _tcn_item_to_notation(item, board, False)
+        is_capture = False
+        is_check = False
+        is_mate = False
+        if board is not None and uci:
             try:
-                board.push_uci(f"{item.get('from')}{item.get('to')}{item.get('promotion', '')}")
-            except Exception:
-                san_confidence = False
+                chess_move = chess.Move.from_uci(uci if "@" in uci else uci.lower())
+                if "drop" in item and chess_move not in board.legal_moves:
+                    piece_type = chess.Piece.from_symbol(_drop_piece_symbol(str(item.get("drop", "")))).piece_type
+                    board.pockets[board.turn].add(piece_type)
+                    inferred_pockets += 1
+                if chess_move not in board.legal_moves:
+                    raise ValueError("decoded move is not legal in the reconstructed position")
+                san = board.san(chess_move)
+                is_capture = board.is_capture(chess_move)
+                board.push(chess_move)
+                is_check = board.is_check()
+                is_mate = board.is_checkmate()
+            except (TypeError, ValueError):
+                warnings.append(f"Could not validate decoded move {uci}; notation confidence is low.")
         moves.append(
             MoveRecord(
                 ply=len(moves) + 1,
                 move_number=move_number,
                 color=color,
                 san=san,
-                is_capture="x" in san,
-                is_check="+" in san or "#" in san,
-                is_mate="#" in san,
+                is_capture=is_capture or "x" in san,
+                is_check=is_check or "+" in san or "#" in san,
+                is_mate=is_mate or "#" in san,
                 is_drop="@" in san,
                 is_promotion="=" in san or bool(item.get("promotion")),
                 uci=uci,
@@ -235,6 +248,11 @@ def parse_tcn(tcn: str, raw: dict[str, Any] | None = None) -> ParsedGame:
         warnings.append(
             "This Chess.com Bughouse game used TCN instead of PGN. Moves and drops are decoded. "
             "Partner-board pocket sources are inferred when needed, so pocket confidence can be low."
+        )
+    if inferred_pockets:
+        warnings.append(
+            f"Inferred {inferred_pockets} pocket arrival(s) while decoding this board in isolation. "
+            "The paired replay rebuilds them from the global two-board timeline."
         )
     return ParsedGame(headers=headers, moves=moves, result=_result_from_raw(raw or {}), parse_warnings=warnings, source="tcn")
 
@@ -306,7 +324,7 @@ def extract_critical_moments(parsed: ParsedGame) -> list[CriticalMoment]:
                 move=move.display_move,
                 reason=", ".join(dict.fromkeys(reasons)),
                 confidence="medium" if move.is_mate or move.is_check or move.is_drop else "low",
-                detail="; ".join(detail_bits) or "PGN heuristic only; engine eval arrives in Phase 3.",
+                detail="; ".join(detail_bits) or "PGN heuristic only; run Coach Analysis for engine evaluation.",
             )
         )
 
@@ -403,16 +421,23 @@ def _parse_clock_seconds(comment: str) -> float | None:
         return None
 
 
-def _attach_time_spent(moves: list[MoveRecord]) -> None:
+def _attach_time_spent(moves: list[MoveRecord], time_control: str | None = None) -> None:
+    initial_clock, increment = _parse_time_control(time_control)
+    clocks = [move.clock_seconds for move in moves if move.clock_seconds is not None]
+    if initial_clock is None and clocks:
+        initial_clock = max(clocks)
     previous_by_color: dict[str, float] = {}
+    elapsed = 0.0
     for move in moves:
         if move.clock_seconds is None:
             continue
-        previous = previous_by_color.get(move.color)
+        previous = previous_by_color.get(move.color, initial_clock)
         if previous is not None:
-            spent = previous - move.clock_seconds
-            if spent >= 0:
-                move.time_spent_seconds = spent
+            spent = previous + increment - move.clock_seconds
+            if spent >= -0.05:
+                move.time_spent_seconds = max(0.0, spent)
+                elapsed += move.time_spent_seconds
+                move.elapsed_seconds = elapsed
         previous_by_color[move.color] = move.clock_seconds
 
 
@@ -428,7 +453,27 @@ def _attach_tcn_clocks(moves: list[MoveRecord], raw: dict[str, Any]) -> None:
             values.append(0.0)
     for move, clock in zip(moves, values):
         move.clock_seconds = clock
-    _attach_time_spent(moves)
+    _attach_time_spent(moves, str(raw.get("time_control") or raw.get("timeControl") or ""))
+
+
+def _parse_time_control(value: str | None) -> tuple[float | None, float]:
+    text = str(value or "").strip()
+    match = re.fullmatch(r"(?P<initial>\d+(?:\.\d+)?)(?:\+(?P<increment>\d+(?:\.\d+)?))?", text)
+    if not match:
+        return None, 0.0
+    return float(match.group("initial")), float(match.group("increment") or 0.0)
+
+
+def _initial_tcn_board(raw: dict[str, Any]) -> Any:
+    if chess is None:
+        return None
+    initial = raw.get("initial_setup") or raw.get("initialSetup")
+    if isinstance(initial, str) and initial and initial.lower() not in {"startpos", "standard"}:
+        try:
+            return chess.variant.CrazyhouseBoard(initial)
+        except ValueError:
+            pass
+    return chess.variant.CrazyhouseBoard()
 
 
 def _detect_result(headers: dict[str, str], move_text: str) -> str:

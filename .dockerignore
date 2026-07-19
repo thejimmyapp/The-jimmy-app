@@ -1,0 +1,11 @@
+.git
+.venv
+frontend/node_modules
+frontend/dist
+data/*.db
+logs
+reports
+secrets
+*.mp4
+*.zip
+__pycache__

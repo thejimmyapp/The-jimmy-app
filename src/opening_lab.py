@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.analyzer import _analyze_with_cache, _estimated_loss
+from src.analyzer import _analyze_with_cache, _estimated_loss, _legal_bestmove
 from src.board_renderer import build_bughouse_pair_positions, build_replay_positions
 from src.db import Database
 from src.engine import EngineConfig, FairyStockfishEngine
@@ -78,9 +78,10 @@ def _analyze_game_opening(
 
     partner = parse_partner_tcn(raw_json)
     if partner and partner.moves:
-        positions, _partner_positions = build_bughouse_pair_positions(moves, partner.moves)
+        positions, partner_positions = build_bughouse_pair_positions(moves, partner.moves)
     else:
         positions = build_replay_positions(moves)
+        partner_positions = []
 
     rows: list[dict[str, object]] = []
     for move in moves[:opening_plies]:
@@ -95,6 +96,11 @@ def _analyze_game_opening(
         before_analysis = _analyze_with_cache(db, engine, before.variant_fen, config)
         after_analysis = _analyze_with_cache(db, engine, after.variant_fen, config) if after.variant_fen else None
         loss = _estimated_loss(before_analysis, after_analysis)
+        bestmove = _legal_bestmove(before.variant_fen, before_analysis.bestmove)
+        partner_fen = None
+        if partner_positions and before.partner_index is not None:
+            partner_idx = max(0, min(before.partner_index, len(partner_positions) - 1))
+            partner_fen = partner_positions[partner_idx].variant_fen
         rows.append(
             {
                 "username": str(game.get("username") or "").lower(),
@@ -102,15 +108,15 @@ def _analyze_game_opening(
                 "move_number": move.move_number,
                 "color": move.color,
                 "played_move": move.san,
-                "line_key": _line_key(moves, move.ply - 1),
+                "line_key": _position_key(before.variant_fen, partner_fen),
                 "line_label": _line_label(moves, move.ply - 1),
                 "before_fen": before.variant_fen,
                 "after_fen": after.variant_fen,
-                "bestmove": before_analysis.bestmove,
+                "bestmove": bestmove,
                 "score_before": before_analysis.score_label,
                 "score_after": after_analysis.score_label if after_analysis else "not analyzed",
                 "estimated_loss_cp": loss,
-                "quality": _quality(move, before_analysis.bestmove, loss),
+                "quality": _quality(move, bestmove, loss),
             }
         )
     return rows
@@ -130,10 +136,12 @@ def _quality(move: MoveRecord, bestmove: str | None, loss: int | None) -> str:
     return "blunder"
 
 
-def _line_key(moves: list[MoveRecord], until_ply: int) -> str:
-    if until_ply <= 0:
-        return "start"
-    return " ".join(_normalize_move(move.san) for move in moves[:until_ply])
+def _position_key(main_fen: str, partner_fen: str | None) -> str:
+    def normalized(fen: str | None) -> str:
+        parts = str(fen or "").split()
+        return " ".join(parts[:4])
+
+    return f"main:{normalized(main_fen)}|partner:{normalized(partner_fen)}"
 
 
 def _line_label(moves: list[MoveRecord], until_ply: int) -> str:

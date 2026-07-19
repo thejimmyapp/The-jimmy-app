@@ -38,6 +38,9 @@ class EngineConfig:
     depth: int = 10
     timeout_seconds: float = 12.0
     variant: str = "bughouse"
+    threads: int = 1
+    hash_mb: int = 64
+    multipv: int = 1
 
 
 class FairyStockfishEngine:
@@ -80,17 +83,24 @@ class FairyStockfishEngine:
         self._reader_thread = threading.Thread(target=self._read_stdout_forever, daemon=True)
         self._reader_thread.start()
 
-        self._send("uci")
-        for line in self._read_until("uciok", self.config.timeout_seconds):
-            if line.startswith("id name "):
-                self.engine_name = line.removeprefix("id name ").strip()
-            elif line.startswith("option "):
-                self._uci_options.append(line)
+        try:
+            self._send("uci")
+            for line in self._read_until("uciok", self.config.timeout_seconds):
+                if line.startswith("id name "):
+                    self.engine_name = line.removeprefix("id name ").strip()
+                elif line.startswith("option "):
+                    self._uci_options.append(line)
 
-        self.variant_supported = any("name UCI_Variant" in option for option in self._uci_options)
-        if self.variant_supported:
-            self._send(f"setoption name UCI_Variant value {self.config.variant}")
+            self.variant_supported = self._supports_option("UCI_Variant")
+            if self.variant_supported:
+                self._send(f"setoption name UCI_Variant value {self.config.variant}")
+            self._set_option_if_supported("Threads", max(1, self.config.threads))
+            self._set_option_if_supported("Hash", max(16, self.config.hash_mb))
+            self._set_option_if_supported("MultiPV", max(1, self.config.multipv))
             self._wait_ready()
+        except Exception:
+            self.close()
+            raise
 
     def analyze_fen(self, fen: str) -> EngineAnalysis:
         self._ensure_started()
@@ -132,16 +142,30 @@ class FairyStockfishEngine:
         raise EngineError(f"Engine timed out while analyzing FEN: {fen}")
 
     def close(self) -> None:
-        if not self.process:
+        process = self.process
+        if not process:
             return
         try:
-            if self.process.poll() is None:
+            if process.poll() is None:
                 self._send("quit")
-                self.process.wait(timeout=2)
+                process.wait(timeout=2)
         except Exception:
-            self.process.kill()
+            if process.poll() is None:
+                process.kill()
+                try:
+                    process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    pass
         finally:
             self.process = None
+
+    def _supports_option(self, name: str) -> bool:
+        marker = f"name {name}"
+        return any(marker in option for option in self._uci_options)
+
+    def _set_option_if_supported(self, name: str, value: object) -> None:
+        if self._supports_option(name):
+            self._send(f"setoption name {name} value {value}")
 
     def _wait_ready(self) -> None:
         self._send("isready")
@@ -167,7 +191,9 @@ class FairyStockfishEngine:
 
     def _readline(self, timeout_seconds: float) -> str:
         self._ensure_started()
-        if self.process.poll() is not None:
+        process = self.process
+        assert process is not None
+        if process.poll() is not None:
             raise EngineError("Engine process exited unexpectedly.")
         try:
             return self._output_queue.get(timeout=max(0.01, timeout_seconds)).strip()

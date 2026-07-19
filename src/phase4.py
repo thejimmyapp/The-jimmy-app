@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.analyzer import EngineMomentAnalysis, _analyze_with_cache, analyze_critical_moments, analyze_critical_positions
+from src.analyzer import EngineMomentAnalysis, _analyze_with_cache, analyze_critical_positions
 from src.board_renderer import ReplayPosition, build_bughouse_pair_positions, build_replay_positions
 from src.db import Database
 from src.engine import EngineAnalysis, EngineConfig, FairyStockfishEngine
@@ -209,10 +209,8 @@ def classify_bughouse_category(
 
     if partner_danger:
         return "ignored partner danger"
-    if clock_seconds is not None and clock_seconds <= 20:
-        return "tempo loss"
     if time_spent_seconds is not None and time_spent_seconds >= 12:
-        return "tempo loss"
+        return "time management"
     if "mate" in text:
         return "king net"
     if "check" in text and (played_drop or best_drop):
