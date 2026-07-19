@@ -19,7 +19,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 COPY --from=frontend /app/frontend/dist /app/frontend/dist
-COPY --from=fairy-stockfish /src/src/fairy-stockfish /app/engines/fairy-stockfish
+COPY --from=fairy-stockfish /src/src/stockfish /app/engines/fairy-stockfish
 RUN chmod +x /app/engines/fairy-stockfish
 ENV FAIRY_STOCKFISH_PATH=/app/engines/fairy-stockfish
 EXPOSE 8000
