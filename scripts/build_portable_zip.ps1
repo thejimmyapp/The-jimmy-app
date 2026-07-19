@@ -4,8 +4,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..")
-$Stage = Join-Path $Root "reports\BughouseCoachAI-portable"
-$Zip = Join-Path $Root "reports\BughouseCoachAI-portable.zip"
+$Stage = Join-Path $Root "reports\thejimmyapp-portable"
+$Zip = Join-Path $Root "reports\thejimmyapp-portable.zip"
 
 if (Test-Path -LiteralPath $Stage) {
     Remove-Item -LiteralPath $Stage -Recurse -Force
@@ -22,7 +22,7 @@ $Files = @(
     "requirements.txt",
     "README.md",
     "PORTABLE_APP.md",
-    "start_bughouse_coach.bat"
+    "start_thejimmyapp.bat"
 )
 
 foreach ($File in $Files) {
@@ -51,9 +51,9 @@ $DocsDir = Join-Path $Stage "docs"
 New-Item -ItemType Directory -Path $DocsDir | Out-Null
 $Docs = @(
     "reports\INSTALLATION_AND_ENRICHMENT_GUIDE.md",
-    "reports\Bughouse_Coach_AI_Improvement_Guide.md",
-    "reports\Bughouse_Coach_AI_What_This_App_Can_Do.pdf",
-    "reports\Bughouse_Coach_AI_Installation_and_Enrichment_Guide.pdf"
+    "reports\thejimmyapp_improvement_guide.md",
+    "reports\thejimmyapp_what_this_app_can_do.pdf",
+    "reports\thejimmyapp_installation_and_enrichment_guide.pdf"
 )
 foreach ($Doc in $Docs) {
     $Source = Join-Path $Root $Doc

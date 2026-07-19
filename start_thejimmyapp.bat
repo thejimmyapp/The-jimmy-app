@@ -7,7 +7,8 @@ set "PYTHON_EXE=%APP_DIR%\.venv\Scripts\python.exe"
 
 echo.
 echo ========================================
-echo  Bughouse Coach AI
+echo  The Jimmy App
+echo  Collaborative Bughouse Coach
 echo ========================================
 echo.
 
@@ -47,7 +48,7 @@ if not exist "%APP_DIR%\secrets" mkdir "%APP_DIR%\secrets"
 if not exist "%APP_DIR%\data" mkdir "%APP_DIR%\data"
 if not exist "%APP_DIR%\logs" mkdir "%APP_DIR%\logs"
 
-echo Starting Bughouse Coach AI...
+echo Starting The Jimmy App...
 echo Open http://localhost:8501 if your browser does not open automatically.
 start "" "http://localhost:8501"
 

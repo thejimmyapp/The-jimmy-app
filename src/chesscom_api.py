@@ -12,7 +12,7 @@ from urllib.request import Request, urlopen
 
 LOGGER = logging.getLogger(__name__)
 API_BASE = "https://api.chess.com/pub"
-USER_AGENT = "BughouseCoachAI/0.1 (+local Streamlit app)"
+USER_AGENT = "thejimmyapp/0.1 (+thejimmyapp.com; local Streamlit app)"
 
 
 class ChessComApiError(RuntimeError):

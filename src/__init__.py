@@ -1,1 +1,1 @@
-"""Bughouse Coach AI Phase 1 package."""
+"""thejimmyapp package for The Jimmy App."""

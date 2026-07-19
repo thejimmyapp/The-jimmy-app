@@ -33,6 +33,11 @@ LOG_PATH = APP_DIR / "logs" / "app.log"
 DEFAULT_PGN_INFO_PATH = APP_DIR / "secrets" / "chesscom_pgn_info_curl.txt"
 DEFAULT_ENGINE_PATH = APP_DIR / "engines" / "fairy-stockfish.exe"
 DEFAULT_ENGINE_DEPTH = 10
+PUBLIC_BRAND = "The Jimmy App"
+EARLY_DESCRIPTOR = "Collaborative Bughouse Coach"
+INTERNAL_NICKNAME = "The App"
+PRIMARY_DOMAIN = "thejimmyapp.com"
+CODE_SLUG = "thejimmyapp"
 
 COACHING_TIPS = [
     "Good Bughouse improvement starts by finding the same mistake twice.",
@@ -1241,10 +1246,10 @@ def apply_app_theme() -> None:
 
 def render_username_landing() -> str:
     st.markdown(
-        """
+        f"""
         <div class="coach-landing">
-            <h1>Bughouse Coach AI</h1>
-            <p>Enter your Chess.com username. The app will prepare your games, enrich partner-board data when possible, and build your training dashboard.</p>
+            <h1>{PUBLIC_BRAND}</h1>
+            <p>{EARLY_DESCRIPTOR} for Chess.com games, partner-board enrichment, and practical training signals.</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1280,7 +1285,7 @@ def run_guided_setup(db: Database, username: str, pgn_info_path: Path, engine_pa
         st.session_state[setup_key] = True
         return
 
-    st.markdown(f"### Preparing your Bughouse coach for `{username}`")
+    st.markdown(f"### Preparing {PUBLIC_BRAND} for `{username}`")
     st.caption("You can leave this screen open. The dashboard will appear when the first setup pass is complete.")
     progress = st.progress(0)
 
@@ -1552,7 +1557,7 @@ def render_advanced_sidebar(db: Database, username: str) -> tuple[Path, int, Pat
 
 def main() -> None:
     configure_logging()
-    st.set_page_config(page_title="Bughouse Coach AI", layout="wide")
+    st.set_page_config(page_title=PUBLIC_BRAND, layout="wide")
     apply_app_theme()
 
     db = get_database()
@@ -1565,8 +1570,8 @@ def main() -> None:
     engine_path, engine_depth, pgn_info_path = render_advanced_sidebar(db, username)
     run_guided_setup(db, username, pgn_info_path, engine_path, engine_depth)
 
-    st.title("Bughouse Coach AI")
-    st.caption("Your personal Bughouse dashboard, training board, opening lab, and partner review.")
+    st.title(PUBLIC_BRAND)
+    st.caption(f"{EARLY_DESCRIPTOR} at {PRIMARY_DOMAIN}.")
 
     tabs = st.tabs(["Statistics", "Training Board", "Pattern Academy", "Opening Lab", "Games"])
     with tabs[0]:
