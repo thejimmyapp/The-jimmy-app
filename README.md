@@ -1,8 +1,16 @@
-# Bughouse Coach AI
+# The Jimmy App
 
-Local Streamlit app for importing Chess.com Bughouse games, enriching partner-board data when available, and building a practical coaching dashboard with stats, training drills, opening review, and Fairy-Stockfish analysis.
+Collaborative Bughouse Coach for importing Chess.com Bughouse games, enriching partner-board data when available, and building a practical coaching dashboard with stats, training drills, opening review, and Fairy-Stockfish analysis.
 
-The app is designed to run locally first. A GitHub copy should contain code and setup files only, not private Chess.com cookies, imported games, engine binaries, logs, or personal reports.
+Brand map:
+
+- Public brand: The Jimmy App
+- Early descriptor: Collaborative Bughouse Coach
+- Internal nickname: The App
+- Primary domain: `thejimmyapp.com`
+- Code slug: `thejimmyapp`
+
+The Jimmy App is designed to run locally first. A GitHub copy should contain code and setup files only, not private Chess.com cookies, imported games, engine binaries, logs, or personal reports.
 
 ## GitHub Sharing Notes
 
@@ -142,7 +150,7 @@ The app reads that file only to call Chess.com during import. It stores the retu
 For the easiest local setup, double-click:
 
 ```text
-start_bughouse_coach.bat
+start_thejimmyapp.bat
 ```
 
 The launcher creates `.venv`, installs dependencies, creates runtime folders, starts Streamlit, and opens `http://localhost:8501`.
