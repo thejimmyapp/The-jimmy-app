@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Copy, LogOut, Radio, RotateCcw, Undo2, UserRoundPlus, X } from "lucide-react";
+import { Copy, LogOut, Radio, Redo2, RotateCcw, Undo2, UserRoundPlus, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { api } from "./api";
 import { BoardPanel } from "./components/BoardPanel";
@@ -41,6 +41,7 @@ export default function App() {
         <div className={`mode-badge ${store.mode}`}><span />{store.mode === "review" ? `GAME REVIEW · MOVE ${store.globalPly}` : `EXPLORATION · FROM MOVE ${store.explorationStartPly} · ${store.variationMoves.join(" ")}`}</div>
         <div className="header-actions">
           {store.mode === "exploration" && <button className="icon-button" title="Undo exploration move" onClick={store.undoExploration}><Undo2 size={16} /></button>}
+          {store.explorationFuture.length > 0 && <button className="icon-button" title="Redo exploration move" onClick={store.redoExploration}><Redo2 size={16} /></button>}
           {store.mode === "exploration" && <button className="return-game" onClick={() => { store.returnToGame(); sendRoomEvent("variation.return_to_game", {}); }}><RotateCcw size={16} /> Return to move {store.explorationStartPly}</button>}
           <button onClick={() => roomMutation.mutate()}><UserRoundPlus size={16} /> {store.roomId ? "Room active" : "Invite partner"}</button>
           {store.roomId && <button className="icon-button" title="Copy room link" onClick={() => navigator.clipboard.writeText(location.href)}><Copy size={16} /></button>}

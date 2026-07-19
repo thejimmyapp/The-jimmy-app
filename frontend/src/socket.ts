@@ -1,4 +1,4 @@
-import type { Annotation, ChatItem } from "./types";
+import type { Annotation, ChatItem, ReplayPosition } from "./types";
 import { useCoachStore } from "./store";
 
 let socket: WebSocket | null = null;
@@ -25,7 +25,7 @@ export const connectRoomSocket = (roomId: string, clientId: string) => {
     if (event.type === "variation.create" || event.type === "variation.update") {
       const boardA = event.payload?.board_a;
       const boardB = event.payload?.board_b;
-      if (boardA && boardB) store.applyExploration(boardA as never, boardB as never, String(event.payload?.notation ?? "move"));
+      if (boardA) store.applyExploration(boardA as unknown as ReplayPosition, boardB ? boardB as unknown as ReplayPosition : null, String(event.payload?.notation ?? "move"));
     }
     if (event.type === "variation.return_to_game") store.returnToGame();
   };

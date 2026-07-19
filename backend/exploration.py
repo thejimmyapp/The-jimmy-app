@@ -11,8 +11,12 @@ from src.board_renderer import _captured_piece_type_for_bughouse_transfer, repla
 
 def apply_exploration_move(request: ExplorationMoveRequest) -> dict[str, object]:
     board_a = chess.variant.CrazyhouseBoard(request.board_a_fen)
-    board_b = chess.variant.CrazyhouseBoard(request.board_b_fen)
+    board_b = chess.variant.CrazyhouseBoard(request.board_b_fen) if request.board_b_fen else None
+    if request.board == "B" and board_b is None:
+        return {"legal": False, "reason": "The partner board is not available for exploration."}
     source = board_a if request.board == "A" else board_b
+    if source is None:
+        return {"legal": False, "reason": "This board is not available for exploration."}
     partner = board_b if request.board == "A" else board_a
     move = _requested_move(source, request)
     if move is None or move not in source.legal_moves:
@@ -24,7 +28,11 @@ def apply_exploration_move(request: ExplorationMoveRequest) -> dict[str, object]
 
     notation = source.san(move)
     if request.dry_run:
-        return {"legal": True, "notation": notation}
+        return {
+            "legal": True,
+            "notation": notation,
+            "legal_destinations": _legal_destinations(source, request.from_square, request.drop_piece),
+        }
 
     capturer = source.turn
     captured_type = _captured_piece_type_for_bughouse_transfer(source, move)
@@ -32,23 +40,25 @@ def apply_exploration_move(request: ExplorationMoveRequest) -> dict[str, object]
     if captured_type is not None:
         if source.pockets[capturer].count(captured_type):
             source.pockets[capturer].remove(captured_type)
-        partner.pockets[not capturer].add(captured_type)
+        if partner is not None:
+            partner.pockets[not capturer].add(captured_type)
 
     board_a_fen = board_a.fen()
-    board_b_fen = board_b.fen()
+    board_b_fen = board_b.fen() if board_b is not None else None
     position_a = replay_position_from_variant_fen(board_a_fen, "Exploration")
-    position_b = replay_position_from_variant_fen(board_b_fen, "Exploration")
+    position_b = replay_position_from_variant_fen(board_b_fen, "Exploration") if board_b_fen else None
     active_position = position_a if request.board == "A" else position_b
-    active_position.from_square = request.from_square
-    active_position.to_square = request.to_square
+    if active_position is not None:
+        active_position.from_square = request.from_square
+        active_position.to_square = request.to_square
     return {
         "legal": True,
         "notation": notation,
         "board_a_fen": board_a_fen,
         "board_b_fen": board_b_fen,
         "board_a": asdict(position_a),
-        "board_b": asdict(position_b),
-        "capture_transferred": captured_type is not None,
+        "board_b": asdict(position_b) if position_b is not None else None,
+        "capture_transferred": captured_type is not None and partner is not None,
     }
 
 
@@ -66,7 +76,10 @@ def _requested_move(board: chess.variant.CrazyhouseBoard, request: ExplorationMo
             continue
         if move in board.legal_moves:
             return move
-    return chess.Move.from_uci(base)
+    try:
+        return chess.Move.from_uci(base)
+    except ValueError:
+        return None
 
 
 def _legal_destinations(

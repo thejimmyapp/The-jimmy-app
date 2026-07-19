@@ -57,7 +57,7 @@ export const api = {
     json<{ status: string; result?: { bestmove?: string; score_cp?: number; mate_in?: number; depth?: number }; error?: string }>(fetch(`/api/analysis/${jobId}`)),
   explorationMove: (request: {
     board_a_fen: string;
-    board_b_fen: string;
+    board_b_fen?: string;
     board: BoardId;
     from_square?: string;
     to_square: string;

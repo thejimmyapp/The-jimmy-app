@@ -32,7 +32,7 @@ class AnalysisRequest(BaseModel):
 
 class ExplorationMoveRequest(BaseModel):
     board_a_fen: str = Field(min_length=10, max_length=200)
-    board_b_fen: str = Field(min_length=10, max_length=200)
+    board_b_fen: str | None = Field(default=None, min_length=10, max_length=200)
     board: Literal["A", "B"]
     from_square: str | None = Field(default=None, pattern=r"^[a-h][1-8]$")
     to_square: str = Field(pattern=r"^[a-h][1-8]$")

@@ -66,6 +66,44 @@ def test_exploration_capture_transfers_piece_to_partner_pocket() -> None:
     assert response.json()["board_b"]["black_pocket"] == "p"
 
 
+def test_exploration_works_when_partner_board_is_unavailable() -> None:
+    start = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR[] w KQkq - 0 1"
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/exploration/move",
+            json={"board_a_fen": start, "board": "A", "from_square": "g1", "to_square": "f3"},
+        )
+    payload = response.json()
+    assert payload["legal"] is True
+    assert payload["board_a"]["to_square"] == "f3"
+    assert payload["board_b"] is None
+
+
+def test_exploration_accepts_a_legal_pocket_drop() -> None:
+    board_a = "4k3/8/8/8/8/8/8/4K3[N] w - - 0 1"
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/exploration/move",
+            json={"board_a_fen": board_a, "board": "A", "to_square": "f7", "drop_piece": "N"},
+        )
+    payload = response.json()
+    assert payload["legal"] is True
+    assert payload["notation"].startswith("N@f7")
+    assert payload["board_a"]["board"][1][5] == "N"
+
+
+def test_exploration_lists_legal_targets_for_piece_selection() -> None:
+    start = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR[] w KQkq - 0 1"
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/exploration/move",
+            json={"board_a_fen": start, "board": "A", "from_square": "g1", "to_square": "g1", "dry_run": True},
+        )
+    payload = response.json()
+    assert payload["legal"] is False
+    assert payload["legal_destinations"] == ["f3", "h3"]
+
+
 def test_authenticated_connector_does_not_store_credentials() -> None:
     curl_text = "curl 'https://www.chess.com/callback/game/pgn-info' -H 'content-type: application/json' -b 'session=fake' --data-raw '{\"_token\":\"fake\"}'"
     with TestClient(app) as client:

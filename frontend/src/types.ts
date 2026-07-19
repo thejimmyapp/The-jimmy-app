@@ -67,7 +67,7 @@ export interface ChatItem {
 
 export interface ExplorationPair {
   boardA: ReplayPosition;
-  boardB: ReplayPosition;
+  boardB: ReplayPosition | null;
 }
 
 export interface ExplorationMoveResult {
@@ -76,7 +76,7 @@ export interface ExplorationMoveResult {
   notation?: string;
   legal_destinations?: string[];
   board_a?: ReplayPosition;
-  board_b?: ReplayPosition;
+  board_b?: ReplayPosition | null;
   board_a_fen?: string;
   board_b_fen?: string;
   capture_transferred?: boolean;

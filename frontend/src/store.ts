@@ -10,7 +10,9 @@ interface CoachState {
   explorationStartPly: number | null;
   explorationPositions: ExplorationPair | null;
   explorationHistory: ExplorationPair[];
+  explorationFuture: ExplorationPair[];
   variationMoves: string[];
+  variationFutureMoves: string[];
   roomId: string | null;
   clientId: string;
   displayName: string;
@@ -21,8 +23,9 @@ interface CoachState {
   setGames: (games: GameSummary[]) => void;
   setGame: (game: GamePayload | null) => void;
   seek: (ply: number) => void;
-  applyExploration: (boardA: ReplayPosition, boardB: ReplayPosition, notation: string) => void;
+  applyExploration: (boardA: ReplayPosition, boardB: ReplayPosition | null, notation: string) => void;
   undoExploration: () => void;
+  redoExploration: () => void;
   returnToGame: () => void;
   setRoom: (roomId: string, clientId: string, displayName: string) => void;
   toggleFollow: () => void;
@@ -40,7 +43,9 @@ export const useCoachStore = create<CoachState>((set) => ({
   explorationStartPly: null,
   explorationPositions: null,
   explorationHistory: [],
+  explorationFuture: [],
   variationMoves: [],
+  variationFutureMoves: [],
   roomId: new URLSearchParams(location.search).get("room"),
   clientId: crypto.randomUUID(),
   displayName: "Coach",
@@ -52,27 +57,50 @@ export const useCoachStore = create<CoachState>((set) => ({
     set({ username });
   },
   setGames: (games) => set({ games }),
-  setGame: (game) => set({ game, globalPly: 0, mode: "review", explorationStartPly: null, explorationPositions: null, explorationHistory: [], variationMoves: [] }),
-  seek: (globalPly) => set({ globalPly, mode: "review", explorationStartPly: null, explorationPositions: null, explorationHistory: [], variationMoves: [] }),
+  setGame: (game) => set({ game, globalPly: 0, mode: "review", explorationStartPly: null, explorationPositions: null, explorationHistory: [], explorationFuture: [], variationMoves: [], variationFutureMoves: [] }),
+  seek: (globalPly) => set({ globalPly, mode: "review", explorationStartPly: null, explorationPositions: null, explorationHistory: [], explorationFuture: [], variationMoves: [], variationFutureMoves: [] }),
   applyExploration: (boardA, boardB, notation) => set((state) => ({
     mode: "exploration",
     explorationStartPly: state.explorationStartPly ?? state.globalPly,
     explorationHistory: state.explorationPositions ? [...state.explorationHistory, state.explorationPositions] : state.explorationHistory,
     explorationPositions: { boardA, boardB },
+    explorationFuture: [],
     variationMoves: [...state.variationMoves, notation],
+    variationFutureMoves: [],
   })),
   undoExploration: () => set((state) => {
     if (!state.explorationHistory.length) {
-      return { mode: "review", explorationStartPly: null, explorationPositions: null, variationMoves: [] };
+      return {
+        mode: "review",
+        explorationPositions: null,
+        explorationFuture: state.explorationPositions ? [state.explorationPositions, ...state.explorationFuture] : state.explorationFuture,
+        variationFutureMoves: state.variationMoves.length ? [state.variationMoves[state.variationMoves.length - 1], ...state.variationFutureMoves] : state.variationFutureMoves,
+        variationMoves: [],
+      };
     }
     const previous = state.explorationHistory[state.explorationHistory.length - 1];
     return {
       explorationPositions: previous,
       explorationHistory: state.explorationHistory.slice(0, -1),
+      explorationFuture: state.explorationPositions ? [state.explorationPositions, ...state.explorationFuture] : state.explorationFuture,
+      variationFutureMoves: state.variationMoves.length ? [state.variationMoves[state.variationMoves.length - 1], ...state.variationFutureMoves] : state.variationFutureMoves,
       variationMoves: state.variationMoves.slice(0, -1),
     };
   }),
-  returnToGame: () => set({ mode: "review", explorationStartPly: null, explorationPositions: null, explorationHistory: [], variationMoves: [] }),
+  redoExploration: () => set((state) => {
+    if (!state.explorationFuture.length) return {};
+    const next = state.explorationFuture[0];
+    const notation = state.variationFutureMoves[0];
+    return {
+      mode: "exploration",
+      explorationPositions: next,
+      explorationHistory: state.explorationPositions ? [...state.explorationHistory, state.explorationPositions] : state.explorationHistory,
+      explorationFuture: state.explorationFuture.slice(1),
+      variationMoves: notation ? [...state.variationMoves, notation] : state.variationMoves,
+      variationFutureMoves: state.variationFutureMoves.slice(1),
+    };
+  }),
+  returnToGame: () => set({ mode: "review", explorationStartPly: null, explorationPositions: null, explorationHistory: [], explorationFuture: [], variationMoves: [], variationFutureMoves: [] }),
   setRoom: (roomId, clientId, displayName) => set({ roomId, clientId, displayName }),
   toggleFollow: () => set((state) => ({ followPartner: !state.followPartner })),
   addAnnotation: (annotation) => set((state) => ({ annotations: [...state.annotations.filter((item) => item.id !== annotation.id), annotation] })),
