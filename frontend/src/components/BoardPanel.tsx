@@ -1,7 +1,7 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BrainCircuit } from "lucide-react";
 import { api } from "../api";
-import { isMeaningfulChessVector } from "../boardInteractions";
+import { isMeaningfulChessVector, parseEngineBestmove } from "../boardInteractions";
 import { sendRoomEvent } from "../socket";
 import { currentPosition, useCoachStore } from "../store";
 import type { Annotation, BoardId, ReplayPosition } from "../types";
@@ -40,8 +40,13 @@ export function BoardPanel({ boardId, position, orientation, title, playerTop, p
     () => annotations.filter((item) => item.board === boardId && item.ply === globalPly),
     [annotations, boardId, globalPly],
   );
+  const engineMove = useMemo(() => parseEngineBestmove(analysis.bestmove), [analysis.bestmove]);
   const matrix = position?.board ?? Array.from({ length: 8 }, () => Array<string>(8).fill(""));
   const rows = orientation === "white" ? matrix : [...matrix].reverse().map((row) => [...row].reverse());
+
+  useEffect(() => {
+    setAnalysis({ status: "idle" });
+  }, [position?.variant_fen]);
 
   const removeDrawing = (annotation: Annotation) => {
     removeAnnotation(annotation.id);
@@ -250,7 +255,11 @@ export function BoardPanel({ boardId, position, orientation, title, playerTop, p
             </div>
           )}
           <svg className="annotation-layer" viewBox="0 0 800 800" aria-label="Board annotations">
-            <defs><marker id={`arrowhead-${boardId}`} markerWidth="8" markerHeight="8" refX="5.8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L6,3 z" fill="#24d6e8" /></marker></defs>
+            <defs>
+              <marker id={`arrowhead-${boardId}`} markerWidth="8" markerHeight="8" refX="5.8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L6,3 z" fill="#24d6e8" /></marker>
+              <marker id={`engine-arrowhead-${boardId}`} markerWidth="8" markerHeight="8" refX="5.8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L6,3 z" fill="#70f0a0" /></marker>
+            </defs>
+            {engineMove && <EngineSuggestion move={engineMove} orientation={orientation} markerId={`engine-arrowhead-${boardId}`} sideToMove={position?.side_to_move ?? "White"} />}
             {visible.filter((item) => item.type === "arrow" && item.to).map((item) => <Arrow key={item.id} annotation={item} orientation={orientation} markerId={`arrowhead-${boardId}`} onRemove={() => removeDrawing(item)} />)}
           </svg>
         </div>
@@ -292,12 +301,24 @@ function PocketRail({ color, value, draggable, selectedPiece, onSelectPiece, onD
   return <div className={`pocket-rail ${color.toLowerCase()}`} aria-label={`${color} pocket ${value}`}><small>{color[0]}</small>{entries.length ? entries.map(([piece, count]) => { const symbol = piece.toUpperCase() as "P" | "N" | "B" | "R" | "Q"; return <span className={selectedPiece === symbol && draggable ? "selected-pocket-piece" : ""} key={piece} draggable={draggable} onClick={() => { if (draggable) onSelectPiece(symbol); }} onDragStart={(event) => { if (!draggable) { event.preventDefault(); return; } event.dataTransfer.setData("bughouse/drop", symbol); event.dataTransfer.effectAllowed = "move"; onDragPiece(symbol); }}>{pieces[piece]}{count > 1 && <b>{count}</b>}</span>; }) : <i>·</i>}</div>;
 }
 
+function boardPoint(square: string, orientation: "white" | "black") {
+  let file = "abcdefgh".indexOf(square[0]); let rank = Number(square[1]) - 1;
+  if (orientation === "black") { file = 7 - file; rank = 7 - rank; }
+  return { x: file * 100 + 50, y: (7 - rank) * 100 + 50 };
+}
+
+function EngineSuggestion({ move, orientation, markerId, sideToMove }: { move: NonNullable<ReturnType<typeof parseEngineBestmove>>; orientation: "white" | "black"; markerId: string; sideToMove: string }) {
+  const to = boardPoint(move.to, orientation);
+  if (!move.from && move.dropPiece) {
+    const pieceKey = sideToMove === "Black" ? move.dropPiece.toLowerCase() : move.dropPiece;
+    return <g className="engine-suggestion engine-drop"><circle cx={to.x} cy={to.y} r="40" /><text x={to.x} y={to.y}>{pieces[pieceKey]}</text></g>;
+  }
+  if (!move.from) return null;
+  const from = boardPoint(move.from, orientation);
+  return <g className="engine-suggestion"><circle className="engine-source" cx={from.x} cy={from.y} r="23" /><line className="engine-arrow" x1={from.x} y1={from.y} x2={to.x} y2={to.y} markerEnd={`url(#${markerId})`} /><circle className="engine-target" cx={to.x} cy={to.y} r="36" /></g>;
+}
+
 function Arrow({ annotation, orientation, markerId, onRemove }: { annotation: Annotation; orientation: "white" | "black"; markerId: string; onRemove: () => void }) {
-  const point = (square: string) => {
-    let file = "abcdefgh".indexOf(square[0]); let rank = Number(square[1]) - 1;
-    if (orientation === "black") { file = 7 - file; rank = 7 - rank; }
-    return { x: file * 100 + 50, y: (7 - rank) * 100 + 50 };
-  };
-  const from = point(annotation.from); const to = point(annotation.to ?? annotation.from);
+  const from = boardPoint(annotation.from, orientation); const to = boardPoint(annotation.to ?? annotation.from, orientation);
   return <line className="annotation-arrow" x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke={annotation.color === "cyan" ? "#24d6e8" : "#a879ff"} strokeWidth="14" strokeLinecap="round" opacity=".78" markerEnd={`url(#${markerId})`} onClick={(event) => { event.stopPropagation(); onRemove(); }} />;
 }
