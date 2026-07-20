@@ -6,14 +6,14 @@ from unittest.mock import patch
 import chess
 import chess.variant
 
-from src.board_renderer import (
+from thejimmyapp.board_renderer import (
     _apply_bughouse_move,
     build_bughouse_pair_positions,
     build_global_replay_frames,
     render_dual_position_html,
     render_game_replay_html,
 )
-from src.pgn_parser import MoveRecord, parse_pgn, parse_tcn
+from thejimmyapp.pgn_parser import MoveRecord, parse_pgn, parse_tcn
 
 
 def move(
@@ -125,7 +125,7 @@ class ParserRegressionTests(unittest.TestCase):
         self.assertEqual([item.san for item in parsed.moves], ["e4", "a6", "e5", "d5", "exd6"])
 
     @patch(
-        "src.pgn_parser.decode_tcn",
+        "thejimmyapp.pgn_parser.decode_tcn",
         return_value=[
             {"from": "e2", "to": "e4"},
             {"from": "d7", "to": "d5"},
@@ -139,7 +139,7 @@ class ParserRegressionTests(unittest.TestCase):
         self.assertIn("x", parsed.moves[3].san)
 
     @patch(
-        "src.pgn_parser.decode_tcn",
+        "thejimmyapp.pgn_parser.decode_tcn",
         return_value=[
             {"from": "e2", "to": "e4"},
             {"from": "e7", "to": "e5"},
@@ -152,7 +152,7 @@ class ParserRegressionTests(unittest.TestCase):
         self.assertIn("+", parsed.moves[2].san)
 
     @patch(
-        "src.pgn_parser.decode_tcn",
+        "thejimmyapp.pgn_parser.decode_tcn",
         return_value=[
             {"from": "e2", "to": "e4"},
             {"from": "e7", "to": "e5"},

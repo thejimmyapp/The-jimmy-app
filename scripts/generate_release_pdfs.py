@@ -24,13 +24,13 @@ REPORTS = ROOT / "reports"
 
 def main() -> None:
     build_pdf(
-        source=REPORTS / "Bughouse_Coach_AI_Improvement_Guide.md",
-        output=REPORTS / "Bughouse_Coach_AI_What_This_App_Can_Do.pdf",
+        source=REPORTS / "The_Jimmy_App_Improvement_Guide.md",
+        output=REPORTS / "The_Jimmy_App_What_This_App_Can_Do.pdf",
         subtitle="What This App Can Do and How to Use It to Improve",
     )
     build_pdf(
         source=REPORTS / "INSTALLATION_AND_ENRICHMENT_GUIDE.md",
-        output=REPORTS / "Bughouse_Coach_AI_Installation_and_Enrichment_Guide.pdf",
+        output=REPORTS / "The_Jimmy_App_Installation_and_Enrichment_Guide.pdf",
         subtitle="Installation, Chess.com import, pgn-info enrichment, and troubleshooting",
     )
 
@@ -45,7 +45,7 @@ def build_pdf(source: Path, output: Path, subtitle: str) -> None:
         topMargin=0.75 * inch,
         bottomMargin=0.68 * inch,
         title=title,
-        author="Bughouse Coach AI",
+        author="The Jimmy App",
     )
     styles = make_styles()
     story = cover_page(title, subtitle, styles)
@@ -151,7 +151,7 @@ def make_styles() -> dict[str, ParagraphStyle]:
 
 def cover_page(title: str, subtitle: str, styles: dict[str, ParagraphStyle]) -> list:
     data = [
-        [Paragraph("Bughouse Coach AI", styles["title"])],
+        [Paragraph("The Jimmy App", styles["title"])],
         [Paragraph(subtitle, styles["subtitle"])],
         [
             Paragraph(
@@ -179,7 +179,7 @@ def cover_page(title: str, subtitle: str, styles: dict[str, ParagraphStyle]) -> 
 
 def parse_markdown(path: Path) -> tuple[str, list[tuple[str, str]]]:
     lines = path.read_text(encoding="utf-8").splitlines()
-    title = "Bughouse Coach AI"
+    title = "The Jimmy App"
     elements: list[tuple[str, str]] = []
     in_code = False
     code_lines: list[str] = []
@@ -210,7 +210,7 @@ def parse_markdown(path: Path) -> tuple[str, list[tuple[str, str]]]:
         if raw.startswith("# "):
             flush_paragraph()
             text = raw[2:].strip()
-            title = text if title == "Bughouse Coach AI" else title
+            title = text if title == "The Jimmy App" else title
             elements.append(("h1", text))
             continue
         if raw.startswith("## "):
@@ -260,7 +260,7 @@ def draw_footer(canvas, doc) -> None:
     canvas.saveState()
     canvas.setFont("Helvetica", 8)
     canvas.setFillColor(colors.HexColor("#6b7280"))
-    canvas.drawString(doc.leftMargin, 0.38 * inch, "Bughouse Coach AI")
+    canvas.drawString(doc.leftMargin, 0.38 * inch, "The Jimmy App")
     canvas.drawRightString(LETTER[0] - doc.rightMargin, 0.38 * inch, f"Page {doc.page}")
     canvas.restoreState()
 

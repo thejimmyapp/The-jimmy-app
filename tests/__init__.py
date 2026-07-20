@@ -1,1 +1,1 @@
-"""Regression tests for Bughouse Coach AI."""
+"""Regression tests for The Jimmy App."""

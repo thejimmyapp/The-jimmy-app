@@ -3,12 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.analyzer import EngineMomentAnalysis, _analyze_with_cache, analyze_critical_positions
-from src.board_renderer import ReplayPosition, build_bughouse_pair_positions, build_replay_positions
-from src.db import Database
-from src.engine import EngineAnalysis, EngineConfig, FairyStockfishEngine
-from src.pgn_parser import CriticalMoment, MoveRecord, extract_critical_moments, parse_game_data, parse_partner_tcn
-from src.tactical_motifs import classify_tactical_motif
+from thejimmyapp.analyzer import EngineMomentAnalysis, _analyze_with_cache, analyze_critical_positions
+from thejimmyapp.board_renderer import ReplayPosition, build_bughouse_pair_positions, build_replay_positions
+from thejimmyapp.db import Database
+from thejimmyapp.engine import EngineAnalysis, EngineConfig, FairyStockfishEngine
+from thejimmyapp.pgn_parser import CriticalMoment, MoveRecord, extract_critical_moments, parse_game_data, parse_partner_tcn
+from thejimmyapp.tactical_motifs import classify_tactical_motif
 
 
 MIN_MISTAKE_CP = 75

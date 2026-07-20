@@ -7,10 +7,10 @@ from pathlib import Path
 from uuid import uuid4
 
 from backend.config import Settings
-from src.board_renderer import build_bughouse_pair_positions, build_global_replay_frames, build_replay_positions
-from src.db import Database
-from src.engine import EngineConfig, FairyStockfishEngine
-from src.pgn_parser import parse_game_data, parse_partner_tcn
+from thejimmyapp.board_renderer import build_bughouse_pair_positions, build_global_replay_frames, build_replay_positions
+from thejimmyapp.db import Database
+from thejimmyapp.engine import EngineConfig, FairyStockfishEngine
+from thejimmyapp.pgn_parser import parse_game_data, parse_partner_tcn
 
 
 class GameService:

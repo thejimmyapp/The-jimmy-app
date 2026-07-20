@@ -29,8 +29,8 @@ from backend.schemas import (
     RoomJoinRequest,
     SocketEvent,
 )
-from src.chesscom_api import parse_pgn_headers
-from src.chesscom_pgn_info import PgnInfoClient, merge_pgn_info, parse_curl_auth
+from thejimmyapp.chesscom_api import parse_pgn_headers
+from thejimmyapp.chesscom_pgn_info import PgnInfoClient, merge_pgn_info, parse_curl_auth
 from backend.services import AnalysisJobs, GameService
 
 
@@ -50,7 +50,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "bughouse-ai-coach"}
+    return {"status": "ok", "service": "thejimmyapp"}
 
 
 @app.post("/api/chesscom/connect")

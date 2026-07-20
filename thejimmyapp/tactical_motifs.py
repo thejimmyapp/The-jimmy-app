@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from src.chesstempo_motifs import motif_names
+from thejimmyapp.chesstempo_motifs import motif_names
 
 try:
     import chess

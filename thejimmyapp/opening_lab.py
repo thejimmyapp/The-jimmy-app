@@ -3,11 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.analyzer import _analyze_with_cache, _estimated_loss, _legal_bestmove
-from src.board_renderer import build_bughouse_pair_positions, build_replay_positions
-from src.db import Database
-from src.engine import EngineConfig, FairyStockfishEngine
-from src.pgn_parser import MoveRecord, parse_game_data, parse_partner_tcn
+from thejimmyapp.analyzer import _analyze_with_cache, _estimated_loss, _legal_bestmove
+from thejimmyapp.board_renderer import build_bughouse_pair_positions, build_replay_positions
+from thejimmyapp.db import Database
+from thejimmyapp.engine import EngineConfig, FairyStockfishEngine
+from thejimmyapp.pgn_parser import MoveRecord, parse_game_data, parse_partner_tcn
 
 
 @dataclass(slots=True)

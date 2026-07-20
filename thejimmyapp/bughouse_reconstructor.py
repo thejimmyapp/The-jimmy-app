@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.pgn_parser import MoveRecord
+from thejimmyapp.pgn_parser import MoveRecord
 
 try:
     import chess

@@ -1,1 +1,1 @@
-"""FastAPI backend for Bughouse AI Coach."""
+"""FastAPI backend for The Jimmy App."""

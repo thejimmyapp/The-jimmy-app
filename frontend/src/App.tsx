@@ -35,9 +35,9 @@ export default function App() {
 
   return (
     <main className="app-shell">
-      <div className="small-screen-message">Bughouse AI Coach is optimized for desktop screens of 1366×768 or larger.</div>
+      <div className="small-screen-message">The Jimmy App is optimized for desktop screens of 1366×768 or larger.</div>
       <header className="app-header">
-        <div className="brand"><span className="brand-mark">B</span><div><strong>BUGHOUSE <em>AI</em> COACH</strong><small>COLLABORATIVE REVIEW ROOM</small></div></div>
+        <div className="brand"><span className="brand-mark">J</span><div><strong>THE JIMMY APP</strong><small>COLLABORATIVE BUGHOUSE COACH</small></div></div>
         <div className={`mode-badge ${store.mode}`}><span />{store.mode === "review" ? `GAME REVIEW · MOVE ${store.globalPly}` : `EXPLORATION · FROM MOVE ${store.explorationStartPly} · ${store.variationMoves.join(" ")}`}</div>
         <div className="header-actions">
           {store.mode === "exploration" && <button className="icon-button" title="Undo exploration move" onClick={store.undoExploration}><Undo2 size={16} /></button>}

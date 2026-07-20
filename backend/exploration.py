@@ -6,7 +6,7 @@ import chess
 import chess.variant
 
 from backend.schemas import ExplorationMoveRequest
-from src.board_renderer import _captured_piece_type_for_bughouse_transfer, replay_position_from_variant_fen
+from thejimmyapp.board_renderer import _captured_piece_type_for_bughouse_transfer, replay_position_from_variant_fen
 
 
 def apply_exploration_move(request: ExplorationMoveRequest) -> dict[str, object]:

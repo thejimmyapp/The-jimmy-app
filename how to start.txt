@@ -1,6 +1,6 @@
 Double-click:
 
-start_bughouse_coach.bat
+start_thejimmyapp.bat
 
 Or run manually from this folder:
 

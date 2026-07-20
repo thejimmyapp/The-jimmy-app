@@ -4,12 +4,12 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from src.bughouse_reconstructor import reconstruct_main_board
-from src.board_renderer import ReplayPosition
-from src.db import Database
-from src.engine import EngineAnalysis, EngineConfig, FairyStockfishEngine
-from src.pgn_parser import CriticalMoment, ParsedGame
-from src.versioning import ANALYSIS_VERSION
+from thejimmyapp.bughouse_reconstructor import reconstruct_main_board
+from thejimmyapp.board_renderer import ReplayPosition
+from thejimmyapp.db import Database
+from thejimmyapp.engine import EngineAnalysis, EngineConfig, FairyStockfishEngine
+from thejimmyapp.pgn_parser import CriticalMoment, ParsedGame
+from thejimmyapp.versioning import ANALYSIS_VERSION
 
 try:
     import chess

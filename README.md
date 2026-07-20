@@ -1,14 +1,14 @@
-# Bughouse Coach AI
+# The Jimmy App — Collaborative Bughouse Coach (formerly Bughouse Coach AI)
 
 ## New Collaborative Web MVP
 
-The repository now contains a parallel FastAPI + React/TypeScript application named **Bughouse AI Coach**. The original Streamlit coach remains available while the web migration is validated.
+**The Jimmy App** is a collaborative Bughouse coach. The repository contains a parallel FastAPI + React/TypeScript application, while the original Streamlit coach remains available during the web migration.
 
 ### Web architecture
 
 - `backend/`: FastAPI API, SQLAlchemy collaboration storage, Chess.com HTTPX client, background Fairy-Stockfish jobs, and versioned room WebSockets.
 - `frontend/`: strict React/TypeScript single-page workspace with two synchronized boards, side pockets, global A+B timeline, review/exploration states, annotations, chat, and notes.
-- `src/`: existing tested Bughouse parser, coupled transfer reconstruction, engine adapter, and coaching logic reused by FastAPI.
+- `thejimmyapp/`: existing tested Bughouse parser, coupled transfer reconstruction, engine adapter, and coaching logic reused by FastAPI.
 - `backend/alembic/`: production database migrations.
 
 ### Run locally
@@ -140,7 +140,7 @@ The app reads that file only to call Chess.com during import. It stores the retu
 For the easiest local setup, double-click:
 
 ```text
-start_bughouse_coach.bat
+start_thejimmyapp.bat
 ```
 
 The launcher creates `.venv`, installs dependencies, creates runtime folders, starts Streamlit, and opens `http://localhost:8501`.
@@ -219,7 +219,7 @@ If Chess.com omits partner-board or pocket data, the app stores what is availabl
 
 ```text
 app.py
-src/
+thejimmyapp/
   analyzer.py
   board_renderer.py
   bughouse_reconstructor.py

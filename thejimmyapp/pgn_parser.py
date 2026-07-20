@@ -5,7 +5,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from src.chesscom_api import parse_pgn_headers
+from thejimmyapp.chesscom_api import parse_pgn_headers
 
 try:
     import chess

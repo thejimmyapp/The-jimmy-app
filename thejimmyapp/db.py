@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from src.chesscom_api import parse_pgn_headers
-from src.chesscom_pgn_info import has_partner_board_data
-from src.versioning import ANALYSIS_VERSION
+from thejimmyapp.chesscom_api import parse_pgn_headers
+from thejimmyapp.chesscom_pgn_info import has_partner_board_data
+from thejimmyapp.versioning import ANALYSIS_VERSION
 
 
 class Database:

@@ -6,13 +6,13 @@ import unittest
 from contextlib import closing
 from pathlib import Path
 
-from src.db import Database
-from src.board_renderer import _json_for_script
-from src.chesscom_api import ChessComApiError, normalize_username
-from src.pattern_academy import get_puzzle, validate_library
-from src.phase4 import classify_bughouse_category
-from src.opening_lab import _position_key
-from src.versioning import ANALYSIS_VERSION
+from thejimmyapp.db import Database
+from thejimmyapp.board_renderer import _json_for_script
+from thejimmyapp.chesscom_api import ChessComApiError, normalize_username
+from thejimmyapp.pattern_academy import get_puzzle, validate_library
+from thejimmyapp.phase4 import classify_bughouse_category
+from thejimmyapp.opening_lab import _position_key
+from thejimmyapp.versioning import ANALYSIS_VERSION
 
 
 class AnalysisVersionTests(unittest.TestCase):

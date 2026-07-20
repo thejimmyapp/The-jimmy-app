@@ -10,21 +10,21 @@ from pathlib import Path
 import streamlit as st
 import streamlit.components.v1 as components
 
-from src.analyzer import analyze_critical_moments
-from src.board_renderer import render_dual_position_html, render_game_replay_html, render_pattern_puzzle_html
-from src.bughouse_reconstructor import reconstruct_main_board
-from src.chesscom_api import ChessComApiError, ChessComClient, normalize_username
-from src.chesscom_pgn_info import PgnInfoClient, PgnInfoError, has_partner_board_data, merge_pgn_info
-from src.chesstempo_motifs import all_motifs, family_names
-from src.db import Database
-from src.engine import EngineConfig, EngineError
-from src.opening_lab import analyze_opening_batch
-from src.full_bughouse_discovery import BughouseDiscoveryReport, discover_full_bughouse_data
-from src.phase4 import analyze_recent_games_for_mistakes, classify_bughouse_category
-from src.pgn_parser import extract_critical_moments, format_seconds, parse_game_data, parse_partner_tcn, parse_pgn
-from src.pattern_academy import categories as pattern_categories
-from src.pattern_academy import get_puzzles, score_solution
-from src.tactical_motifs import classify_tactical_motif
+from thejimmyapp.analyzer import analyze_critical_moments
+from thejimmyapp.board_renderer import render_dual_position_html, render_game_replay_html, render_pattern_puzzle_html
+from thejimmyapp.bughouse_reconstructor import reconstruct_main_board
+from thejimmyapp.chesscom_api import ChessComApiError, ChessComClient, normalize_username
+from thejimmyapp.chesscom_pgn_info import PgnInfoClient, PgnInfoError, has_partner_board_data, merge_pgn_info
+from thejimmyapp.chesstempo_motifs import all_motifs, family_names
+from thejimmyapp.db import Database
+from thejimmyapp.engine import EngineConfig, EngineError
+from thejimmyapp.opening_lab import analyze_opening_batch
+from thejimmyapp.full_bughouse_discovery import BughouseDiscoveryReport, discover_full_bughouse_data
+from thejimmyapp.phase4 import analyze_recent_games_for_mistakes, classify_bughouse_category
+from thejimmyapp.pgn_parser import extract_critical_moments, format_seconds, parse_game_data, parse_partner_tcn, parse_pgn
+from thejimmyapp.pattern_academy import categories as pattern_categories
+from thejimmyapp.pattern_academy import get_puzzles, score_solution
+from thejimmyapp.tactical_motifs import classify_tactical_motif
 
 
 APP_DIR = Path(__file__).resolve().parent
@@ -1242,8 +1242,8 @@ def render_username_landing() -> str:
     st.markdown(
         """
         <div class="coach-landing">
-            <h1>Bughouse Coach AI</h1>
-            <p>Enter your Chess.com username. The app will prepare your games, enrich partner-board data when possible, and build your training dashboard.</p>
+            <h1>The Jimmy App</h1>
+            <p>Collaborative Bughouse Coach. Enter your Chess.com username to prepare your games, enrich partner-board data when possible, and build your training dashboard.</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1831,7 +1831,7 @@ def render_advanced_sidebar(db: Database, username: str) -> tuple[Path, int, Pat
 
 def main() -> None:
     configure_logging()
-    st.set_page_config(page_title="Bughouse Coach AI", layout="wide")
+    st.set_page_config(page_title="The Jimmy App — Collaborative Bughouse Coach", layout="wide")
     apply_app_theme()
 
     db = get_database()
@@ -1844,8 +1844,8 @@ def main() -> None:
     engine_path, engine_depth, pgn_info_path = render_advanced_sidebar(db, username)
     run_guided_setup(db, username, pgn_info_path, engine_path, engine_depth)
 
-    st.title("Bughouse Coach AI")
-    st.caption("Review both boards, train recurring mistakes, and explore your openings from one workspace.")
+    st.title("The Jimmy App")
+    st.caption("Collaborative Bughouse Coach · Review both boards, train recurring mistakes, and explore your openings from one workspace.")
 
     tabs = st.tabs(["Study Workspace", "Statistics", "Pattern Academy", "Game Library"])
     with tabs[0]:
@@ -2073,7 +2073,7 @@ def _optional_float(value: object) -> float | None:
 
 
 def _report_from_payload(payload: dict[str, object]) -> BughouseDiscoveryReport:
-    from src.full_bughouse_discovery import DiscoverySourceResult
+    from thejimmyapp.full_bughouse_discovery import DiscoverySourceResult
 
     sources = [
         DiscoverySourceResult(

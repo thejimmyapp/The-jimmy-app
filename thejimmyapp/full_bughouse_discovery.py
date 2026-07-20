@@ -9,7 +9,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
-USER_AGENT = "BughouseCoachAI/0.1 (+local Streamlit app)"
+USER_AGENT = "thejimmyapp/0.1 (+local Streamlit app)"
 
 
 @dataclass(slots=True)

@@ -13,12 +13,12 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=ROOT_DIR / ".env", extra="ignore")
 
-    app_name: str = "Bughouse AI Coach"
+    app_name: str = "The Jimmy App — Collaborative Bughouse Coach"
     environment: str = "development"
     database_url: str = f"sqlite:///{(ROOT_DIR / 'data' / 'webapp.db').as_posix()}"
     legacy_database_path: Path = ROOT_DIR / "data" / "bughouse.db"
     fairy_stockfish_path: Path = ROOT_DIR / "engines" / "fairy-stockfish.exe"
-    chesscom_user_agent: str = "BughouseAICoach/1.0 contact=admin@example.com"
+    chesscom_user_agent: str = "thejimmyapp/1.0 contact=admin@example.com"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     max_pgn_bytes: int = 2_000_000
     engine_depth: int = Field(default=10, ge=4, le=24)

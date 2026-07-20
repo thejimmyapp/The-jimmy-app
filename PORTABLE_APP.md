@@ -1,4 +1,4 @@
-# Bughouse Coach AI Portable Setup
+# The Jimmy App Portable Setup
 
 This folder is a local Windows app.
 
@@ -12,7 +12,7 @@ It is not a static website and it does not run on Netlify Drop. It runs with Pyt
 2. Double-click:
 
 ```text
-start_bughouse_coach.bat
+start_thejimmyapp.bat
 ```
 
 The launcher will:
@@ -74,7 +74,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build_portable_zip.ps1
 This creates:
 
 ```text
-reports/BughouseCoachAI-portable.zip
+reports/thejimmyapp-portable.zip
 ```
 
 By default, the ZIP does not include:
@@ -103,7 +103,7 @@ If the launcher closes immediately:
 2. Run:
 
 ```powershell
-.\start_bughouse_coach.bat
+.\start_thejimmyapp.bat
 ```
 
 3. Read the error message.

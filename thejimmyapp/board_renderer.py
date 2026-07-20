@@ -4,8 +4,8 @@ import html
 import json
 from dataclasses import asdict, dataclass
 
-from src.bughouse_reconstructor import BoardSnapshot, reconstruct_bughouse_board
-from src.pgn_parser import CriticalMoment, MoveRecord, format_seconds
+from thejimmyapp.bughouse_reconstructor import BoardSnapshot, reconstruct_bughouse_board
+from thejimmyapp.pgn_parser import CriticalMoment, MoveRecord, format_seconds
 
 try:
     import chess

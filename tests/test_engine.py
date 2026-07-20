@@ -5,8 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from src.analyzer import _estimated_loss, _legal_bestmove
-from src.engine import EngineAnalysis, EngineConfig, EngineError, FairyStockfishEngine
+from thejimmyapp.analyzer import _estimated_loss, _legal_bestmove
+from thejimmyapp.engine import EngineAnalysis, EngineConfig, EngineError, FairyStockfishEngine
 
 
 class EngineLifecycleTests(unittest.TestCase):
@@ -26,7 +26,7 @@ class EngineLifecycleTests(unittest.TestCase):
             process.poll.return_value = None
             process.wait.return_value = 0
 
-            with patch("src.engine.subprocess.Popen", return_value=process):
+            with patch("thejimmyapp.engine.subprocess.Popen", return_value=process):
                 engine = FairyStockfishEngine(
                     EngineConfig(path=engine_path, timeout_seconds=0.02)
                 )
