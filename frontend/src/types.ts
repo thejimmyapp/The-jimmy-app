@@ -114,3 +114,33 @@ export interface ExplorationMoveResult {
   board_b_fen?: string;
   capture_transferred?: boolean;
 }
+
+export interface PuzzleMove {
+  board: BoardId;
+  san: string;
+}
+
+export interface PuzzleMoveRun {
+  board: BoardId;
+  moves: string[];
+}
+
+export interface PuzzleResponse {
+  status?: "wrong_move";
+  complete?: boolean;
+  moves?: PuzzleMoveRun[];
+}
+
+export interface PuzzlePayload {
+  id: string;
+  title: string;
+  prompt: string;
+  boards: [string, string];
+  positions: { board_a: ReplayPosition; board_b: ReplayPosition };
+  perspective: { board: BoardId; color: "white" | "black" };
+  category: string;
+  rating: number;
+  tags: string[];
+  source: { player: string; game_id: string; partner_game_id: string; url: string };
+  players: { board_a_white: string; board_a_black: string; board_b_white: string; board_b_black: string };
+}

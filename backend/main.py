@@ -16,15 +16,18 @@ from backend.chesscom import ChessComService
 from backend.config import get_settings
 from backend.database import Base, SessionLocal, engine, get_session
 from backend.models import ChatMessage, ReviewRoom, SharedNote
-from backend.exploration import apply_exploration_move
+from backend.exploration import apply_exploration_move, apply_exploration_san_move
 from backend.rooms import room_hub
+from backend.puzzles import check_move, get_puzzle, next_move, solution
 from backend.schemas import (
     AnalysisRequest,
     ChessComConnectRequest,
     ChessComEnrichRequest,
     ExplorationMoveRequest,
+    ExplorationSanMoveRequest,
     NoteCreateRequest,
     PgnImportRequest,
+    PuzzleHistoryRequest,
     RoomCreateRequest,
     RoomJoinRequest,
     SocketEvent,
@@ -161,6 +164,46 @@ def exploration_move(request: ExplorationMoveRequest) -> dict[str, object]:
         return apply_exploration_move(request)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/api/exploration/san")
+def exploration_san_move(request: ExplorationSanMoveRequest) -> dict[str, object]:
+    try:
+        return apply_exploration_san_move(request)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get("/api/puzzles/{puzzle_id}")
+def puzzle_detail(puzzle_id: str) -> dict[str, object]:
+    puzzle = get_puzzle(puzzle_id)
+    if not puzzle:
+        raise HTTPException(status_code=404, detail="Puzzle not found")
+    return puzzle.public_payload()
+
+
+@app.post("/puzzle-move/{puzzle_id}")
+def puzzle_move(puzzle_id: str, request: PuzzleHistoryRequest) -> dict[str, object]:
+    puzzle = get_puzzle(puzzle_id)
+    if not puzzle:
+        raise HTTPException(status_code=404, detail="Puzzle not found")
+    return check_move(puzzle, request.moves)
+
+
+@app.post("/puzzle-next-move/{puzzle_id}")
+def puzzle_next_move(puzzle_id: str, request: PuzzleHistoryRequest) -> dict[str, object]:
+    puzzle = get_puzzle(puzzle_id)
+    if not puzzle:
+        raise HTTPException(status_code=404, detail="Puzzle not found")
+    return next_move(puzzle, request.moves)
+
+
+@app.post("/puzzle-solution/{puzzle_id}")
+def puzzle_solution(puzzle_id: str, request: PuzzleHistoryRequest) -> dict[str, object]:
+    puzzle = get_puzzle(puzzle_id)
+    if not puzzle:
+        raise HTTPException(status_code=404, detail="Puzzle not found")
+    return solution(puzzle, request.moves)
 
 
 @app.post("/api/analysis", status_code=status.HTTP_202_ACCEPTED)

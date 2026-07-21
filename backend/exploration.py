@@ -5,7 +5,7 @@ from dataclasses import asdict
 import chess
 import chess.variant
 
-from backend.schemas import ExplorationMoveRequest
+from backend.schemas import ExplorationMoveRequest, ExplorationSanMoveRequest
 from thejimmyapp.board_renderer import _captured_piece_type_for_bughouse_transfer, replay_position_from_variant_fen
 
 
@@ -17,7 +17,6 @@ def apply_exploration_move(request: ExplorationMoveRequest) -> dict[str, object]
     source = board_a if request.board == "A" else board_b
     if source is None:
         return {"legal": False, "reason": "This board is not available for exploration."}
-    partner = board_b if request.board == "A" else board_a
     move = _requested_move(source, request)
     if move is None or move not in source.legal_moves:
         return {
@@ -26,13 +25,46 @@ def apply_exploration_move(request: ExplorationMoveRequest) -> dict[str, object]
             "legal_destinations": _legal_destinations(source, request.from_square, request.drop_piece),
         }
 
-    notation = source.san(move)
     if request.dry_run:
         return {
             "legal": True,
-            "notation": notation,
+            "notation": source.san(move),
             "legal_destinations": _legal_destinations(source, request.from_square, request.drop_piece),
         }
+
+    return _apply_move(board_a, board_b, request.board, move, request.from_square, request.to_square)
+
+
+def apply_exploration_san_move(request: ExplorationSanMoveRequest) -> dict[str, object]:
+    board_a = chess.variant.CrazyhouseBoard(request.board_a_fen)
+    board_b = chess.variant.CrazyhouseBoard(request.board_b_fen) if request.board_b_fen else None
+    if request.board == "B" and board_b is None:
+        return {"legal": False, "reason": "The partner board is not available for exploration."}
+    source = board_a if request.board == "A" else board_b
+    if source is None:
+        return {"legal": False, "reason": "This board is not available for exploration."}
+    try:
+        move = source.parse_san(request.san)
+    except ValueError:
+        return {"legal": False, "reason": "This notation is not legal in the current Bughouse position."}
+    from_square = chess.square_name(move.from_square) if move.drop is None else None
+    to_square = chess.square_name(move.to_square)
+    return _apply_move(board_a, board_b, request.board, move, from_square, to_square)
+
+
+def _apply_move(
+    board_a: chess.variant.CrazyhouseBoard,
+    board_b: chess.variant.CrazyhouseBoard | None,
+    board_id: str,
+    move: chess.Move,
+    from_square: str | None,
+    to_square: str,
+) -> dict[str, object]:
+    source = board_a if board_id == "A" else board_b
+    if source is None or move not in source.legal_moves:
+        return {"legal": False, "reason": "This is not a legal move in the current Bughouse position."}
+    partner = board_b if board_id == "A" else board_a
+    notation = source.san(move)
 
     capturer = source.turn
     captured_type = _captured_piece_type_for_bughouse_transfer(source, move)
@@ -47,10 +79,10 @@ def apply_exploration_move(request: ExplorationMoveRequest) -> dict[str, object]
     board_b_fen = board_b.fen() if board_b is not None else None
     position_a = replay_position_from_variant_fen(board_a_fen, "Exploration")
     position_b = replay_position_from_variant_fen(board_b_fen, "Exploration") if board_b_fen else None
-    active_position = position_a if request.board == "A" else position_b
+    active_position = position_a if board_id == "A" else position_b
     if active_position is not None:
-        active_position.from_square = request.from_square
-        active_position.to_square = request.to_square
+        active_position.from_square = from_square
+        active_position.to_square = to_square
     return {
         "legal": True,
         "notation": notation,

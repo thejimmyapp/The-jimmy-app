@@ -40,6 +40,22 @@ class ExplorationMoveRequest(BaseModel):
     promotion: Literal["q", "r", "b", "n"] | None = None
     dry_run: bool = False
 
+
+class ExplorationSanMoveRequest(BaseModel):
+    board_a_fen: str = Field(min_length=10, max_length=200)
+    board_b_fen: str | None = Field(default=None, min_length=10, max_length=200)
+    board: Literal["A", "B"]
+    san: str = Field(min_length=2, max_length=24)
+
+
+class PuzzleMove(BaseModel):
+    board: Literal["A", "B"]
+    san: str = Field(min_length=2, max_length=24)
+
+
+class PuzzleHistoryRequest(BaseModel):
+    moves: list[PuzzleMove] = Field(default_factory=list, max_length=80)
+
 class RoomCreateRequest(BaseModel):
     game_id: int | None = Field(default=None, gt=0)
 
