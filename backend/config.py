@@ -2,12 +2,23 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+import shutil
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
+
+
+def _default_fairy_stockfish_path() -> Path:
+    bundled = ROOT_DIR / "engines" / "fairy-stockfish"
+    if bundled.exists():
+        return bundled
+    installed = shutil.which("fairy-stockfish")
+    if installed:
+        return Path(installed)
+    return ROOT_DIR / "engines" / "fairy-stockfish.exe"
 
 
 class Settings(BaseSettings):
@@ -17,7 +28,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     database_url: str = f"sqlite:///{(ROOT_DIR / 'data' / 'webapp.db').as_posix()}"
     legacy_database_path: Path = ROOT_DIR / "data" / "bughouse.db"
-    fairy_stockfish_path: Path = ROOT_DIR / "engines" / "fairy-stockfish.exe"
+    fairy_stockfish_path: Path = Field(default_factory=_default_fairy_stockfish_path)
     chesscom_user_agent: str = "thejimmyapp/1.0 contact=admin@example.com"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     max_pgn_bytes: int = 2_000_000

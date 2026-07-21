@@ -38,6 +38,7 @@ interface Props {
   title: string;
   playerTop: string;
   playerBottom: string;
+  unavailable?: boolean;
   locked?: boolean;
   onMoveIntent?: (intent: {
     board: BoardId;
@@ -47,7 +48,17 @@ interface Props {
   }) => Promise<ExplorationMoveResult>;
 }
 
-export function BoardPanel({ boardId, position, pairedPosition, orientation, pieceStyle, title, playerTop, playerBottom, locked = false, onMoveIntent }: Props) {
+type AnalysisState = {
+  status: "idle" | "queued" | "running" | "completed" | "failed";
+  bestmove?: string;
+  score?: string;
+  depth?: number;
+  pv?: string[];
+  queuePosition?: number;
+  error?: string;
+};
+
+export function BoardPanel({ boardId, position, pairedPosition, orientation, pieceStyle, title, playerTop, playerBottom, unavailable = false, locked = false, onMoveIntent }: Props) {
   const boardRef = useRef<HTMLDivElement>(null);
   const lastWheelAt = useRef(0);
   const [arrowStart, setArrowStart] = useState<string | null>(null);
@@ -55,7 +66,7 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
   const [selectedDrop, setSelectedDrop] = useState<"P" | "N" | "B" | "R" | "Q" | null>(null);
   const [legalTargets, setLegalTargets] = useState<string[]>([]);
   const [interactionStatus, setInteractionStatus] = useState("");
-  const [analysis, setAnalysis] = useState<{ status: string; bestmove?: string; score?: string }>({ status: "idle" });
+  const [analysis, setAnalysis] = useState<AnalysisState>({ status: "idle" });
   const { game, globalPly, mode, explorationPositions, explorationFuture, annotations, addAnnotation, removeAnnotation, applyExploration, undoExploration, redoExploration, seek } = useCoachStore();
   const visible = useMemo(
     () => annotations.filter((item) => item.board === boardId && item.ply === globalPly),
@@ -251,28 +262,44 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
   };
 
   const analyze = async () => {
-    if (!game) return;
-    setAnalysis({ status: "Analyzing…" });
+    if (!game || !position || unavailable) return;
+    const { boardA, boardB } = boardPair();
+    setAnalysis({ status: "queued", queuePosition: 1 });
     try {
-      const submitted = await api.analyze(game.game.id, globalPly, boardId);
-      for (let attempt = 0; attempt < 30; attempt += 1) {
-        await new Promise((resolve) => window.setTimeout(resolve, 350));
+      const submitted = await api.analyze({
+        gameId: game.game.id,
+        globalPly,
+        board: boardId,
+        variantFen: position.variant_fen,
+        boardAFen: boardA?.variant_fen,
+        boardBFen: boardB?.variant_fen,
+      });
+      for (let attempt = 0; attempt < 120; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 250));
         const job = await api.analysisJob(submitted.job_id);
+        if (job.status === "queued") {
+          setAnalysis({ status: "queued", queuePosition: job.queue_position ?? 1 });
+          continue;
+        }
+        if (job.status === "running") {
+          setAnalysis({ status: "running" });
+          continue;
+        }
         if (job.status === "completed") {
           const score = job.result?.mate_in != null ? `M${job.result.mate_in}` : job.result?.score_cp != null ? `${job.result.score_cp} cp` : "—";
-          setAnalysis({ status: "completed", bestmove: job.result?.bestmove, score });
+          setAnalysis({ status: "completed", bestmove: job.result?.bestmove, score, depth: job.result?.depth, pv: job.result?.pv });
           return;
         }
         if (job.status === "failed") throw new Error(job.error ?? "Engine analysis failed");
       }
       throw new Error("Engine analysis timed out");
     } catch (error) {
-      setAnalysis({ status: error instanceof Error ? error.message : "Engine analysis failed" });
+      setAnalysis({ status: "failed", error: error instanceof Error ? error.message : "Engine analysis failed" });
     }
   };
 
   return (
-    <section className={`board-panel ${mode === "exploration" ? "is-exploring" : ""}`}>
+    <section className={`board-panel ${mode === "exploration" ? "is-exploring" : ""} ${unavailable ? "is-unavailable" : ""}`} aria-disabled={unavailable || undefined}>
       <div className="board-heading"><strong>{title}</strong><span>{position?.side_to_move ?? "Unavailable"} to move</span></div>
       <PlayerBar name={playerTop} clock={orientation === "white" ? position?.black_clock : position?.white_clock} />
       <div className="board-stage">
@@ -318,12 +345,6 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
             </button>
           );
         }))}
-        {boardId === "B" && !position && (
-            <div className="board-unavailable" role="status">
-              <strong>Second board unavailable</strong>
-              <span>Load authenticated pgn-info or import a second-board PGN.</span>
-            </div>
-          )}
           <svg className="annotation-layer" viewBox="0 0 800 800" aria-label="Board annotations">
             <defs>
               <marker id={`arrowhead-${boardId}`} markerWidth="8" markerHeight="8" refX="5.8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L6,3 z" fill="#24d6e8" /></marker>
@@ -336,7 +357,20 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
         <PocketRail color={bottomPocketColor} value={pocketValue(bottomPocketColor)} draggable={!locked && position?.side_to_move === bottomPocketColor} pieceStyle={pieceStyle} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />
       </div>
       <PlayerBar name={playerBottom} clock={orientation === "white" ? position?.white_clock : position?.black_clock} bottom />
-      <div className="board-footer"><button className="analyze-button" title="Analyze this position" onClick={analyze} disabled={!game || !position}><BrainCircuit size={15} /> {analysis.bestmove ? `${analysis.bestmove} · ${analysis.score}` : analysis.status === "idle" ? "Analyze position" : analysis.status}</button><span className="interaction-status">{interactionStatus}</span></div>
+      <div className={`board-footer analysis-${analysis.status}`}>
+        <button className="analyze-button" title="Queue this exact position for Fairy-Stockfish" onClick={analyze} disabled={!game || !position || unavailable || analysis.status === "queued" || analysis.status === "running"}>
+          <BrainCircuit size={15} /> <AnalysisLabel analysis={analysis} />
+        </button>
+        {analysis.status === "completed" && analysis.pv?.length ? <span className="analysis-pv" title={analysis.pv.join(" ")}>PV {analysis.pv.slice(0, 4).join(" ")}</span> : null}
+        {analysis.status === "failed" ? <span className="analysis-error" title={analysis.error}>{analysis.error}</span> : <span className="interaction-status">{interactionStatus}</span>}
+      </div>
+      {unavailable && (
+        <div className="board-panel-unavailable" role="status">
+          <strong>Second board unavailable</strong>
+          <span>Partner Unknown · Diagonal Opponent Unknown</span>
+          <small>Load authenticated pgn-info or import a second-board PGN.</small>
+        </div>
+      )}
     </section>
   );
 
@@ -368,7 +402,15 @@ function PlayerBar({ name, clock, bottom = false }: { name: string; clock?: stri
 function PocketRail({ color, value, draggable, pieceStyle, selectedPiece, onSelectPiece, onDragPiece }: { color: "White" | "Black"; value: string; draggable: boolean; pieceStyle: PieceStyleId; selectedPiece: "P" | "N" | "B" | "R" | "Q" | null; onSelectPiece: (piece: "P" | "N" | "B" | "R" | "Q") => void; onDragPiece: (piece: "P" | "N" | "B" | "R" | "Q") => void }) {
   const counts = [...value].filter((piece) => pieces[piece]).reduce<Record<string, number>>((result, piece) => ({ ...result, [piece]: (result[piece] ?? 0) + 1 }), {});
   const entries = Object.entries(counts).filter(([piece]) => color === "White" ? piece === piece.toUpperCase() : piece === piece.toLowerCase());
-  return <div className={`pocket-rail ${color.toLowerCase()}`} aria-label={`${color} pocket ${value}`}><small>{color} pocket</small>{entries.length ? entries.map(([piece, count]) => { const symbol = piece.toUpperCase() as "P" | "N" | "B" | "R" | "Q"; return <span className={selectedPiece === symbol && draggable ? "selected-pocket-piece" : ""} key={piece} draggable={draggable} onClick={() => { if (draggable) onSelectPiece(symbol); }} onDragStart={(event) => { if (!draggable) { event.preventDefault(); return; } event.dataTransfer.setData("bughouse/drop", symbol); event.dataTransfer.effectAllowed = "move"; onDragPiece(symbol); }}>{displayPiece(piece, pieceStyle)}{count > 1 && <b>{count}</b>}</span>; }) : <i>Empty</i>}</div>;
+  return <div className={`pocket-rail ${color.toLowerCase()}`} aria-label={`${color} droppers`}><small>Droppers</small>{entries.map(([piece, count]) => { const symbol = piece.toUpperCase() as "P" | "N" | "B" | "R" | "Q"; return <span className={selectedPiece === symbol && draggable ? "selected-pocket-piece" : ""} key={piece} draggable={draggable} onClick={() => { if (draggable) onSelectPiece(symbol); }} onDragStart={(event) => { if (!draggable) { event.preventDefault(); return; } event.dataTransfer.setData("bughouse/drop", symbol); event.dataTransfer.effectAllowed = "move"; onDragPiece(symbol); }}>{displayPiece(piece, pieceStyle)}{count > 1 && <b>{count}</b>}</span>; })}</div>;
+}
+
+function AnalysisLabel({ analysis }: { analysis: AnalysisState }) {
+  if (analysis.status === "queued") return <>Fairy-Stockfish queued · #{analysis.queuePosition ?? 1}</>;
+  if (analysis.status === "running") return <>Fairy-Stockfish analyzing…</>;
+  if (analysis.status === "completed") return <>Best {analysis.bestmove ?? "—"} · {analysis.score} {analysis.depth ? `· d${analysis.depth}` : ""}</>;
+  if (analysis.status === "failed") return <>Retry Fairy-Stockfish</>;
+  return <>Analyze with Fairy-Stockfish</>;
 }
 
 function boardPoint(square: string, orientation: "white" | "black") {

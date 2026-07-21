@@ -35,12 +35,15 @@ export function Timeline() {
   }, [game, globalPly, mode, move]);
   return (
     <footer className="timeline">
-      <div className="timeline-actions">
-        <button onClick={() => move(0)} aria-label="Start"><SkipBack size={17} /></button>
-        <button onClick={() => move(globalPly - 1)} aria-label="Previous"><StepBack size={17} /></button>
-        <button className="play" onClick={() => setPlaying(!playing)} aria-label={playing ? "Pause" : "Play"}>{playing ? <Pause size={18} /> : <Play size={18} />}</button>
-        <button onClick={() => move(globalPly + 1)} aria-label="Next"><StepForward size={17} /></button>
-        <button onClick={() => move(max)} aria-label="End"><SkipForward size={17} /></button>
+      <div className="timeline-left">
+        <div className="timeline-actions">
+          <button onClick={() => move(0)} aria-label="Start"><SkipBack size={17} /></button>
+          <button onClick={() => move(globalPly - 1)} aria-label="Previous"><StepBack size={17} /></button>
+          <button className="play" onClick={() => setPlaying(!playing)} aria-label={playing ? "Pause" : "Play"}>{playing ? <Pause size={18} /> : <Play size={18} />}</button>
+          <button onClick={() => move(globalPly + 1)} aria-label="Next"><StepForward size={17} /></button>
+          <button onClick={() => move(max)} aria-label="End"><SkipForward size={17} /></button>
+        </div>
+        <div className={`mode-badge ${mode}`}><span />{mode === "review" ? `GAME REVIEW · MOVE ${globalPly}` : `EXPLORATION · MOVE ${globalPly}`}</div>
       </div>
       <div className="timeline-tracks">
         <div className="track-label">A</div><div className="move-track">{game?.timeline.filter((item) => item.board === "A").map((item) => <button className={item.global_ply === globalPly ? "active" : ""} key={item.global_ply} onClick={() => move(item.global_ply)}>{item.move}</button>)}</div>

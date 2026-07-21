@@ -112,7 +112,6 @@ export default function App() {
       <div className="small-screen-message">The Jimmy App is optimized for desktop screens of 1366×768 or larger.</div>
       <header className="app-header">
         <div className="brand"><span className="brand-mark">J</span><div><strong>THE JIMMY APP</strong><small>COLLABORATIVE BUGHOUSE COACH</small></div></div>
-        <div className={`mode-badge ${store.mode}`}><span />{store.mode === "review" ? `GAME REVIEW · MOVE ${store.globalPly}` : `EXPLORATION · FROM MOVE ${store.explorationStartPly} · ${store.variationMoves.join(" ")}`}</div>
         <div className="header-actions">
           {store.mode === "exploration" && <button className="icon-button" title="Undo exploration move" onClick={store.undoExploration}><Undo2 size={16} /></button>}
           {store.explorationFuture.length > 0 && <button className="icon-button" title="Redo exploration move" onClick={store.redoExploration}><Redo2 size={16} /></button>}
@@ -125,12 +124,21 @@ export default function App() {
         </div>
       </header>
       <section className="workspace">
-        <div className="boards-zone">
-          <BoardPanel boardId="A" position={boardA} orientation={userIsWhite ? "white" : "black"} pieceStyle={pieceStyle} title="BOARD A · YOUR BOARD" playerTop={userIsWhite ? players?.board_a_black ?? "Opponent" : players?.board_a_white ?? "Opponent"} playerBottom={userIsWhite ? players?.board_a_white ?? store.username : players?.board_a_black ?? store.username} />
-          <BoardPanel boardId="B" position={boardB} orientation={userIsWhite ? "black" : "white"} pieceStyle={pieceStyle} title="BOARD B · PARTNER BOARD" playerTop={secondBoardAvailable ? (userIsWhite ? players?.board_b_white ?? "Opponent partner" : players?.board_b_black ?? "Opponent partner") : "Opponent partner"} playerBottom={secondBoardAvailable ? (userIsWhite ? players?.board_b_black ?? "Partner" : players?.board_b_white ?? "Partner") : "Partner"} />
+        <SidePanel onSelectGame={selectGame} loadingGame={gameMutation.isPending} />
+        <div className={`boards-zone ${store.game ? "has-game" : ""}`}>
+          {store.game?.outcome && (
+            <div className={`review-summary ${store.game.game.result}`} role="status">
+              <span>GAME RESULT</span>
+              <strong>{store.game.outcome.summary}</strong>
+              <small>{store.game.outcome.detail}</small>
+            </div>
+          )}
+          <div className="boards-grid">
+            <BoardPanel boardId="A" position={boardA} orientation={userIsWhite ? "white" : "black"} pieceStyle={pieceStyle} title="BOARD A · YOUR BOARD" playerTop={userIsWhite ? players?.board_a_black ?? "Opponent" : players?.board_a_white ?? "Opponent"} playerBottom={userIsWhite ? players?.board_a_white ?? store.username : players?.board_a_black ?? store.username} />
+            <BoardPanel boardId="B" position={boardB} orientation={userIsWhite ? "black" : "white"} pieceStyle={pieceStyle} title="BOARD B · PARTNER BOARD" playerTop={secondBoardAvailable ? (userIsWhite ? players?.board_b_white ?? "Diagonal Opponent Unknown" : players?.board_b_black ?? "Diagonal Opponent Unknown") : "Diagonal Opponent Unknown"} playerBottom={secondBoardAvailable ? (userIsWhite ? players?.board_b_black ?? "Partner Unknown" : players?.board_b_white ?? "Partner Unknown") : "Partner Unknown"} unavailable={Boolean(store.game) && !secondBoardAvailable} />
+          </div>
           {!store.game && <div className="empty-workspace"><strong>Select a Bughouse game</strong><span>Choose a game from the Games panel.</span></div>}
         </div>
-        <SidePanel onSelectGame={selectGame} loadingGame={gameMutation.isPending} />
       </section>
       <Timeline />
       {connectOpen && (

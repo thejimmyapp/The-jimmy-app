@@ -29,6 +29,7 @@ const game: GamePayload = {
   timeline: [0, 1, 2].map((global_ply) => ({ global_ply, board: global_ply === 2 ? "B" as const : "A" as const, local_ply: global_ply, move: `Move ${global_ply}`, board_a: position, board_b: position })),
   second_board_available: true,
   limitations: [],
+  outcome: { summary: "White B was checkmated on the high board on move 2.", detail: "Board role is based on both teams' player ratings.", loser_username: "White B", termination: "checkmated", board: "B", board_role: "high", move_number: 2 },
 };
 
 describe("timeline keyboard navigation", () => {

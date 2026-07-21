@@ -46,16 +46,30 @@ export const api = {
         body: JSON.stringify({ display_name: displayName }),
       }),
     ),
-  analyze: (gameId: number, globalPly: number, board: "A" | "B") =>
-    json<{ job_id: string }>(
+  analyze: (request: { gameId: number; globalPly: number; board: "A" | "B"; variantFen: string; boardAFen?: string; boardBFen?: string }) =>
+    json<{ job_id: string; status: string; engine: string }>(
       fetch("/api/analysis", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ game_id: gameId, global_ply: globalPly, board, depth: 10 }),
+        body: JSON.stringify({
+          game_id: request.gameId,
+          global_ply: request.globalPly,
+          board: request.board,
+          depth: 10,
+          variant_fen: request.variantFen,
+          board_a_fen: request.boardAFen,
+          board_b_fen: request.boardBFen,
+        }),
       }),
     ),
   analysisJob: (jobId: string) =>
-    json<{ status: string; result?: { bestmove?: string; score_cp?: number; mate_in?: number; depth?: number }; error?: string }>(fetch(`/api/analysis/${jobId}`)),
+    json<{
+      status: "queued" | "running" | "completed" | "failed";
+      engine?: string;
+      queue_position?: number;
+      result?: { bestmove?: string; score_cp?: number; mate_in?: number; depth?: number; pv?: string[]; engine_name?: string; variant_supported?: boolean };
+      error?: string;
+    }>(fetch(`/api/analysis/${jobId}`)),
   explorationMove: (request: {
     board_a_fen: string;
     board_b_fen?: string;
