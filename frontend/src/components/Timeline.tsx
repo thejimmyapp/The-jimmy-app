@@ -9,7 +9,11 @@ export function Timeline() {
   const max = Math.max(0, game?.timeline.length ? game.timeline.length - 1 : (game?.positions_a.length ?? 1) - 1);
   useEffect(() => {
     if (!playing || globalPly >= max) return;
-    const timer = window.setTimeout(() => seek(globalPly + 1), 650);
+    const timer = window.setTimeout(() => {
+      const next = globalPly + 1;
+      seek(next);
+      sendRoomEvent("timeline.seek", { global_ply: next });
+    }, 650);
     return () => window.clearTimeout(timer);
   }, [playing, globalPly, max, seek]);
   const move = (ply: number) => { const next = Math.max(0, Math.min(max, ply)); seek(next); sendRoomEvent("timeline.seek", { global_ply: next }); };

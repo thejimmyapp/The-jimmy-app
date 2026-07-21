@@ -182,6 +182,7 @@ def create_room(request: RoomCreateRequest, session: Session = Depends(get_sessi
     room = ReviewRoom(game_id=request.game_id)
     session.add(room)
     session.commit()
+    room_hub.set_room_game(room.id, room.game_id)
     return {"id": room.id, "game_id": room.game_id, "share_path": f"/?room={room.id}"}
 
 
@@ -239,6 +240,15 @@ async def room_socket(websocket: WebSocket, room_id: str, client_id: str = Query
                 await websocket.send_json({"type": "error", "payload": {"message": "Room ID mismatch"}})
                 continue
             payload = event.payload
+            if event.type == "game.select":
+                selected_game_id = payload.get("game_id")
+                if isinstance(selected_game_id, int):
+                    with SessionLocal() as session:
+                        room = session.get(ReviewRoom, room_id)
+                        if room:
+                            room.game_id = selected_game_id
+                            session.commit()
+                    room_hub.set_room_game(room_id, selected_game_id)
             if event.type == "chat.message":
                 content = str(payload.get("content") or "").strip()[:5000]
                 if content:

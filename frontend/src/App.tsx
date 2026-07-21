@@ -1,29 +1,42 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Copy, LogOut, Radio, Redo2, RotateCcw, Undo2, UserRoundPlus, X } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { BoardPanel } from "./components/BoardPanel";
 import { SidePanel } from "./components/SidePanel";
 import { Timeline } from "./components/Timeline";
-import { connectRoomSocket, sendRoomEvent } from "./socket";
+import { applyRoomSnapshot, connectRoomSocket, sendRoomEvent } from "./socket";
 import { currentPosition, useCoachStore } from "./store";
 import type { GameSummary } from "./types";
 
 export default function App() {
   const store = useCoachStore();
-  const [connectOpen, setConnectOpen] = useState(!store.username);
+  const { roomId, username, setRoom } = store;
+  const joinedRoomRef = useRef<string | null>(null);
+  const [connectOpen, setConnectOpen] = useState(!store.username && !store.roomId);
   const [usernameDraft, setUsernameDraft] = useState(store.username);
   const [authenticatedOpen, setAuthenticatedOpen] = useState(false);
   const [curlText, setCurlText] = useState("");
   const gamesQuery = useQuery({ queryKey: ["games", store.username], queryFn: () => api.games(store.username), enabled: Boolean(store.username) });
+  const roomQuery = useQuery({ queryKey: ["room", store.roomId], queryFn: () => api.room(store.roomId as string), enabled: Boolean(store.roomId) });
   useEffect(() => { if (gamesQuery.data) useCoachStore.getState().setGames(gamesQuery.data.games); }, [gamesQuery.data]);
+  useEffect(() => { if (roomQuery.data) void applyRoomSnapshot(roomQuery.data.snapshot, roomQuery.data.game_id); }, [roomQuery.data]);
   const gameMutation = useMutation({ mutationFn: api.game, onSuccess: store.setGame });
   const connectMutation = useMutation({ mutationFn: api.connectChessCom, onSuccess: () => gamesQuery.refetch() });
   const enrichMutation = useMutation({ mutationFn: () => api.enrichChessCom(usernameDraft.trim(), curlText), onSuccess: () => { setCurlText(""); gamesQuery.refetch(); } });
   const roomMutation = useMutation({ mutationFn: () => api.createRoom(store.game?.game.id), onSuccess: async (room) => {
+    joinedRoomRef.current = room.id;
     const joined = await api.joinRoom(room.id, store.username || "Coach"); store.setRoom(room.id, joined.client_id, joined.display_name); history.replaceState(null, "", room.share_path); connectRoomSocket(room.id, joined.client_id);
   }});
-  useEffect(() => { if (store.roomId) connectRoomSocket(store.roomId, store.clientId); }, [store.roomId, store.clientId]);
+  useEffect(() => {
+    if (!roomId || joinedRoomRef.current === roomId) return;
+    const currentRoomId = roomId;
+    joinedRoomRef.current = currentRoomId;
+    void api.joinRoom(currentRoomId, username || "Guest").then((joined) => {
+      setRoom(currentRoomId, joined.client_id, joined.display_name);
+      connectRoomSocket(currentRoomId, joined.client_id);
+    });
+  }, [roomId, username, setRoom]);
 
   const boardA = store.explorationPositions?.boardA ?? currentPosition(store.game, store.globalPly, "A");
   const boardB = store.explorationPositions?.boardB ?? currentPosition(store.game, store.globalPly, "B");

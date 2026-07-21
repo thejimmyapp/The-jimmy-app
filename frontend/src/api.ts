@@ -1,4 +1,4 @@
-import type { BoardId, ExplorationMoveResult, GamePayload, GameSummary } from "./types";
+import type { BoardId, ExplorationMoveResult, GamePayload, GameSummary, RoomPayload } from "./types";
 
 const json = async <T>(responsePromise: Promise<Response>): Promise<T> => {
   const response = await responsePromise;
@@ -30,13 +30,14 @@ export const api = {
     json<{ games: GameSummary[] }>(fetch(`/api/chesscom/${encodeURIComponent(username)}/bughouse-games?limit=1000`)),
   game: (gameId: number) => json<GamePayload>(fetch(`/api/games/${gameId}`)),
   createRoom: (gameId?: number) =>
-    json<{ id: string; share_path: string }>(
+    json<{ id: string; game_id: number | null; share_path: string }>(
       fetch("/api/rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ game_id: gameId ?? null }),
       }),
     ),
+  room: (roomId: string) => json<RoomPayload>(fetch(`/api/rooms/${roomId}`)),
   joinRoom: (roomId: string, displayName: string) =>
     json<{ client_id: string; display_name: string }>(
       fetch(`/api/rooms/${roomId}/join`, {

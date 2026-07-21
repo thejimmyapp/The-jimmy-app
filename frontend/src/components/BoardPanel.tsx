@@ -67,6 +67,20 @@ export function BoardPanel({ boardId, position, orientation, title, playerTop, p
     sendRoomEvent("annotation.create", annotation as unknown as Record<string, unknown>);
   };
 
+  const publishExplorationState = () => {
+    const state = useCoachStore.getState();
+    if (state.mode !== "exploration" || !state.explorationPositions) {
+      sendRoomEvent("variation.return_to_game", {});
+      return;
+    }
+    sendRoomEvent("variation.update", {
+      board_a: state.explorationPositions.boardA,
+      board_b: state.explorationPositions.boardB,
+      notation: state.variationMoves[state.variationMoves.length - 1] ?? "move",
+      start_ply: state.explorationStartPly ?? state.globalPly,
+    });
+  };
+
   const playExplorationMove = async (from: string | undefined, to: string, dropPiece?: "P" | "N" | "B" | "R" | "Q") => {
     const officialA = currentPosition(game, globalPly, "A");
     const officialB = currentPosition(game, globalPly, "B");
@@ -167,17 +181,26 @@ export function BoardPanel({ boardId, position, orientation, title, playerTop, p
     setSelectedDrop(null);
     setLegalTargets([]);
     if (deltaY < 0) {
-      if (mode === "exploration") undoExploration();
-      else seek(Math.max(0, globalPly - 1));
+      if (mode === "exploration") {
+        undoExploration();
+        publishExplorationState();
+      } else {
+        const next = Math.max(0, globalPly - 1);
+        seek(next);
+        sendRoomEvent("timeline.seek", { global_ply: next });
+      }
       return;
     }
     if (explorationFuture.length) {
       redoExploration();
+      publishExplorationState();
       return;
     }
     if (mode === "review") {
       const max = Math.max(0, game.timeline.length ? game.timeline.length - 1 : game.positions_a.length - 1);
-      seek(Math.min(max, globalPly + 1));
+      const next = Math.min(max, globalPly + 1);
+      seek(next);
+      sendRoomEvent("timeline.seek", { global_ply: next });
     }
   };
 

@@ -37,6 +37,49 @@ def test_room_websocket_relays_versioned_event() -> None:
             assert socket.receive_json()["payload"]["global_ply"] == 12
 
 
+def test_room_shares_selected_game_and_latest_timeline_with_late_joiners() -> None:
+    with TestClient(app) as client:
+        room = client.post("/api/rooms", json={"game_id": None}).json()
+        leader = client.post(f"/api/rooms/{room['id']}/join", json={"display_name": "Leader"}).json()
+        guest = client.post(f"/api/rooms/{room['id']}/join", json={"display_name": "Guest"}).json()
+        with (
+            client.websocket_connect(f"/ws/rooms/{room['id']}?client_id={leader['client_id']}") as leader_socket,
+            client.websocket_connect(f"/ws/rooms/{room['id']}?client_id={guest['client_id']}") as guest_socket,
+        ):
+            assert leader_socket.receive_json()["type"] == "room.snapshot"
+            assert guest_socket.receive_json()["type"] == "room.snapshot"
+            selected = {
+                "version": 1,
+                "event_id": str(uuid4()),
+                "room_id": room["id"],
+                "sender_id": leader["client_id"],
+                "timestamp": datetime.now(UTC).isoformat(),
+                "type": "game.select",
+                "payload": {"game_id": 4242},
+            }
+            leader_socket.send_json(selected)
+            assert leader_socket.receive_json()["type"] == "game.select"
+            assert guest_socket.receive_json()["payload"]["game_id"] == 4242
+            seek = {
+                "version": 1,
+                "event_id": str(uuid4()),
+                "room_id": room["id"],
+                "sender_id": leader["client_id"],
+                "timestamp": datetime.now(UTC).isoformat(),
+                "type": "timeline.seek",
+                "payload": {"global_ply": 27},
+            }
+            leader_socket.send_json(seek)
+            assert leader_socket.receive_json()["type"] == "timeline.seek"
+            assert guest_socket.receive_json()["payload"]["global_ply"] == 27
+
+        state = client.get(f"/api/rooms/{room['id']}").json()
+        assert state["game_id"] == 4242
+        assert state["snapshot"]["room"]["game_id"] == 4242
+        assert state["snapshot"]["game.select"]["payload"]["game_id"] == 4242
+        assert state["snapshot"]["timeline.seek"]["payload"]["global_ply"] == 27
+
+
 def test_exploration_accepts_legal_move_and_rejects_illegal_arrow() -> None:
     start = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR[] w KQkq - 0 1"
     with TestClient(app) as client:

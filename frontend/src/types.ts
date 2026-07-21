@@ -65,6 +65,33 @@ export interface ChatItem {
   timestamp: string;
 }
 
+export interface RoomEventPayload {
+  version?: 1;
+  event_id?: string;
+  room_id?: string;
+  sender_id?: string;
+  timestamp?: string;
+  type: string;
+  payload?: Record<string, unknown>;
+}
+
+export interface RoomSnapshot {
+  room?: { game_id?: number | null };
+  annotations?: Annotation[];
+  messages?: ChatItem[];
+  "game.select"?: RoomEventPayload;
+  "timeline.seek"?: RoomEventPayload;
+  "variation.create"?: RoomEventPayload;
+  "variation.update"?: RoomEventPayload;
+  "variation.return_to_game"?: RoomEventPayload;
+}
+
+export interface RoomPayload {
+  id: string;
+  game_id: number | null;
+  snapshot: RoomSnapshot;
+}
+
 export interface ExplorationPair {
   boardA: ReplayPosition;
   boardB: ReplayPosition | null;

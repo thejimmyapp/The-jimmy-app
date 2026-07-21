@@ -23,6 +23,9 @@ class RoomHub:
         async with self.lock:
             self.connections[room_id].pop(client_id, None)
 
+    def set_room_game(self, room_id: str, game_id: int | None) -> None:
+        self.snapshots[room_id]["room"] = {"game_id": game_id}
+
     async def publish(self, room_id: str, event: dict[str, Any]) -> None:
         event_id = str(event.get("event_id") or "")
         if event_id in self.seen_events[room_id]:
