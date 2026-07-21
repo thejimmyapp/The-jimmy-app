@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Check, Copy, LogOut, Palette, Radio, Redo2, RotateCcw, Settings, Undo2, UserRoundPlus, X } from "lucide-react";
+import { Check, Copy, LogOut, Palette, Radio, Redo2, RotateCcw, Settings, Undo2, UserRoundPlus, Users, X } from "lucide-react";
 import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { BoardPanel } from "./components/BoardPanel";
@@ -20,11 +20,37 @@ const boardThemes = [
 ] as const;
 
 type BoardThemeId = (typeof boardThemes)[number]["id"];
+const pieceStyles = [
+  { id: "classic", name: "Classic", white: "\u2658", black: "\u265E" },
+  { id: "solid", name: "Filled", white: "\u265E", black: "\u265E" },
+  { id: "bold", name: "Bold", white: "\u265C", black: "\u265C" },
+  { id: "soft", name: "Soft", white: "\u2657", black: "\u265D" },
+] as const;
+const pieceSizes = [
+  { id: "compact", name: "Compact" },
+  { id: "normal", name: "Normal" },
+  { id: "large", name: "Large" },
+  { id: "xl", name: "XL" },
+] as const;
+type PieceStyleId = (typeof pieceStyles)[number]["id"];
+type PieceSizeId = (typeof pieceSizes)[number]["id"];
 const themeStorageKey = "thejimmyapp.boardTheme";
+const pieceStyleStorageKey = "thejimmyapp.pieceStyle";
+const pieceSizeStorageKey = "thejimmyapp.pieceSize";
 
 const initialBoardTheme = (): BoardThemeId => {
   const saved = localStorage.getItem(themeStorageKey);
   return boardThemes.some((theme) => theme.id === saved) ? saved as BoardThemeId : "slate";
+};
+
+const initialPieceStyle = (): PieceStyleId => {
+  const saved = localStorage.getItem(pieceStyleStorageKey);
+  return pieceStyles.some((style) => style.id === saved) ? saved as PieceStyleId : "classic";
+};
+
+const initialPieceSize = (): PieceSizeId => {
+  const saved = localStorage.getItem(pieceSizeStorageKey);
+  return pieceSizes.some((size) => size.id === saved) ? saved as PieceSizeId : "normal";
 };
 
 export default function App() {
@@ -32,6 +58,8 @@ export default function App() {
   const { roomId, username, setRoom } = store;
   const joinedRoomRef = useRef<string | null>(null);
   const [boardTheme, setBoardTheme] = useState<BoardThemeId>(initialBoardTheme);
+  const [pieceStyle, setPieceStyle] = useState<PieceStyleId>(initialPieceStyle);
+  const [pieceSize, setPieceSize] = useState<PieceSizeId>(initialPieceSize);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [connectOpen, setConnectOpen] = useState(!store.username && !store.roomId);
   const [usernameDraft, setUsernameDraft] = useState(store.username);
@@ -46,7 +74,7 @@ export default function App() {
   const enrichMutation = useMutation({ mutationFn: () => api.enrichChessCom(usernameDraft.trim(), curlText), onSuccess: () => { setCurlText(""); gamesQuery.refetch(); } });
   const roomMutation = useMutation({ mutationFn: () => api.createRoom(store.game?.game.id), onSuccess: async (room) => {
     joinedRoomRef.current = room.id;
-    const joined = await api.joinRoom(room.id, store.username || "Coach"); store.setRoom(room.id, joined.client_id, joined.display_name); history.replaceState(null, "", room.share_path); connectRoomSocket(room.id, joined.client_id);
+    const joined = await api.joinRoom(room.id, store.username || "Coach"); store.setRoom(room.id, joined.client_id, joined.display_name); history.replaceState(null, "", room.share_path); connectRoomSocket(room.id, joined.client_id, joined.display_name);
   }});
   useEffect(() => {
     if (!roomId || joinedRoomRef.current === roomId) return;
@@ -54,7 +82,7 @@ export default function App() {
     joinedRoomRef.current = currentRoomId;
     void api.joinRoom(currentRoomId, username || "Guest").then((joined) => {
       setRoom(currentRoomId, joined.client_id, joined.display_name);
-      connectRoomSocket(currentRoomId, joined.client_id);
+      connectRoomSocket(currentRoomId, joined.client_id, joined.display_name);
     });
   }, [roomId, username, setRoom]);
 
@@ -69,9 +97,18 @@ export default function App() {
     setBoardTheme(theme);
     localStorage.setItem(themeStorageKey, theme);
   };
+  const choosePieceStyle = (style: PieceStyleId) => {
+    setPieceStyle(style);
+    localStorage.setItem(pieceStyleStorageKey, style);
+  };
+  const choosePieceSize = (size: PieceSizeId) => {
+    setPieceSize(size);
+    localStorage.setItem(pieceSizeStorageKey, size);
+  };
+  const viewerCount = store.participants.length || (store.roomId ? 1 : 0);
 
   return (
-    <main className="app-shell" data-board-theme={boardTheme}>
+    <main className="app-shell" data-board-theme={boardTheme} data-piece-style={pieceStyle} data-piece-size={pieceSize}>
       <div className="small-screen-message">The Jimmy App is optimized for desktop screens of 1366×768 or larger.</div>
       <header className="app-header">
         <div className="brand"><span className="brand-mark">J</span><div><strong>THE JIMMY APP</strong><small>COLLABORATIVE BUGHOUSE COACH</small></div></div>
@@ -82,14 +119,15 @@ export default function App() {
           {store.mode === "exploration" && <button className="return-game" onClick={() => { store.returnToGame(); sendRoomEvent("variation.return_to_game", {}); }}><RotateCcw size={16} /> Return to move {store.explorationStartPly}</button>}
           <button onClick={() => roomMutation.mutate()}><UserRoundPlus size={16} /> {store.roomId ? "Room active" : "Invite partner"}</button>
           {store.roomId && <button className="icon-button" title="Copy room link" onClick={() => navigator.clipboard.writeText(location.href)}><Copy size={16} /></button>}
+          {store.roomId && <span className="viewer-pill" title={store.participants.map((item) => item.display_name).join(", ") || "Waiting for viewers"}><Users size={14} /> {viewerCount}</span>}
           <button className="icon-button" title="Board settings" onClick={() => setSettingsOpen(true)}><Settings size={16} /></button>
           <button className="connect-button" onClick={() => setConnectOpen(true)}><Radio size={15} /> {store.username || "Connect Chess.com"}</button>
         </div>
       </header>
       <section className="workspace">
         <div className="boards-zone">
-          <BoardPanel boardId="A" position={boardA} orientation={userIsWhite ? "white" : "black"} title="BOARD A · YOUR BOARD" playerTop={userIsWhite ? players?.board_a_black ?? "Opponent" : players?.board_a_white ?? "Opponent"} playerBottom={userIsWhite ? players?.board_a_white ?? store.username : players?.board_a_black ?? store.username} />
-          <BoardPanel boardId="B" position={boardB} orientation={userIsWhite ? "black" : "white"} title="BOARD B · PARTNER BOARD" playerTop={secondBoardAvailable ? (userIsWhite ? players?.board_b_white ?? "Opponent partner" : players?.board_b_black ?? "Opponent partner") : "Opponent partner"} playerBottom={secondBoardAvailable ? (userIsWhite ? players?.board_b_black ?? "Partner" : players?.board_b_white ?? "Partner") : "Partner"} />
+          <BoardPanel boardId="A" position={boardA} orientation={userIsWhite ? "white" : "black"} pieceStyle={pieceStyle} title="BOARD A · YOUR BOARD" playerTop={userIsWhite ? players?.board_a_black ?? "Opponent" : players?.board_a_white ?? "Opponent"} playerBottom={userIsWhite ? players?.board_a_white ?? store.username : players?.board_a_black ?? store.username} />
+          <BoardPanel boardId="B" position={boardB} orientation={userIsWhite ? "black" : "white"} pieceStyle={pieceStyle} title="BOARD B · PARTNER BOARD" playerTop={secondBoardAvailable ? (userIsWhite ? players?.board_b_white ?? "Opponent partner" : players?.board_b_black ?? "Opponent partner") : "Opponent partner"} playerBottom={secondBoardAvailable ? (userIsWhite ? players?.board_b_black ?? "Partner" : players?.board_b_white ?? "Partner") : "Partner"} />
           {!store.game && <div className="empty-workspace"><strong>Select a Bughouse game</strong><span>Choose a game from the Games panel.</span></div>}
         </div>
         <SidePanel onSelectGame={selectGame} loadingGame={gameMutation.isPending} />
@@ -143,14 +181,28 @@ export default function App() {
                       <i />
                       <i />
                       <i />
-                      <b className="preview-white">♘</b>
-                      <b className="preview-black">♞</b>
+                      <b className="preview-white">{"\u2658"}</b>
+                      <b className="preview-black">{"\u265E"}</b>
                     </span>
                     <span>{theme.name}</span>
                     {active && <Check size={14} />}
                   </button>
                 );
               })}
+            </div>
+            <h2>Piece style</h2>
+            <div className="piece-style-grid">
+              {pieceStyles.map((style) => (
+                <button key={style.id} className={`piece-style-card ${style.id === pieceStyle ? "active" : ""}`} type="button" onClick={() => choosePieceStyle(style.id)}>
+                  <span className="piece-style-preview"><b className="preview-white">{style.white}</b><b className="preview-black">{style.black}</b></span>
+                  <span>{style.name}</span>
+                  {style.id === pieceStyle && <Check size={14} />}
+                </button>
+              ))}
+            </div>
+            <h2>Piece size</h2>
+            <div className="segmented-control" role="group" aria-label="Piece size">
+              {pieceSizes.map((size) => <button key={size.id} className={pieceSize === size.id ? "active" : ""} type="button" onClick={() => choosePieceSize(size.id)}>{size.name}</button>)}
             </div>
             <button className="settings-done" type="button" onClick={() => setSettingsOpen(false)}><Palette size={15} /> Apply style</button>
           </section>

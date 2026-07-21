@@ -229,10 +229,17 @@ def create_note(room_id: str, request: NoteCreateRequest, session: Session = Dep
 
 
 @app.websocket("/ws/rooms/{room_id}")
-async def room_socket(websocket: WebSocket, room_id: str, client_id: str = Query(min_length=1, max_length=80)) -> None:
-    await room_hub.connect(room_id, client_id, websocket)
+async def room_socket(
+    websocket: WebSocket,
+    room_id: str,
+    client_id: str = Query(min_length=1, max_length=80),
+    display_name: str = Query(default="Guest", min_length=1, max_length=40),
+) -> None:
+    clean_display_name = " ".join(display_name.split()) or "Guest"
+    await room_hub.connect(room_id, client_id, websocket, clean_display_name)
     try:
         await websocket.send_json({"type": "room.snapshot", "payload": room_hub.snapshots.get(room_id, {})})
+        await room_hub.broadcast_presence(room_id, exclude_client_id=client_id)
         while True:
             raw = await websocket.receive_json()
             event = SocketEvent.model_validate(raw)
@@ -264,6 +271,7 @@ async def room_socket(websocket: WebSocket, room_id: str, client_id: str = Query
             await room_hub.publish(room_id, event.model_dump(mode="json"))
     except WebSocketDisconnect:
         await room_hub.disconnect(room_id, client_id)
+        await room_hub.broadcast_presence(room_id)
 
 
 frontend_dist = Path(__file__).resolve().parents[1] / "frontend" / "dist"

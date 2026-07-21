@@ -11,6 +11,18 @@ const pieces: Record<string, string> = {
   k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟",
 };
 
+const filledPieces: Record<string, string> = {
+  K: "\u265A", Q: "\u265B", R: "\u265C", B: "\u265D", N: "\u265E", P: "\u265F",
+  k: "\u265A", q: "\u265B", r: "\u265C", b: "\u265D", n: "\u265E", p: "\u265F",
+};
+
+type PieceStyleId = "classic" | "solid" | "bold" | "soft";
+
+const displayPiece = (piece: string, pieceStyle: PieceStyleId) => {
+  if (pieceStyle === "solid") return filledPieces[piece] ?? "";
+  return pieces[piece] ?? "";
+};
+
 const squareName = (row: number, col: number, orientation: "white" | "black") => {
   const file = orientation === "white" ? col : 7 - col;
   const rank = orientation === "white" ? 7 - row : row;
@@ -21,12 +33,13 @@ interface Props {
   boardId: BoardId;
   position: ReplayPosition | null;
   orientation: "white" | "black";
+  pieceStyle: PieceStyleId;
   title: string;
   playerTop: string;
   playerBottom: string;
 }
 
-export function BoardPanel({ boardId, position, orientation, title, playerTop, playerBottom }: Props) {
+export function BoardPanel({ boardId, position, orientation, pieceStyle, title, playerTop, playerBottom }: Props) {
   const boardRef = useRef<HTMLDivElement>(null);
   const lastWheelAt = useRef(0);
   const [arrowStart, setArrowStart] = useState<string | null>(null);
@@ -230,7 +243,7 @@ export function BoardPanel({ boardId, position, orientation, title, playerTop, p
       <div className="board-heading"><strong>{title}</strong><span>{position?.side_to_move ?? "Unavailable"} to move</span></div>
       <PlayerBar name={playerTop} clock={orientation === "white" ? position?.black_clock : position?.white_clock} />
       <div className="board-stage">
-        <PocketRail color="White" value={position?.white_pocket ?? "-"} draggable={position?.side_to_move === "White"} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />
+        <PocketRail color="White" value={position?.white_pocket ?? "-"} draggable={position?.side_to_move === "White"} pieceStyle={pieceStyle} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />
         <div
           className="board"
           ref={boardRef}
@@ -267,7 +280,7 @@ export function BoardPanel({ boardId, position, orientation, title, playerTop, p
                 className={`piece ${piece === piece.toUpperCase() ? "white-piece" : "black-piece"}`}
                 draggable={canDrag}
                 onDragStart={(event) => { event.dataTransfer.setData("bughouse/from", square); event.dataTransfer.effectAllowed = "move"; setSelectedSource(square); void showLegalTargets(square); }}
-              >{pieces[piece] ?? ""}</span>
+              >{displayPiece(piece, pieceStyle)}</span>
             </button>
           );
         }))}
@@ -282,11 +295,11 @@ export function BoardPanel({ boardId, position, orientation, title, playerTop, p
               <marker id={`arrowhead-${boardId}`} markerWidth="8" markerHeight="8" refX="5.8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L6,3 z" fill="#24d6e8" /></marker>
               <marker id={`engine-arrowhead-${boardId}`} markerWidth="8" markerHeight="8" refX="5.8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L6,3 z" fill="#70f0a0" /></marker>
             </defs>
-            {engineMove && <EngineSuggestion move={engineMove} orientation={orientation} markerId={`engine-arrowhead-${boardId}`} sideToMove={position?.side_to_move ?? "White"} />}
+            {engineMove && <EngineSuggestion move={engineMove} orientation={orientation} markerId={`engine-arrowhead-${boardId}`} sideToMove={position?.side_to_move ?? "White"} pieceStyle={pieceStyle} />}
             {visible.filter((item) => item.type === "arrow" && item.to).map((item) => <Arrow key={item.id} annotation={item} orientation={orientation} markerId={`arrowhead-${boardId}`} onRemove={() => removeDrawing(item)} />)}
           </svg>
         </div>
-        <PocketRail color="Black" value={position?.black_pocket ?? "-"} draggable={position?.side_to_move === "Black"} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />
+        <PocketRail color="Black" value={position?.black_pocket ?? "-"} draggable={position?.side_to_move === "Black"} pieceStyle={pieceStyle} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />
       </div>
       <PlayerBar name={playerBottom} clock={orientation === "white" ? position?.white_clock : position?.black_clock} bottom />
       <div className="board-footer"><button className="analyze-button" title="Analyze this position" onClick={analyze} disabled={!game || !position}><BrainCircuit size={15} /> {analysis.bestmove ? `${analysis.bestmove} · ${analysis.score}` : analysis.status === "idle" ? "Analyze position" : analysis.status}</button><span className="interaction-status">{interactionStatus}</span></div>
@@ -318,10 +331,10 @@ function PlayerBar({ name, clock, bottom = false }: { name: string; clock?: stri
   return <div className={`player-bar ${bottom ? "bottom" : ""}`}><strong>{name}</strong><span className="clock">{clock ?? "--:--"}</span></div>;
 }
 
-function PocketRail({ color, value, draggable, selectedPiece, onSelectPiece, onDragPiece }: { color: "White" | "Black"; value: string; draggable: boolean; selectedPiece: "P" | "N" | "B" | "R" | "Q" | null; onSelectPiece: (piece: "P" | "N" | "B" | "R" | "Q") => void; onDragPiece: (piece: "P" | "N" | "B" | "R" | "Q") => void }) {
+function PocketRail({ color, value, draggable, pieceStyle, selectedPiece, onSelectPiece, onDragPiece }: { color: "White" | "Black"; value: string; draggable: boolean; pieceStyle: PieceStyleId; selectedPiece: "P" | "N" | "B" | "R" | "Q" | null; onSelectPiece: (piece: "P" | "N" | "B" | "R" | "Q") => void; onDragPiece: (piece: "P" | "N" | "B" | "R" | "Q") => void }) {
   const counts = [...value].filter((piece) => pieces[piece]).reduce<Record<string, number>>((result, piece) => ({ ...result, [piece]: (result[piece] ?? 0) + 1 }), {});
   const entries = Object.entries(counts).filter(([piece]) => color === "White" ? piece === piece.toUpperCase() : piece === piece.toLowerCase());
-  return <div className={`pocket-rail ${color.toLowerCase()}`} aria-label={`${color} pocket ${value}`}><small>{color[0]}</small>{entries.length ? entries.map(([piece, count]) => { const symbol = piece.toUpperCase() as "P" | "N" | "B" | "R" | "Q"; return <span className={selectedPiece === symbol && draggable ? "selected-pocket-piece" : ""} key={piece} draggable={draggable} onClick={() => { if (draggable) onSelectPiece(symbol); }} onDragStart={(event) => { if (!draggable) { event.preventDefault(); return; } event.dataTransfer.setData("bughouse/drop", symbol); event.dataTransfer.effectAllowed = "move"; onDragPiece(symbol); }}>{pieces[piece]}{count > 1 && <b>{count}</b>}</span>; }) : <i>·</i>}</div>;
+  return <div className={`pocket-rail ${color.toLowerCase()}`} aria-label={`${color} pocket ${value}`}><small>{color[0]}</small>{entries.length ? entries.map(([piece, count]) => { const symbol = piece.toUpperCase() as "P" | "N" | "B" | "R" | "Q"; return <span className={selectedPiece === symbol && draggable ? "selected-pocket-piece" : ""} key={piece} draggable={draggable} onClick={() => { if (draggable) onSelectPiece(symbol); }} onDragStart={(event) => { if (!draggable) { event.preventDefault(); return; } event.dataTransfer.setData("bughouse/drop", symbol); event.dataTransfer.effectAllowed = "move"; onDragPiece(symbol); }}>{displayPiece(piece, pieceStyle)}{count > 1 && <b>{count}</b>}</span>; }) : <i>·</i>}</div>;
 }
 
 function boardPoint(square: string, orientation: "white" | "black") {
@@ -330,11 +343,11 @@ function boardPoint(square: string, orientation: "white" | "black") {
   return { x: file * 100 + 50, y: (7 - rank) * 100 + 50 };
 }
 
-function EngineSuggestion({ move, orientation, markerId, sideToMove }: { move: NonNullable<ReturnType<typeof parseEngineBestmove>>; orientation: "white" | "black"; markerId: string; sideToMove: string }) {
+function EngineSuggestion({ move, orientation, markerId, sideToMove, pieceStyle }: { move: NonNullable<ReturnType<typeof parseEngineBestmove>>; orientation: "white" | "black"; markerId: string; sideToMove: string; pieceStyle: PieceStyleId }) {
   const to = boardPoint(move.to, orientation);
   if (!move.from && move.dropPiece) {
     const pieceKey = sideToMove === "Black" ? move.dropPiece.toLowerCase() : move.dropPiece;
-    return <g className="engine-suggestion engine-drop"><circle cx={to.x} cy={to.y} r="40" /><text x={to.x} y={to.y}>{pieces[pieceKey]}</text></g>;
+    return <g className="engine-suggestion engine-drop"><circle cx={to.x} cy={to.y} r="40" /><text x={to.x} y={to.y}>{displayPiece(pieceKey, pieceStyle)}</text></g>;
   }
   if (!move.from) return null;
   const from = boardPoint(move.from, orientation);

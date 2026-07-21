@@ -1,6 +1,6 @@
 import { api } from "./api";
 import { useCoachStore } from "./store";
-import type { Annotation, ChatItem, ReplayPosition, RoomEventPayload, RoomSnapshot } from "./types";
+import type { Annotation, ChatItem, ReplayPosition, RoomEventPayload, RoomParticipant, RoomSnapshot } from "./types";
 
 let socket: WebSocket | null = null;
 
@@ -57,14 +57,15 @@ export const applyRoomSnapshot = async (snapshot: RoomSnapshot, fallbackGameId?:
   await loadSharedGame(snapshot["game.select"]?.payload?.game_id ?? snapshot.room?.game_id ?? fallbackGameId);
   applySeek(snapshot["timeline.seek"]);
   applyVariation(latestEvent(snapshot, ["variation.create", "variation.update", "variation.return_to_game"]));
+  useCoachStore.getState().setParticipants(snapshot.presence ?? []);
   snapshot.annotations?.forEach((item) => useCoachStore.getState().addAnnotation(item));
   snapshot.messages?.forEach((item) => useCoachStore.getState().addMessage(item));
 };
 
-export const connectRoomSocket = (roomId: string, clientId: string) => {
+export const connectRoomSocket = (roomId: string, clientId: string, displayName = "Guest") => {
   socket?.close();
   const protocol = location.protocol === "https:" ? "wss" : "ws";
-  socket = new WebSocket(`${protocol}://${location.host}/ws/rooms/${roomId}?client_id=${encodeURIComponent(clientId)}`);
+  socket = new WebSocket(`${protocol}://${location.host}/ws/rooms/${roomId}?client_id=${encodeURIComponent(clientId)}&display_name=${encodeURIComponent(displayName)}`);
   socket.onmessage = (message) => {
     const event = JSON.parse(message.data) as { type: string; sender_id?: string; payload?: Record<string, unknown> };
     const store = useCoachStore.getState();
@@ -75,6 +76,7 @@ export const connectRoomSocket = (roomId: string, clientId: string) => {
     }
     if (event.type === "game.select") void loadSharedGame(event.payload?.game_id);
     if (event.type === "timeline.seek" && store.followPartner) store.seek(Number(event.payload?.global_ply ?? 0));
+    if (event.type === "presence.update") store.setParticipants((event.payload?.participants ?? []) as RoomParticipant[]);
     if (event.type === "annotation.create") store.addAnnotation(event.payload as unknown as Annotation);
     if (event.type === "annotation.delete") store.removeAnnotation(String(event.payload?.id ?? ""));
     if (event.type === "chat.message") store.addMessage(event.payload as unknown as ChatItem);

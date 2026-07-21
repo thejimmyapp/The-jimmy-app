@@ -8,6 +8,16 @@ from fastapi.testclient import TestClient
 from backend.main import app
 
 
+def receive_event_type(socket, expected_type: str) -> dict:
+    seen: list[str] = []
+    for _ in range(6):
+        event = socket.receive_json()
+        seen.append(str(event.get("type")))
+        if event.get("type") == expected_type:
+            return event
+    raise AssertionError(f"Expected {expected_type}, saw {seen}")
+
+
 def test_health_and_openapi() -> None:
     with TestClient(app) as client:
         response = client.get("/health")
@@ -21,7 +31,7 @@ def test_room_websocket_relays_versioned_event() -> None:
     with TestClient(app) as client:
         room = client.post("/api/rooms", json={"game_id": None}).json()
         joined = client.post(f"/api/rooms/{room['id']}/join", json={"display_name": "Alex"}).json()
-        with client.websocket_connect(f"/ws/rooms/{room['id']}?client_id={joined['client_id']}") as socket:
+        with client.websocket_connect(f"/ws/rooms/{room['id']}?client_id={joined['client_id']}&display_name=Alex") as socket:
             snapshot = socket.receive_json()
             assert snapshot["type"] == "room.snapshot"
             event = {
@@ -34,7 +44,24 @@ def test_room_websocket_relays_versioned_event() -> None:
                 "payload": {"global_ply": 12},
             }
             socket.send_json(event)
-            assert socket.receive_json()["payload"]["global_ply"] == 12
+            assert receive_event_type(socket, "timeline.seek")["payload"]["global_ply"] == 12
+
+
+def test_room_presence_tracks_joiners_and_leavers() -> None:
+    with TestClient(app) as client:
+        room = client.post("/api/rooms", json={"game_id": None}).json()
+        leader = client.post(f"/api/rooms/{room['id']}/join", json={"display_name": "Leader"}).json()
+        guest = client.post(f"/api/rooms/{room['id']}/join", json={"display_name": "Guest"}).json()
+        with client.websocket_connect(f"/ws/rooms/{room['id']}?client_id={leader['client_id']}&display_name=Leader") as leader_socket:
+            snapshot = receive_event_type(leader_socket, "room.snapshot")
+            assert snapshot["payload"]["presence"] == [{"client_id": leader["client_id"], "display_name": "Leader"}]
+            with client.websocket_connect(f"/ws/rooms/{room['id']}?client_id={guest['client_id']}&display_name=Guest") as guest_socket:
+                guest_snapshot = receive_event_type(guest_socket, "room.snapshot")
+                assert [item["display_name"] for item in guest_snapshot["payload"]["presence"]] == ["Leader", "Guest"]
+                presence = receive_event_type(leader_socket, "presence.update")
+                assert [item["display_name"] for item in presence["payload"]["participants"]] == ["Leader", "Guest"]
+            presence = receive_event_type(leader_socket, "presence.update")
+            assert [item["display_name"] for item in presence["payload"]["participants"]] == ["Leader"]
 
 
 def test_room_shares_selected_game_and_latest_timeline_with_late_joiners() -> None:
@@ -43,11 +70,11 @@ def test_room_shares_selected_game_and_latest_timeline_with_late_joiners() -> No
         leader = client.post(f"/api/rooms/{room['id']}/join", json={"display_name": "Leader"}).json()
         guest = client.post(f"/api/rooms/{room['id']}/join", json={"display_name": "Guest"}).json()
         with (
-            client.websocket_connect(f"/ws/rooms/{room['id']}?client_id={leader['client_id']}") as leader_socket,
-            client.websocket_connect(f"/ws/rooms/{room['id']}?client_id={guest['client_id']}") as guest_socket,
+            client.websocket_connect(f"/ws/rooms/{room['id']}?client_id={leader['client_id']}&display_name=Leader") as leader_socket,
+            client.websocket_connect(f"/ws/rooms/{room['id']}?client_id={guest['client_id']}&display_name=Guest") as guest_socket,
         ):
-            assert leader_socket.receive_json()["type"] == "room.snapshot"
-            assert guest_socket.receive_json()["type"] == "room.snapshot"
+            assert receive_event_type(leader_socket, "room.snapshot")["type"] == "room.snapshot"
+            assert receive_event_type(guest_socket, "room.snapshot")["type"] == "room.snapshot"
             selected = {
                 "version": 1,
                 "event_id": str(uuid4()),
@@ -58,8 +85,8 @@ def test_room_shares_selected_game_and_latest_timeline_with_late_joiners() -> No
                 "payload": {"game_id": 4242},
             }
             leader_socket.send_json(selected)
-            assert leader_socket.receive_json()["type"] == "game.select"
-            assert guest_socket.receive_json()["payload"]["game_id"] == 4242
+            assert receive_event_type(leader_socket, "game.select")["type"] == "game.select"
+            assert receive_event_type(guest_socket, "game.select")["payload"]["game_id"] == 4242
             seek = {
                 "version": 1,
                 "event_id": str(uuid4()),
@@ -70,8 +97,8 @@ def test_room_shares_selected_game_and_latest_timeline_with_late_joiners() -> No
                 "payload": {"global_ply": 27},
             }
             leader_socket.send_json(seek)
-            assert leader_socket.receive_json()["type"] == "timeline.seek"
-            assert guest_socket.receive_json()["payload"]["global_ply"] == 27
+            assert receive_event_type(leader_socket, "timeline.seek")["type"] == "timeline.seek"
+            assert receive_event_type(guest_socket, "timeline.seek")["payload"]["global_ply"] == 27
 
         state = client.get(f"/api/rooms/{room['id']}").json()
         assert state["game_id"] == 4242

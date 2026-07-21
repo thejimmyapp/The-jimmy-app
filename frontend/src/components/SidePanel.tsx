@@ -16,7 +16,7 @@ export function SidePanel({ onSelectGame, loadingGame }: Props) {
   const [result, setResult] = useState("all");
   const [minRating, setMinRating] = useState(0);
   const [sort, setSort] = useState("newest");
-  const { games, game, messages, addMessage, displayName, globalPly } = useCoachStore();
+  const { games, game, messages, addMessage, displayName, globalPly, participants, roomId } = useCoachStore();
   const filteredGames = useMemo(() => {
     const query = search.trim().toLowerCase();
     return games
@@ -65,7 +65,14 @@ export function SidePanel({ onSelectGame, loadingGame }: Props) {
         </>
       ) : (
         <>
-          <div className="presence"><span className="presence-dot" /> You are reviewing <strong>Move {globalPly}</strong></div>
+          <div className="presence">
+            <span className="presence-dot" />
+            {roomId ? (
+              <span><strong>{participants.length || 1}</strong> watching · {(participants.length ? participants : [{ display_name: displayName, client_id: "local" }]).map((item) => item.display_name).join(", ")}</span>
+            ) : (
+              <span>Solo review · <strong>Move {globalPly}</strong></span>
+            )}
+          </div>
           <div className="message-list">
             {tab === "chat" ? messages.map((item) => <article key={item.id}><header><strong>{item.author}</strong><button title="Go to referenced move">A · {item.ply}</button></header><p>{item.content}</p></article>) : <div className="empty-panel">Notes attached to this room and move appear here.</div>}
           </div>

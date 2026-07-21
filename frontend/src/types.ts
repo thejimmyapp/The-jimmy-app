@@ -65,6 +65,11 @@ export interface ChatItem {
   timestamp: string;
 }
 
+export interface RoomParticipant {
+  client_id: string;
+  display_name: string;
+}
+
 export interface RoomEventPayload {
   version?: 1;
   event_id?: string;
@@ -77,6 +82,7 @@ export interface RoomEventPayload {
 
 export interface RoomSnapshot {
   room?: { game_id?: number | null };
+  presence?: RoomParticipant[];
   annotations?: Annotation[];
   messages?: ChatItem[];
   "game.select"?: RoomEventPayload;

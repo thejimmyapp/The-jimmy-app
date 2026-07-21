@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Annotation, BoardId, ChatItem, ExplorationPair, GamePayload, GameSummary, ReplayPosition } from "./types";
+import type { Annotation, BoardId, ChatItem, ExplorationPair, GamePayload, GameSummary, ReplayPosition, RoomParticipant } from "./types";
 
 interface CoachState {
   username: string;
@@ -16,6 +16,7 @@ interface CoachState {
   roomId: string | null;
   clientId: string;
   displayName: string;
+  participants: RoomParticipant[];
   followPartner: boolean;
   annotations: Annotation[];
   messages: ChatItem[];
@@ -28,6 +29,7 @@ interface CoachState {
   redoExploration: () => void;
   returnToGame: () => void;
   setRoom: (roomId: string, clientId: string, displayName: string) => void;
+  setParticipants: (participants: RoomParticipant[]) => void;
   toggleFollow: () => void;
   addAnnotation: (annotation: Annotation) => void;
   removeAnnotation: (id: string) => void;
@@ -49,6 +51,7 @@ export const useCoachStore = create<CoachState>((set) => ({
   roomId: new URLSearchParams(location.search).get("room"),
   clientId: crypto.randomUUID(),
   displayName: "Coach",
+  participants: [],
   followPartner: true,
   annotations: [],
   messages: [],
@@ -102,6 +105,7 @@ export const useCoachStore = create<CoachState>((set) => ({
   }),
   returnToGame: () => set({ mode: "review", explorationStartPly: null, explorationPositions: null, explorationHistory: [], explorationFuture: [], variationMoves: [], variationFutureMoves: [] }),
   setRoom: (roomId, clientId, displayName) => set({ roomId, clientId, displayName }),
+  setParticipants: (participants) => set({ participants }),
   toggleFollow: () => set((state) => ({ followPartner: !state.followPartner })),
   addAnnotation: (annotation) => set((state) => ({ annotations: [...state.annotations.filter((item) => item.id !== annotation.id), annotation] })),
   removeAnnotation: (id) => set((state) => ({ annotations: state.annotations.filter((item) => item.id !== id) })),
