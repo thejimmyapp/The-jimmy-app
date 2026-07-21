@@ -28,6 +28,9 @@ class AnalysisRequest(BaseModel):
     global_ply: int = Field(ge=0)
     board: Literal["A", "B"] = "A"
     depth: int = Field(default=10, ge=4, le=24)
+    variant_fen: str | None = Field(default=None, min_length=10, max_length=220)
+    board_a_fen: str | None = Field(default=None, min_length=10, max_length=220)
+    board_b_fen: str | None = Field(default=None, min_length=10, max_length=220)
 
 
 class ExplorationMoveRequest(BaseModel):

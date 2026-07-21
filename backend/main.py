@@ -208,8 +208,16 @@ def puzzle_solution(puzzle_id: str, request: PuzzleHistoryRequest) -> dict[str, 
 
 @app.post("/api/analysis", status_code=status.HTTP_202_ACCEPTED)
 async def start_analysis(request: AnalysisRequest) -> dict[str, str]:
-    job_id = await analysis_jobs.submit(request.game_id, request.global_ply, request.board, request.depth)
-    return {"job_id": job_id, "status": "queued"}
+    job_id = await analysis_jobs.submit(
+        request.game_id,
+        request.global_ply,
+        request.board,
+        request.depth,
+        request.variant_fen,
+        request.board_a_fen,
+        request.board_b_fen,
+    )
+    return {"job_id": job_id, "status": "queued", "engine": "Fairy-Stockfish"}
 
 
 @app.get("/api/analysis/{job_id}")
@@ -217,7 +225,11 @@ def get_analysis(job_id: str) -> dict[str, object]:
     job = analysis_jobs.jobs.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Analysis job not found")
-    return job
+    response = dict(job)
+    if response.get("status") == "queued":
+        queued = [key for key, value in analysis_jobs.jobs.items() if value.get("status") == "queued"]
+        response["queue_position"] = queued.index(job_id) + 1 if job_id in queued else 1
+    return response
 
 
 @app.post("/api/rooms")

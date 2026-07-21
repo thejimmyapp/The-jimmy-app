@@ -43,6 +43,15 @@ export interface GamePayload {
   timeline: Array<{ global_ply: number; board: BoardId; local_ply: number; move: string; board_a: ReplayPosition; board_b: ReplayPosition }>;
   second_board_available: boolean;
   limitations: string[];
+  outcome: {
+    summary: string;
+    detail: string;
+    loser_username: string | null;
+    termination: string | null;
+    board: BoardId | null;
+    board_role: "high" | "low" | null;
+    move_number: number | null;
+  };
 }
 
 export interface Annotation {

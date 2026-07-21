@@ -64,8 +64,8 @@ class FairyStockfishEngine:
         if not self.config.path.exists():
             raise EngineError(
                 f"Fairy-Stockfish executable not found: {self.config.path}. "
-                "Download Fairy-Stockfish for Windows and place the .exe in the engines folder, "
-                "or set the correct path in the sidebar."
+                "Install Fairy-Stockfish, place its executable in the engines folder, "
+                "or set FAIRY_STOCKFISH_PATH to the correct executable."
             )
 
         try:
