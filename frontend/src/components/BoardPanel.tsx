@@ -56,6 +56,9 @@ export function BoardPanel({ boardId, position, orientation, pieceStyle, title, 
   const engineMove = useMemo(() => parseEngineBestmove(analysis.bestmove), [analysis.bestmove]);
   const matrix = position?.board ?? Array.from({ length: 8 }, () => Array<string>(8).fill(""));
   const rows = orientation === "white" ? matrix : [...matrix].reverse().map((row) => [...row].reverse());
+  const topPocketColor = orientation === "white" ? "Black" : "White";
+  const bottomPocketColor = orientation === "white" ? "White" : "Black";
+  const pocketValue = (color: "White" | "Black") => color === "White" ? position?.white_pocket ?? "-" : position?.black_pocket ?? "-";
 
   useEffect(() => {
     setAnalysis({ status: "idle" });
@@ -243,7 +246,7 @@ export function BoardPanel({ boardId, position, orientation, pieceStyle, title, 
       <div className="board-heading"><strong>{title}</strong><span>{position?.side_to_move ?? "Unavailable"} to move</span></div>
       <PlayerBar name={playerTop} clock={orientation === "white" ? position?.black_clock : position?.white_clock} />
       <div className="board-stage">
-        <PocketRail color="White" value={position?.white_pocket ?? "-"} draggable={position?.side_to_move === "White"} pieceStyle={pieceStyle} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />
+        <PocketRail color={topPocketColor} value={pocketValue(topPocketColor)} draggable={position?.side_to_move === topPocketColor} pieceStyle={pieceStyle} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />
         <div
           className="board"
           ref={boardRef}
@@ -299,7 +302,7 @@ export function BoardPanel({ boardId, position, orientation, pieceStyle, title, 
             {visible.filter((item) => item.type === "arrow" && item.to).map((item) => <Arrow key={item.id} annotation={item} orientation={orientation} markerId={`arrowhead-${boardId}`} onRemove={() => removeDrawing(item)} />)}
           </svg>
         </div>
-        <PocketRail color="Black" value={position?.black_pocket ?? "-"} draggable={position?.side_to_move === "Black"} pieceStyle={pieceStyle} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />
+        <PocketRail color={bottomPocketColor} value={pocketValue(bottomPocketColor)} draggable={position?.side_to_move === bottomPocketColor} pieceStyle={pieceStyle} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />
       </div>
       <PlayerBar name={playerBottom} clock={orientation === "white" ? position?.white_clock : position?.black_clock} bottom />
       <div className="board-footer"><button className="analyze-button" title="Analyze this position" onClick={analyze} disabled={!game || !position}><BrainCircuit size={15} /> {analysis.bestmove ? `${analysis.bestmove} · ${analysis.score}` : analysis.status === "idle" ? "Analyze position" : analysis.status}</button><span className="interaction-status">{interactionStatus}</span></div>
@@ -334,7 +337,7 @@ function PlayerBar({ name, clock, bottom = false }: { name: string; clock?: stri
 function PocketRail({ color, value, draggable, pieceStyle, selectedPiece, onSelectPiece, onDragPiece }: { color: "White" | "Black"; value: string; draggable: boolean; pieceStyle: PieceStyleId; selectedPiece: "P" | "N" | "B" | "R" | "Q" | null; onSelectPiece: (piece: "P" | "N" | "B" | "R" | "Q") => void; onDragPiece: (piece: "P" | "N" | "B" | "R" | "Q") => void }) {
   const counts = [...value].filter((piece) => pieces[piece]).reduce<Record<string, number>>((result, piece) => ({ ...result, [piece]: (result[piece] ?? 0) + 1 }), {});
   const entries = Object.entries(counts).filter(([piece]) => color === "White" ? piece === piece.toUpperCase() : piece === piece.toLowerCase());
-  return <div className={`pocket-rail ${color.toLowerCase()}`} aria-label={`${color} pocket ${value}`}><small>{color[0]}</small>{entries.length ? entries.map(([piece, count]) => { const symbol = piece.toUpperCase() as "P" | "N" | "B" | "R" | "Q"; return <span className={selectedPiece === symbol && draggable ? "selected-pocket-piece" : ""} key={piece} draggable={draggable} onClick={() => { if (draggable) onSelectPiece(symbol); }} onDragStart={(event) => { if (!draggable) { event.preventDefault(); return; } event.dataTransfer.setData("bughouse/drop", symbol); event.dataTransfer.effectAllowed = "move"; onDragPiece(symbol); }}>{displayPiece(piece, pieceStyle)}{count > 1 && <b>{count}</b>}</span>; }) : <i>·</i>}</div>;
+  return <div className={`pocket-rail ${color.toLowerCase()}`} aria-label={`${color} pocket ${value}`}><small>{color} pocket</small>{entries.length ? entries.map(([piece, count]) => { const symbol = piece.toUpperCase() as "P" | "N" | "B" | "R" | "Q"; return <span className={selectedPiece === symbol && draggable ? "selected-pocket-piece" : ""} key={piece} draggable={draggable} onClick={() => { if (draggable) onSelectPiece(symbol); }} onDragStart={(event) => { if (!draggable) { event.preventDefault(); return; } event.dataTransfer.setData("bughouse/drop", symbol); event.dataTransfer.effectAllowed = "move"; onDragPiece(symbol); }}>{displayPiece(piece, pieceStyle)}{count > 1 && <b>{count}</b>}</span>; }) : <i>Empty</i>}</div>;
 }
 
 function boardPoint(square: string, orientation: "white" | "black") {

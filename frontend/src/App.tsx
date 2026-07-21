@@ -45,7 +45,7 @@ const initialBoardTheme = (): BoardThemeId => {
 
 const initialPieceStyle = (): PieceStyleId => {
   const saved = localStorage.getItem(pieceStyleStorageKey);
-  return pieceStyles.some((style) => style.id === saved) ? saved as PieceStyleId : "classic";
+  return pieceStyles.some((style) => style.id === saved) ? saved as PieceStyleId : "solid";
 };
 
 const initialPieceSize = (): PieceSizeId => {
