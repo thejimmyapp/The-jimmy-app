@@ -1,5 +1,5 @@
 import { Pause, Play, SkipBack, SkipForward, StepBack, StepForward } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { sendRoomEvent } from "../socket";
 import { useCoachStore } from "../store";
 
@@ -16,7 +16,23 @@ export function Timeline() {
     }, 650);
     return () => window.clearTimeout(timer);
   }, [playing, globalPly, max, seek]);
-  const move = (ply: number) => { const next = Math.max(0, Math.min(max, ply)); seek(next); sendRoomEvent("timeline.seek", { global_ply: next }); };
+  const move = useCallback((ply: number) => { const next = Math.max(0, Math.min(max, ply)); seek(next); sendRoomEvent("timeline.seek", { global_ply: next }); }, [max, seek]);
+  useEffect(() => {
+    const handleArrowNavigation = (event: KeyboardEvent) => {
+      const target = event.target;
+      const isTyping = target instanceof HTMLElement && (target.isContentEditable || target.matches("input, textarea, select"));
+      if (!game || mode !== "review" || isTyping) return;
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        move(globalPly - 1);
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        move(globalPly + 1);
+      }
+    };
+    window.addEventListener("keydown", handleArrowNavigation);
+    return () => window.removeEventListener("keydown", handleArrowNavigation);
+  }, [game, globalPly, mode, move]);
   return (
     <footer className="timeline">
       <div className="timeline-actions">
