@@ -4,7 +4,7 @@ import { api } from "../api";
 import { isMeaningfulChessVector, parseEngineBestmove } from "../boardInteractions";
 import { sendRoomEvent } from "../socket";
 import { currentPosition, useCoachStore } from "../store";
-import type { Annotation, BoardId, ReplayPosition } from "../types";
+import type { Annotation, BoardId, ExplorationMoveResult, ReplayPosition } from "../types";
 
 const pieces: Record<string, string> = {
   K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘", P: "♙",
@@ -32,14 +32,22 @@ const squareName = (row: number, col: number, orientation: "white" | "black") =>
 interface Props {
   boardId: BoardId;
   position: ReplayPosition | null;
+  pairedPosition?: ReplayPosition | null;
   orientation: "white" | "black";
   pieceStyle: PieceStyleId;
   title: string;
   playerTop: string;
   playerBottom: string;
+  locked?: boolean;
+  onMoveIntent?: (intent: {
+    board: BoardId;
+    from?: string;
+    to: string;
+    dropPiece?: "P" | "N" | "B" | "R" | "Q";
+  }) => Promise<ExplorationMoveResult>;
 }
 
-export function BoardPanel({ boardId, position, orientation, pieceStyle, title, playerTop, playerBottom }: Props) {
+export function BoardPanel({ boardId, position, pairedPosition, orientation, pieceStyle, title, playerTop, playerBottom, locked = false, onMoveIntent }: Props) {
   const boardRef = useRef<HTMLDivElement>(null);
   const lastWheelAt = useRef(0);
   const [arrowStart, setArrowStart] = useState<string | null>(null);
@@ -97,42 +105,63 @@ export function BoardPanel({ boardId, position, orientation, pieceStyle, title, 
     });
   };
 
+  const boardPair = () => {
+    if (pairedPosition !== undefined) {
+      return boardId === "A"
+        ? { boardA: position, boardB: pairedPosition }
+        : { boardA: pairedPosition, boardB: position };
+    }
+    return {
+      boardA: explorationPositions?.boardA ?? currentPosition(game, globalPly, "A"),
+      boardB: explorationPositions?.boardB ?? currentPosition(game, globalPly, "B"),
+    };
+  };
+
   const playExplorationMove = async (from: string | undefined, to: string, dropPiece?: "P" | "N" | "B" | "R" | "Q") => {
-    const officialA = currentPosition(game, globalPly, "A");
-    const officialB = currentPosition(game, globalPly, "B");
-    const boardA = explorationPositions?.boardA ?? officialA;
-    const boardB = explorationPositions?.boardB ?? officialB;
+    if (locked) return;
+    const { boardA, boardB } = boardPair();
     if (!boardA || (boardId === "B" && !boardB)) {
       setInteractionStatus("This board is not available for exploration");
       return;
     }
-    const result = await api.explorationMove({
-      board_a_fen: boardA.variant_fen,
-      board_b_fen: boardB?.variant_fen,
-      board: boardId,
-      from_square: from,
-      to_square: to,
-      drop_piece: dropPiece,
-    });
+    let result: ExplorationMoveResult;
+    try {
+      result = onMoveIntent
+        ? await onMoveIntent({ board: boardId, from, to, dropPiece })
+        : await api.explorationMove({
+            board_a_fen: boardA.variant_fen,
+            board_b_fen: boardB?.variant_fen,
+            board: boardId,
+            from_square: from,
+            to_square: to,
+            drop_piece: dropPiece,
+          });
+    } catch (error) {
+      setInteractionStatus(error instanceof Error ? error.message : "Move could not be played");
+      window.setTimeout(() => setInteractionStatus(""), 1800);
+      return;
+    }
     if (!result.legal || !result.board_a) {
       setLegalTargets(result.legal_destinations ?? []);
       setInteractionStatus(result.reason ?? "Illegal move");
       window.setTimeout(() => setInteractionStatus(""), 1500);
       return;
     }
-    result.board_a.white_clock = boardA.white_clock;
-    result.board_a.black_clock = boardA.black_clock;
-    if (result.board_b && boardB) {
-      result.board_b.white_clock = boardB.white_clock;
-      result.board_b.black_clock = boardB.black_clock;
+    if (!onMoveIntent) {
+      result.board_a.white_clock = boardA.white_clock;
+      result.board_a.black_clock = boardA.black_clock;
+      if (result.board_b && boardB) {
+        result.board_b.white_clock = boardB.white_clock;
+        result.board_b.black_clock = boardB.black_clock;
+      }
+      applyExploration(result.board_a, result.board_b ?? null, result.notation ?? `${from ?? dropPiece}@${to}`);
+      sendRoomEvent(mode === "review" ? "variation.create" : "variation.update", {
+        board_a: result.board_a,
+        board_b: result.board_b,
+        notation: result.notation,
+        start_ply: globalPly,
+      });
     }
-    applyExploration(result.board_a, result.board_b ?? null, result.notation ?? `${from ?? dropPiece}@${to}`);
-    sendRoomEvent(mode === "review" ? "variation.create" : "variation.update", {
-      board_a: result.board_a,
-      board_b: result.board_b,
-      notation: result.notation,
-      start_ply: globalPly,
-    });
     setSelectedSource(null);
     setSelectedDrop(null);
     setLegalTargets([]);
@@ -141,8 +170,8 @@ export function BoardPanel({ boardId, position, orientation, pieceStyle, title, 
   };
 
   const showLegalTargets = async (from?: string, dropPiece?: "P" | "N" | "B" | "R" | "Q") => {
-    const boardA = explorationPositions?.boardA ?? currentPosition(game, globalPly, "A");
-    const boardB = explorationPositions?.boardB ?? currentPosition(game, globalPly, "B");
+    if (locked) return;
+    const { boardA, boardB } = boardPair();
     if (!boardA || (boardId === "B" && !boardB)) return;
     const result = await api.explorationMove({
       board_a_fen: boardA.variant_fen,
@@ -157,6 +186,7 @@ export function BoardPanel({ boardId, position, orientation, pieceStyle, title, 
   };
 
   const selectSquare = (square: string, piece: string) => {
+    if (locked) return;
     const pieceColor = piece && piece === piece.toUpperCase() ? "White" : "Black";
     const drawing = visible.find((item) => item.type === "highlight" && item.from === square);
     if (drawing) {
@@ -246,7 +276,7 @@ export function BoardPanel({ boardId, position, orientation, pieceStyle, title, 
       <div className="board-heading"><strong>{title}</strong><span>{position?.side_to_move ?? "Unavailable"} to move</span></div>
       <PlayerBar name={playerTop} clock={orientation === "white" ? position?.black_clock : position?.white_clock} />
       <div className="board-stage">
-        <PocketRail color={topPocketColor} value={pocketValue(topPocketColor)} draggable={position?.side_to_move === topPocketColor} pieceStyle={pieceStyle} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />
+        <PocketRail color={topPocketColor} value={pocketValue(topPocketColor)} draggable={!locked && position?.side_to_move === topPocketColor} pieceStyle={pieceStyle} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />
         <div
           className="board"
           ref={boardRef}
@@ -259,7 +289,7 @@ export function BoardPanel({ boardId, position, orientation, pieceStyle, title, 
           const marked = visible.some((item) => item.from === square || item.to === square);
           const lastMove = position?.from_square === square || position?.to_square === square;
           const pieceColor = piece && piece === piece.toUpperCase() ? "White" : "Black";
-          const canDrag = Boolean(piece) && position?.side_to_move === pieceColor;
+          const canDrag = !locked && Boolean(piece) && position?.side_to_move === pieceColor;
           return (
             <button
               className={`square ${(rowIndex + colIndex) % 2 ? "dark" : "light"} ${marked ? "annotated" : ""} ${lastMove ? "last-move" : ""} ${selectedSource === square ? "selected-source" : ""} ${legalTargets.includes(square) ? "legal-target" : ""}`}
@@ -272,6 +302,7 @@ export function BoardPanel({ boardId, position, orientation, pieceStyle, title, 
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
                 event.preventDefault();
+                if (locked) return;
                 const from = event.dataTransfer.getData("bughouse/from") || undefined;
                 const dropPiece = event.dataTransfer.getData("bughouse/drop") as "P" | "N" | "B" | "R" | "Q" | "";
                 void playExplorationMove(from, square, dropPiece || undefined);
@@ -302,7 +333,7 @@ export function BoardPanel({ boardId, position, orientation, pieceStyle, title, 
             {visible.filter((item) => item.type === "arrow" && item.to).map((item) => <Arrow key={item.id} annotation={item} orientation={orientation} markerId={`arrowhead-${boardId}`} onRemove={() => removeDrawing(item)} />)}
           </svg>
         </div>
-        <PocketRail color={bottomPocketColor} value={pocketValue(bottomPocketColor)} draggable={position?.side_to_move === bottomPocketColor} pieceStyle={pieceStyle} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />
+        <PocketRail color={bottomPocketColor} value={pocketValue(bottomPocketColor)} draggable={!locked && position?.side_to_move === bottomPocketColor} pieceStyle={pieceStyle} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />
       </div>
       <PlayerBar name={playerBottom} clock={orientation === "white" ? position?.white_clock : position?.black_clock} bottom />
       <div className="board-footer"><button className="analyze-button" title="Analyze this position" onClick={analyze} disabled={!game || !position}><BrainCircuit size={15} /> {analysis.bestmove ? `${analysis.bestmove} · ${analysis.score}` : analysis.status === "idle" ? "Analyze position" : analysis.status}</button><span className="interaction-status">{interactionStatus}</span></div>

@@ -1,4 +1,4 @@
-import type { BoardId, ExplorationMoveResult, GamePayload, GameSummary, RoomPayload } from "./types";
+import type { BoardId, ExplorationMoveResult, GamePayload, GameSummary, PuzzleMove, PuzzlePayload, PuzzleResponse, RoomPayload } from "./types";
 
 const json = async <T>(responsePromise: Promise<Response>): Promise<T> => {
   const response = await responsePromise;
@@ -69,4 +69,29 @@ export const api = {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
   })),
+  explorationSanMove: (request: { board_a_fen: string; board_b_fen: string; board: BoardId; san: string }) =>
+    json<ExplorationMoveResult>(fetch("/api/exploration/san", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    })),
+  puzzle: (puzzleId: string) => json<PuzzlePayload>(fetch(`/api/puzzles/${encodeURIComponent(puzzleId)}`)),
+  puzzleMove: (puzzleId: string, moves: PuzzleMove[]) =>
+    json<PuzzleResponse>(fetch(`/puzzle-move/${encodeURIComponent(puzzleId)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ moves }),
+    })),
+  puzzleNextMove: (puzzleId: string, moves: PuzzleMove[]) =>
+    json<PuzzleResponse>(fetch(`/puzzle-next-move/${encodeURIComponent(puzzleId)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ moves }),
+    })),
+  puzzleSolution: (puzzleId: string, moves: PuzzleMove[]) =>
+    json<PuzzleResponse>(fetch(`/puzzle-solution/${encodeURIComponent(puzzleId)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ moves }),
+    })),
 };
