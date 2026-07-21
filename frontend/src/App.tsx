@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Copy, LogOut, Radio, Redo2, RotateCcw, Undo2, UserRoundPlus, X } from "lucide-react";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { Check, Copy, LogOut, Palette, Radio, Redo2, RotateCcw, Settings, Undo2, UserRoundPlus, X } from "lucide-react";
+import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { BoardPanel } from "./components/BoardPanel";
 import { SidePanel } from "./components/SidePanel";
@@ -9,10 +9,30 @@ import { applyRoomSnapshot, connectRoomSocket, sendRoomEvent } from "./socket";
 import { currentPosition, useCoachStore } from "./store";
 import type { GameSummary } from "./types";
 
+const boardThemes = [
+  { id: "slate", name: "Slate", light: "#c8d2d8", dark: "#58717e", white: "#f7f5ed", black: "#17202b" },
+  { id: "classic", name: "Classic", light: "#edd8b4", dark: "#b98b64", white: "#fff9ec", black: "#050505" },
+  { id: "wood", name: "Wood", light: "#e6c690", dark: "#9b683d", white: "#fff7e3", black: "#3e3e3e" },
+  { id: "green", name: "Green", light: "#eee4c9", dark: "#739352", white: "#f7f7f0", black: "#1f2933" },
+  { id: "blue", name: "Blue", light: "#d8e3ea", dark: "#6d92a4", white: "#ffffff", black: "#182536" },
+  { id: "violet", name: "Violet", light: "#ded6ea", dark: "#7c6798", white: "#fffaf0", black: "#1d1630" },
+  { id: "mono", name: "Mono", light: "#dedede", dark: "#7b7b7b", white: "#ffffff", black: "#0b0b0b" },
+] as const;
+
+type BoardThemeId = (typeof boardThemes)[number]["id"];
+const themeStorageKey = "thejimmyapp.boardTheme";
+
+const initialBoardTheme = (): BoardThemeId => {
+  const saved = localStorage.getItem(themeStorageKey);
+  return boardThemes.some((theme) => theme.id === saved) ? saved as BoardThemeId : "slate";
+};
+
 export default function App() {
   const store = useCoachStore();
   const { roomId, username, setRoom } = store;
   const joinedRoomRef = useRef<string | null>(null);
+  const [boardTheme, setBoardTheme] = useState<BoardThemeId>(initialBoardTheme);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [connectOpen, setConnectOpen] = useState(!store.username && !store.roomId);
   const [usernameDraft, setUsernameDraft] = useState(store.username);
   const [authenticatedOpen, setAuthenticatedOpen] = useState(false);
@@ -45,9 +65,13 @@ export default function App() {
   const secondBoardAvailable = Boolean(store.game?.second_board_available);
   const selectGame = (game: GameSummary) => { gameMutation.mutate(game.id); sendRoomEvent("game.select", { game_id: game.id }); };
   const connect = (event: FormEvent) => { event.preventDefault(); const clean = usernameDraft.trim(); if (!clean) return; store.setUsername(clean); connectMutation.mutate(clean); };
+  const chooseBoardTheme = (theme: BoardThemeId) => {
+    setBoardTheme(theme);
+    localStorage.setItem(themeStorageKey, theme);
+  };
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" data-board-theme={boardTheme}>
       <div className="small-screen-message">The Jimmy App is optimized for desktop screens of 1366×768 or larger.</div>
       <header className="app-header">
         <div className="brand"><span className="brand-mark">J</span><div><strong>THE JIMMY APP</strong><small>COLLABORATIVE BUGHOUSE COACH</small></div></div>
@@ -58,6 +82,7 @@ export default function App() {
           {store.mode === "exploration" && <button className="return-game" onClick={() => { store.returnToGame(); sendRoomEvent("variation.return_to_game", {}); }}><RotateCcw size={16} /> Return to move {store.explorationStartPly}</button>}
           <button onClick={() => roomMutation.mutate()}><UserRoundPlus size={16} /> {store.roomId ? "Room active" : "Invite partner"}</button>
           {store.roomId && <button className="icon-button" title="Copy room link" onClick={() => navigator.clipboard.writeText(location.href)}><Copy size={16} /></button>}
+          <button className="icon-button" title="Board settings" onClick={() => setSettingsOpen(true)}><Settings size={16} /></button>
           <button className="connect-button" onClick={() => setConnectOpen(true)}><Radio size={15} /> {store.username || "Connect Chess.com"}</button>
         </div>
       </header>
@@ -94,6 +119,41 @@ export default function App() {
             )}
             {store.username && <button type="button" className="text-button" onClick={() => setConnectOpen(false)}><LogOut size={15} /> Continue as {store.username}</button>}
           </form>
+        </div>
+      )}
+      {settingsOpen && (
+        <div className="modal-backdrop" role="presentation">
+          <section className="settings-modal" role="dialog" aria-label="Board settings">
+            <button type="button" className="modal-close" onClick={() => setSettingsOpen(false)} aria-label="Close"><X /></button>
+            <span className="modal-kicker">BOARD SETTINGS</span>
+            <h1>Board style</h1>
+            <div className="theme-grid">
+              {boardThemes.map((theme) => {
+                const active = theme.id === boardTheme;
+                const previewStyle = {
+                  "--preview-light": theme.light,
+                  "--preview-dark": theme.dark,
+                  "--preview-white": theme.white,
+                  "--preview-black": theme.black,
+                } as CSSProperties;
+                return (
+                  <button key={theme.id} className={`theme-card ${active ? "active" : ""}`} type="button" onClick={() => chooseBoardTheme(theme.id)}>
+                    <span className="theme-preview" style={previewStyle}>
+                      <i />
+                      <i />
+                      <i />
+                      <i />
+                      <b className="preview-white">♘</b>
+                      <b className="preview-black">♞</b>
+                    </span>
+                    <span>{theme.name}</span>
+                    {active && <Check size={14} />}
+                  </button>
+                );
+              })}
+            </div>
+            <button className="settings-done" type="button" onClick={() => setSettingsOpen(false)}><Palette size={15} /> Apply style</button>
+          </section>
         </div>
       )}
     </main>
