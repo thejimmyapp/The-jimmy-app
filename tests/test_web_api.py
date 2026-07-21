@@ -4,8 +4,9 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import SQLAlchemyError
 
-from backend.main import app
+from backend.main import app, get_session
 
 
 def receive_event_type(socket, expected_type: str) -> dict:
@@ -45,6 +46,38 @@ def test_room_websocket_relays_versioned_event() -> None:
             }
             socket.send_json(event)
             assert receive_event_type(socket, "timeline.seek")["payload"]["global_ply"] == 12
+
+
+class DiskFullSession:
+    def add(self, _: object) -> None:
+        pass
+
+    def commit(self) -> None:
+        raise SQLAlchemyError("database or disk is full")
+
+    def rollback(self) -> None:
+        pass
+
+    def get(self, *_: object) -> None:
+        return None
+
+
+def test_room_creation_falls_back_to_memory_when_sqlite_volume_is_full() -> None:
+    def override_session():
+        yield DiskFullSession()
+
+    app.dependency_overrides[get_session] = override_session
+    try:
+        with TestClient(app) as client:
+            response = client.post("/api/rooms", json={"game_id": None})
+            assert response.status_code == 200
+            room = response.json()
+            assert room["share_path"] == f"/?room={room['id']}"
+            assert client.get(f"/api/rooms/{room['id']}").status_code == 200
+            joined = client.post(f"/api/rooms/{room['id']}/join", json={"display_name": "Alex"})
+            assert joined.status_code == 200
+    finally:
+        app.dependency_overrides.pop(get_session, None)
 
 
 def test_room_presence_tracks_joiners_and_leavers() -> None:

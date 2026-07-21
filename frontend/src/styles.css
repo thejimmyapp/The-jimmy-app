@@ -562,3 +562,39 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.header-actions .share-button {
+  min-width: 142px;
+  justify-content: center;
+  border-color: #34506f;
+  background: #142035;
+  color: #f2f7ff;
+}
+.header-actions .share-button:hover {
+  border-color: var(--cyan);
+  color: #baf8ff;
+}
+.header-actions .share-button:disabled {
+  cursor: progress;
+  opacity: .72;
+}
+.copy-confirm,
+.room-error {
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.copy-confirm {
+  border: 1px solid #287858;
+  background: #0e291f;
+  color: #8af0bd;
+}
+.room-error {
+  border: 1px solid #7d3641;
+  background: #2a1218;
+  color: #ff95a3;
+}

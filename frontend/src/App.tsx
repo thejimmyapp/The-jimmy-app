@@ -65,6 +65,7 @@ export default function App() {
   const [usernameDraft, setUsernameDraft] = useState(store.username);
   const [authenticatedOpen, setAuthenticatedOpen] = useState(false);
   const [curlText, setCurlText] = useState("");
+  const [shareCopied, setShareCopied] = useState(false);
   const gamesQuery = useQuery({ queryKey: ["games", store.username], queryFn: () => api.games(store.username), enabled: Boolean(store.username) });
   const roomQuery = useQuery({ queryKey: ["room", store.roomId], queryFn: () => api.room(store.roomId as string), enabled: Boolean(store.roomId) });
   useEffect(() => { if (gamesQuery.data) useCoachStore.getState().setGames(gamesQuery.data.games); }, [gamesQuery.data]);
@@ -74,6 +75,7 @@ export default function App() {
   const enrichMutation = useMutation({ mutationFn: () => api.enrichChessCom(usernameDraft.trim(), curlText), onSuccess: () => { setCurlText(""); gamesQuery.refetch(); } });
   const roomMutation = useMutation({ mutationFn: () => api.createRoom(store.game?.game.id), onSuccess: async (room) => {
     joinedRoomRef.current = room.id;
+    setShareCopied(false);
     const joined = await api.joinRoom(room.id, store.username || "Coach"); store.setRoom(room.id, joined.client_id, joined.display_name); history.replaceState(null, "", room.share_path); connectRoomSocket(room.id, joined.client_id, joined.display_name);
   }});
   useEffect(() => {
@@ -106,6 +108,13 @@ export default function App() {
     localStorage.setItem(pieceSizeStorageKey, size);
   };
   const viewerCount = store.participants.length || (store.roomId ? 1 : 0);
+  const inviteUrl = store.roomId ? `${location.origin}/?room=${store.roomId}` : "";
+  const copyInviteLink = async () => {
+    if (!inviteUrl) return;
+    await navigator.clipboard.writeText(inviteUrl);
+    setShareCopied(true);
+    window.setTimeout(() => setShareCopied(false), 1800);
+  };
 
   return (
     <main className="app-shell" data-board-theme={boardTheme} data-piece-style={pieceStyle} data-piece-size={pieceSize}>
@@ -116,8 +125,9 @@ export default function App() {
           {store.mode === "exploration" && <button className="icon-button" title="Undo exploration move" onClick={store.undoExploration}><Undo2 size={16} /></button>}
           {store.explorationFuture.length > 0 && <button className="icon-button" title="Redo exploration move" onClick={store.redoExploration}><Redo2 size={16} /></button>}
           {store.mode === "exploration" && <button className="return-game" onClick={() => { store.returnToGame(); sendRoomEvent("variation.return_to_game", {}); }}><RotateCcw size={16} /> Return to move {store.explorationStartPly}</button>}
-          <button onClick={() => roomMutation.mutate()}><UserRoundPlus size={16} /> {store.roomId ? "Room active" : "Invite partner"}</button>
-          {store.roomId && <button className="icon-button" title="Copy room link" onClick={() => navigator.clipboard.writeText(location.href)}><Copy size={16} /></button>}
+          <button className="share-button" disabled={roomMutation.isPending} onClick={() => { if (store.roomId) void copyInviteLink(); else roomMutation.mutate(); }} title={store.roomId ? inviteUrl : "Create a shared review room"}>{store.roomId ? <Copy size={16} /> : <UserRoundPlus size={16} />} {store.roomId ? "Copy invite link" : roomMutation.isPending ? "Creating room..." : "Invite partner"}</button>
+          {shareCopied && <span className="copy-confirm">Link copied</span>}
+          {roomMutation.error && <span className="room-error" title={roomMutation.error.message}>Invite failed</span>}
           {store.roomId && <span className="viewer-pill" title={store.participants.map((item) => item.display_name).join(", ") || "Waiting for viewers"}><Users size={14} /> {viewerCount}</span>}
           <button className="icon-button" title="Board settings" onClick={() => setSettingsOpen(true)}><Settings size={16} /></button>
           <button className="connect-button" onClick={() => setConnectOpen(true)}><Radio size={15} /> {store.username || "Connect Chess.com"}</button>
