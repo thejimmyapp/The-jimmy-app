@@ -117,7 +117,7 @@ export default function App() {
     setShareCopied(true);
     window.setTimeout(() => setShareCopied(false), 1800);
   };
-  const connectorPrompt = buildChessComConnectorPrompt(usernameDraft, location.origin);
+  const connectorPrompt = buildChessComConnectorPrompt(location.origin);
   const copyConnectorPrompt = async () => {
     await navigator.clipboard.writeText(connectorPrompt);
     setSetupPromptCopied(true);
@@ -186,7 +186,7 @@ export default function App() {
                 </ol>
                 <a className="archive-link" href="https://www.chess.com/games/archive" target="_blank" rel="noreferrer"><ExternalLink size={13} /> Open Chess.com archive</a>
                 <div className="prompt-box">
-                  <div><strong>Codex setup prompt</strong><small>Personalized for {usernameDraft.trim() || "your account"}</small></div>
+                  <div><strong>Codex setup prompt</strong><small>Works with any Chess.com account</small></div>
                   <button type="button" onClick={() => void copyConnectorPrompt()}>{setupPromptCopied ? <Check size={14} /> : <Copy size={14} />}{setupPromptCopied ? "Copied" : "Copy prompt"}</button>
                   <textarea readOnly value={connectorPrompt} aria-label="Codex setup prompt" />
                 </div>

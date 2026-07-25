@@ -2,17 +2,19 @@ import { describe, expect, it } from "vitest";
 import { buildChessComConnectorPrompt } from "./chesscomConnectorPrompt";
 
 describe("buildChessComConnectorPrompt", () => {
-  it("personalizes the temporary connector instructions", () => {
-    const prompt = buildChessComConnectorPrompt(" BestBym ", "https://thejimmyapp.com/");
+  it("keeps the temporary connector instructions account-neutral", () => {
+    const prompt = buildChessComConnectorPrompt("https://thejimmyapp.com/");
 
-    expect(prompt).toContain("Chess.com username: BestBym");
     expect(prompt).toContain("The Jimmy App: https://thejimmyapp.com");
     expect(prompt).not.toContain("https://thejimmyapp.com/");
+    expect(prompt).toContain("username already entered by the current user");
+    expect(prompt).not.toContain("BestBym");
+    expect(prompt).not.toContain("Chess.com username:");
     expect(prompt).toContain('filter for "pgn-info"');
   });
 
   it("includes credential and destination safeguards", () => {
-    const prompt = buildChessComConnectorPrompt("", "http://localhost:8000");
+    const prompt = buildChessComConnectorPrompt("http://localhost:8000");
 
     expect(prompt).toContain("Never ask me for my Chess.com password");
     expect(prompt).toContain("Do not print the cURL in chat");
