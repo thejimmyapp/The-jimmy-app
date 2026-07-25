@@ -1,7 +1,8 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Check, Copy, LogOut, Palette, Radio, Redo2, RotateCcw, Settings, Undo2, UserRoundPlus, Users, X } from "lucide-react";
+import { Bot, Check, Copy, ExternalLink, LogOut, Palette, Radio, Redo2, RotateCcw, Settings, ShieldCheck, Undo2, UserRoundPlus, Users, X } from "lucide-react";
 import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
 import { api } from "./api";
+import { buildChessComConnectorPrompt } from "./chesscomConnectorPrompt";
 import { BoardPanel } from "./components/BoardPanel";
 import { SidePanel } from "./components/SidePanel";
 import { Timeline } from "./components/Timeline";
@@ -65,6 +66,7 @@ export default function App() {
   const [usernameDraft, setUsernameDraft] = useState(store.username);
   const [authenticatedOpen, setAuthenticatedOpen] = useState(false);
   const [curlText, setCurlText] = useState("");
+  const [setupPromptCopied, setSetupPromptCopied] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const gamesQuery = useQuery({ queryKey: ["games", store.username], queryFn: () => api.games(store.username), enabled: Boolean(store.username) });
   const roomQuery = useQuery({ queryKey: ["room", store.roomId], queryFn: () => api.room(store.roomId as string), enabled: Boolean(store.roomId) });
@@ -115,6 +117,12 @@ export default function App() {
     setShareCopied(true);
     window.setTimeout(() => setShareCopied(false), 1800);
   };
+  const connectorPrompt = buildChessComConnectorPrompt(usernameDraft, location.origin);
+  const copyConnectorPrompt = async () => {
+    await navigator.clipboard.writeText(connectorPrompt);
+    setSetupPromptCopied(true);
+    window.setTimeout(() => setSetupPromptCopied(false), 1800);
+  };
 
   return (
     <main className="app-shell" data-board-theme={boardTheme} data-piece-style={pieceStyle} data-piece-size={pieceSize}>
@@ -153,7 +161,7 @@ export default function App() {
       <Timeline />
       {connectOpen && (
         <div className="modal-backdrop" role="presentation">
-          <form className="connect-modal" onSubmit={connect}>
+          <form className={`connect-modal ${authenticatedOpen ? "connector-mode" : ""}`} onSubmit={connect}>
             <button type="button" className="modal-close" onClick={() => setConnectOpen(false)} aria-label="Close"><X /></button>
             <span className="modal-kicker">CHESS.COM CONNECTION</span>
             <h1>Connect your games</h1>
@@ -164,10 +172,29 @@ export default function App() {
             <button type="button" className="authenticated-toggle" onClick={() => setAuthenticatedOpen(!authenticatedOpen)}>{authenticatedOpen ? "Hide partner-board connector" : "Load complete two-board data"}</button>
             {authenticatedOpen && (
               <section className="authenticated-panel">
-                <strong>Partner-board connector</strong>
-                <p>Open Chess.com and sign in. In Network, copy one <code>pgn-info</code> request as cURL (bash), then paste it here. It is used once and never stored.</p>
-                <a href="https://www.chess.com/games/archive" target="_blank" rel="noreferrer">Open Chess.com archive</a>
-                <textarea value={curlText} onChange={(event) => setCurlText(event.target.value)} placeholder="Paste the pgn-info cURL request" spellCheck={false} />
+                <div className="connector-heading">
+                  <span className="connector-icon"><Bot size={18} /></span>
+                  <div>
+                    <strong>Let Codex connect both boards</strong>
+                    <p>Temporary guided setup while official Chess.com access is pending.</p>
+                  </div>
+                </div>
+                <ol className="connector-checklist">
+                  <li><span>1</span><div><strong>Open The Jimmy App</strong><small>Keep this connection window open.</small></div></li>
+                  <li><span>2</span><div><strong>Open Chess.com in Chrome</strong><small>Sign in yourself, then leave the archive page open.</small></div></li>
+                  <li><span>3</span><div><strong>Give the prompt to Codex</strong><small>Codex finds the request and returns here to load both boards.</small></div></li>
+                </ol>
+                <a className="archive-link" href="https://www.chess.com/games/archive" target="_blank" rel="noreferrer"><ExternalLink size={13} /> Open Chess.com archive</a>
+                <div className="prompt-box">
+                  <div><strong>Codex setup prompt</strong><small>Personalized for {usernameDraft.trim() || "your account"}</small></div>
+                  <button type="button" onClick={() => void copyConnectorPrompt()}>{setupPromptCopied ? <Check size={14} /> : <Copy size={14} />}{setupPromptCopied ? "Copied" : "Copy prompt"}</button>
+                  <textarea readOnly value={connectorPrompt} aria-label="Codex setup prompt" />
+                </div>
+                <div className="connector-privacy"><ShieldCheck size={15} /><span>Codex must never show or save the cURL. The app uses it once for this import and does not store it.</span></div>
+                <details className="manual-connector">
+                  <summary>Codex copied the request? Paste it here</summary>
+                  <textarea value={curlText} onChange={(event) => setCurlText(event.target.value)} placeholder="Paste the pgn-info cURL request" spellCheck={false} />
+                </details>
                 {enrichMutation.error && <div className="form-error">{enrichMutation.error.message}</div>}
                 {enrichMutation.data && <div className="connector-success">Loaded {enrichMutation.data.enriched} complete games. Credentials stored: no.</div>}
                 <button type="button" className="primary" disabled={curlText.length < 40 || enrichMutation.isPending} onClick={() => enrichMutation.mutate()}>{enrichMutation.isPending ? "Loading both boards…" : "Load both boards"}</button>

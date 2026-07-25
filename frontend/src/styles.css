@@ -598,3 +598,199 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   background: #2a1218;
   color: #ff95a3;
 }
+
+/* Temporary guided Chess.com connector. */
+.connect-modal.connector-mode {
+  width: min(650px, 92vw);
+}
+.authenticated-panel {
+  padding: 14px;
+}
+.connector-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.connector-heading > div {
+  min-width: 0;
+}
+.connector-heading strong {
+  display: block;
+  color: #e4edf8;
+  font-size: 13px;
+}
+.connector-heading p {
+  margin: 3px 0 0;
+}
+.connector-icon {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #2d7180;
+  border-radius: 4px;
+  background: #102832;
+  color: var(--cyan);
+}
+.connector-checklist {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin: 12px 0;
+  padding: 0;
+  list-style: none;
+}
+.connector-checklist li {
+  min-width: 0;
+  display: flex;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid #23334a;
+  border-radius: 4px;
+  background: #0d1725;
+}
+.connector-checklist li > span {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #173846;
+  color: #8ff4ff;
+  font-size: 9px;
+  font-weight: 900;
+}
+.connector-checklist li div {
+  min-width: 0;
+}
+.connector-checklist strong,
+.connector-checklist small {
+  display: block;
+}
+.connector-checklist strong {
+  color: #d9e5f3;
+  font-size: 10px;
+}
+.connector-checklist small {
+  margin-top: 3px;
+  color: #788ba5;
+  font-size: 8px;
+  line-height: 1.35;
+}
+.authenticated-panel .archive-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 0;
+  color: var(--cyan);
+  font-size: 10px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.prompt-box {
+  position: relative;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #30445f;
+  border-radius: 4px;
+  background: #080f19;
+}
+.prompt-box > div {
+  padding-right: 110px;
+}
+.prompt-box > div strong,
+.prompt-box > div small {
+  display: block;
+}
+.prompt-box > div strong {
+  color: #dce9f8;
+  font-size: 11px;
+}
+.prompt-box > div small {
+  margin-top: 2px;
+  color: #71849e;
+  font-size: 8px;
+}
+.prompt-box > button {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px;
+  border: 1px solid #287485;
+  border-radius: 3px;
+  background: #102b35;
+  color: #8ff4ff;
+  font-size: 9px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.authenticated-panel .prompt-box textarea {
+  width: 100%;
+  height: 92px;
+  margin-top: 8px;
+  resize: vertical;
+  border: 1px solid #263852;
+  border-radius: 3px;
+  background: #050b13;
+  color: #9fb0c5;
+  padding: 8px;
+  font: 9px/1.45 Consolas, monospace;
+}
+.connector-privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 9px;
+  padding: 8px;
+  border: 1px solid #285542;
+  border-radius: 3px;
+  background: #0c211a;
+  color: #8edbb8;
+  font-size: 9px;
+  line-height: 1.4;
+}
+.connector-privacy svg {
+  flex: 0 0 auto;
+}
+.manual-connector {
+  margin-top: 9px;
+  border: 1px solid #263850;
+  border-radius: 3px;
+  background: #0b1420;
+}
+.manual-connector summary {
+  padding: 9px;
+  color: #b5c5d9;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.authenticated-panel .manual-connector textarea {
+  width: calc(100% - 16px);
+  height: 76px;
+  margin: 0 8px 8px;
+  resize: vertical;
+  border: 1px solid #34445d;
+  border-radius: 3px;
+  background: #07101a;
+  color: #dce8f5;
+  padding: 8px;
+  font: 9px Consolas, monospace;
+}
+@media (max-width: 700px) {
+  .connector-checklist {
+    grid-template-columns: 1fr;
+  }
+  .connect-modal.connector-mode {
+    padding: 22px 18px;
+  }
+  .authenticated-panel .prompt-box textarea {
+    height: 120px;
+  }
+}
