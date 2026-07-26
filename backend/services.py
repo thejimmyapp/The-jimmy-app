@@ -11,7 +11,7 @@ from backend.config import Settings
 from thejimmyapp.board_renderer import build_bughouse_pair_positions, build_global_replay_frames, build_replay_positions
 from thejimmyapp.db import Database
 from thejimmyapp.engine import EngineConfig, FairyStockfishEngine
-from thejimmyapp.pgn_parser import parse_game_data, parse_partner_tcn
+from thejimmyapp.pgn_parser import parse_game_data, parse_partner_game_data
 
 
 class GameService:
@@ -27,7 +27,7 @@ class GameService:
         if not game:
             return None
         parsed = parse_game_data(str(game.get("pgn") or ""), str(game.get("raw_json") or ""))
-        partner = parse_partner_tcn(str(game.get("raw_json") or ""))
+        partner = parse_partner_game_data(str(game.get("raw_json") or ""))
         try:
             raw = json.loads(str(game.get("raw_json") or "{}"))
         except json.JSONDecodeError:
@@ -35,8 +35,16 @@ class GameService:
         players = {
             "board_a_white": str(game.get("white_username") or raw.get("bughousePlayer1Name") or "White"),
             "board_a_black": str(game.get("black_username") or raw.get("bughousePlayer2Name") or "Black"),
-            "board_b_white": str(raw.get("bughousePartnerPlayer1Name") or "White"),
-            "board_b_black": str(raw.get("bughousePartnerPlayer2Name") or "Black"),
+            "board_b_white": str(
+                raw.get("bughousePartnerPlayer1Name")
+                or (partner.headers.get("White") if partner else None)
+                or "White"
+            ),
+            "board_b_black": str(
+                raw.get("bughousePartnerPlayer2Name")
+                or (partner.headers.get("Black") if partner else None)
+                or "Black"
+            ),
         }
         if partner:
             main_positions, partner_positions = build_bughouse_pair_positions(parsed.moves, partner.moves)
@@ -45,6 +53,19 @@ class GameService:
             main_positions = build_replay_positions(parsed.moves)
             partner_positions = []
             timeline = []
+        limitations = list(parsed.parse_warnings)
+        if partner:
+            limitations.extend(partner.parse_warnings)
+            if timeline and any(
+                "Cross-board move order is approximate" in frame.board_a.warning
+                for frame in timeline[1:]
+            ):
+                limitations.append(
+                    "Cross-board move order is approximate because complete clock timestamps are unavailable."
+                )
+        else:
+            limitations.append("Second board unavailable")
+        limitations = list(dict.fromkeys(item for item in limitations if item))
         return {
             "game": game,
             "players": players,
@@ -54,7 +75,7 @@ class GameService:
             "positions_b": [asdict(position) for position in partner_positions],
             "timeline": [asdict(frame) for frame in timeline],
             "second_board_available": bool(partner_positions),
-            "limitations": [] if partner_positions else ["Second board unavailable"],
+            "limitations": limitations,
             "outcome": _game_outcome(game, raw, players, parsed.moves, partner.moves if partner else []),
         }
 

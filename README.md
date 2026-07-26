@@ -60,18 +60,18 @@ Important current limitation: the existing imported-game library still uses `dat
 - Right-drag arrows are accepted only when they represent a legal move in the current position.
 - Click an arrow to remove it.
 
-### Complete two-board Chess.com import
+### Complete two-board import
 
 The public Chess.com API does not consistently expose the authenticated `pgn-info` payload containing the partner board. A normal web page also cannot read another site's Chess.com cookies because of browser origin isolation.
 
-The connection modal therefore provides a safe one-time connector:
+The web app therefore makes credential-free paired PGN paste the supported complete-game path:
 
-1. Open the Chess.com archive and sign in.
-2. In browser Network tools, copy one `pgn-info` request as cURL (bash).
-3. Paste it into `Load complete two-board data`.
-4. The backend enriches all missing games in batches and discards the request credentials immediately.
+1. Open **Connect games**.
+2. Choose **Import two-board PGNs**.
+3. Paste Board A and Board B from the same game.
+4. The app reconstructs one synchronized replay and uses PGN clock comments when present.
 
-No Chess.com password is requested or stored. A fully one-click public flow requires a separately installed/published browser extension or an official Chess.com OAuth/data API that exposes the partner-board payload.
+The older copied-`pgn-info` cURL path remains visible only as a temporary advanced fallback. It is not an official or supported Chess.com integration, and it must not be used with credentials outside a user's own local recovery workflow. A fully one-click public flow still requires an official Chess.com API that exposes the partner-board payload.
 
 Local Streamlit app for importing Chess.com Bughouse games, enriching partner-board data when available, and building a practical coaching dashboard with stats, training drills, opening review, and Fairy-Stockfish analysis.
 
@@ -99,7 +99,8 @@ Basic public game import can work without the cURL file, but many Bughouse games
 ## Product Features
 
 - Guided username-first setup and public Chess.com archive import.
-- Optional authenticated enrichment with both boards, four player names, pockets, and clocks.
+- Credential-free paired PGN import with both boards, four player names, pockets, and clocks when present.
+- Explicitly temporary authenticated enrichment fallback for legacy recovery only.
 - Chronological two-board replay with captured pieces transferred to the partner board.
 - Fairy-Stockfish mistake analysis, legal best-move overlays, mate-aware scoring, and versioned caching.
 - Coaching priorities, context filters, session reports, smart training queue, and spaced repetition.
@@ -115,9 +116,9 @@ Older analysis rows remain stored in SQLite but are excluded from current dashbo
 
 Public Chess.com sources do not consistently include the second board. The authenticated `pgn-info` request is currently the most complete source observed for `bughousePartnerTcnMoves` and both clock streams.
 
-## Chess.com pgn-info Setup
+## Legacy local Chess.com pgn-info fallback
 
-This is optional, but needed for automatic two-board import.
+This temporary fallback is retained for the legacy local Streamlit workflow. The web app's supported complete-game path is paired PGN paste. Do not share, commit, or send the copied request.
 
 1. In a browser where you are logged in to Chess.com, open `https://www.chess.com/games/archive`.
 2. Open DevTools, then the Network tab.

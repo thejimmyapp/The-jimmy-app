@@ -416,7 +416,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 .workspace > .boards-zone {
   grid-column: 2;
   display: grid;
-  grid-template-rows: 42px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 14px;
   padding: 14px;
   align-items: stretch;
@@ -461,6 +461,42 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   border-left: 3px solid #7d8ba0;
   border-radius: 4px;
   background: #0c1522;
+}
+.review-context {
+  width: 100%;
+  max-width: 1240px;
+  min-width: 0;
+  margin: 0 auto;
+  display: grid;
+  gap: 6px;
+}
+.replay-integrity {
+  min-width: 0;
+  min-height: 34px;
+  display: grid;
+  grid-template-columns: 18px auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid #664f2c;
+  border-left: 3px solid var(--orange);
+  border-radius: 4px;
+  background: #21190f;
+  color: #ffd18f;
+}
+.replay-integrity > strong {
+  font-size: 8px;
+  letter-spacing: .1em;
+  white-space: nowrap;
+}
+.replay-integrity > span {
+  min-width: 0;
+  overflow: hidden;
+  color: #c5ad8a;
+  font-size: 9px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .review-summary.win { border-left-color: #55df9b; }
 .review-summary.loss { border-left-color: var(--coral); }
@@ -561,4 +597,44 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   justify-self: auto;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.safe-import-toggle,
+.temporary-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.safe-import-toggle {
+  border-color: #28705a;
+  background: #10251d;
+  color: #9ae7c1;
+}
+.temporary-toggle {
+  color: #8392a6;
+}
+.safe-import-panel {
+  border-color: #285b49;
+  background: #0b1b16;
+}
+.safe-import-panel > strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #a6edc8;
+}
+.authenticated-panel label {
+  margin-top: 10px;
+  color: #aebdd1;
+  font-size: 10px;
+}
+.authenticated-panel textarea {
+  margin-top: 5px;
+}
+.safe-import-panel textarea {
+  height: 112px;
+}
+.temporary-panel {
+  opacity: .9;
 }

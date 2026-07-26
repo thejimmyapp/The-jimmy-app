@@ -1,5 +1,5 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { Check, Copy, LogOut, Palette, Radio, Redo2, RotateCcw, Settings, Undo2, UserRoundPlus, Users, X } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, Check, Copy, FileInput, LogOut, Palette, Radio, Redo2, RotateCcw, Settings, ShieldCheck, Undo2, UserRoundPlus, Users, X } from "lucide-react";
 import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { BoardPanel } from "./components/BoardPanel";
@@ -7,6 +7,7 @@ import { SidePanel } from "./components/SidePanel";
 import { Timeline } from "./components/Timeline";
 import { applyRoomSnapshot, connectRoomSocket, sendRoomEvent } from "./socket";
 import { currentPosition, useCoachStore } from "./store";
+import { replayNotices } from "./replayIntegrity";
 import type { GameSummary } from "./types";
 
 const boardThemes = [
@@ -55,6 +56,7 @@ const initialPieceSize = (): PieceSizeId => {
 
 export default function App() {
   const store = useCoachStore();
+  const queryClient = useQueryClient();
   const { roomId, username, setRoom } = store;
   const joinedRoomRef = useRef<string | null>(null);
   const [boardTheme, setBoardTheme] = useState<BoardThemeId>(initialBoardTheme);
@@ -63,6 +65,9 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [connectOpen, setConnectOpen] = useState(!store.username && !store.roomId);
   const [usernameDraft, setUsernameDraft] = useState(store.username);
+  const [manualImportOpen, setManualImportOpen] = useState(false);
+  const [boardAPgn, setBoardAPgn] = useState("");
+  const [boardBPgn, setBoardBPgn] = useState("");
   const [authenticatedOpen, setAuthenticatedOpen] = useState(false);
   const [curlText, setCurlText] = useState("");
   const gamesQuery = useQuery({ queryKey: ["games", store.username], queryFn: () => api.games(store.username), enabled: Boolean(store.username) });
@@ -70,8 +75,25 @@ export default function App() {
   useEffect(() => { if (gamesQuery.data) useCoachStore.getState().setGames(gamesQuery.data.games); }, [gamesQuery.data]);
   useEffect(() => { if (roomQuery.data) void applyRoomSnapshot(roomQuery.data.snapshot, roomQuery.data.game_id); }, [roomQuery.data]);
   const gameMutation = useMutation({ mutationFn: api.game, onSuccess: store.setGame });
-  const connectMutation = useMutation({ mutationFn: api.connectChessCom, onSuccess: () => gamesQuery.refetch() });
-  const enrichMutation = useMutation({ mutationFn: () => api.enrichChessCom(usernameDraft.trim(), curlText), onSuccess: () => { setCurlText(""); gamesQuery.refetch(); } });
+  const connectMutation = useMutation({
+    mutationFn: api.connectChessCom,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["games"] }),
+  });
+  const importMutation = useMutation({
+    mutationFn: ({ username, boardA, boardB }: { username: string; boardA: string; boardB: string }) => api.importPgn(username, boardA, boardB),
+    onSuccess: () => {
+      setBoardAPgn("");
+      setBoardBPgn("");
+      return queryClient.invalidateQueries({ queryKey: ["games"] });
+    },
+  });
+  const enrichMutation = useMutation({
+    mutationFn: () => api.enrichChessCom(usernameDraft.trim(), curlText),
+    onSuccess: () => {
+      setCurlText("");
+      return queryClient.invalidateQueries({ queryKey: ["games"] });
+    },
+  });
   const roomMutation = useMutation({ mutationFn: () => api.createRoom(store.game?.game.id), onSuccess: async (room) => {
     joinedRoomRef.current = room.id;
     const joined = await api.joinRoom(room.id, store.username || "Coach"); store.setRoom(room.id, joined.client_id, joined.display_name); history.replaceState(null, "", room.share_path); connectRoomSocket(room.id, joined.client_id, joined.display_name);
@@ -88,11 +110,19 @@ export default function App() {
 
   const boardA = store.explorationPositions?.boardA ?? currentPosition(store.game, store.globalPly, "A");
   const boardB = store.explorationPositions?.boardB ?? currentPosition(store.game, store.globalPly, "B");
+  const integrityNotices = replayNotices(store.game, boardA, boardB);
   const userIsWhite = store.game?.game.user_color !== "black";
   const players = store.game?.players;
   const secondBoardAvailable = Boolean(store.game?.second_board_available);
   const selectGame = (game: GameSummary) => { gameMutation.mutate(game.id); sendRoomEvent("game.select", { game_id: game.id }); };
   const connect = (event: FormEvent) => { event.preventDefault(); const clean = usernameDraft.trim(); if (!clean) return; store.setUsername(clean); connectMutation.mutate(clean); };
+  const importCompleteGame = (event: FormEvent) => {
+    event.preventDefault();
+    const clean = usernameDraft.trim();
+    if (!clean || !boardAPgn.trim() || !boardBPgn.trim()) return;
+    store.setUsername(clean);
+    importMutation.mutate({ username: clean, boardA: boardAPgn.trim(), boardB: boardBPgn.trim() });
+  };
   const chooseBoardTheme = (theme: BoardThemeId) => {
     setBoardTheme(theme);
     localStorage.setItem(themeStorageKey, theme);
@@ -126,11 +156,22 @@ export default function App() {
       <section className="workspace">
         <SidePanel onSelectGame={selectGame} loadingGame={gameMutation.isPending} />
         <div className={`boards-zone ${store.game ? "has-game" : ""}`}>
-          {store.game?.outcome && (
-            <div className={`review-summary ${store.game.game.result}`} role="status">
-              <span>GAME RESULT</span>
-              <strong>{store.game.outcome.summary}</strong>
-              <small>{store.game.outcome.detail}</small>
+          {store.game && (
+            <div className="review-context">
+              {store.game.outcome && (
+                <div className={`review-summary ${store.game.game.result}`} role="status">
+                  <span>GAME RESULT</span>
+                  <strong>{store.game.outcome.summary}</strong>
+                  <small>{store.game.outcome.detail}</small>
+                </div>
+              )}
+              {integrityNotices.length > 0 && (
+                <div className="replay-integrity" role="status">
+                  <AlertTriangle size={15} />
+                  <strong>REPLAY LIMITS</strong>
+                  <span>{integrityNotices.join(" ")}</span>
+                </div>
+              )}
             </div>
           )}
           <div className="boards-grid">
@@ -147,15 +188,31 @@ export default function App() {
             <button type="button" className="modal-close" onClick={() => setConnectOpen(false)} aria-label="Close"><X /></button>
             <span className="modal-kicker">CHESS.COM CONNECTION</span>
             <h1>Connect your games</h1>
-            <p>Public archives load from a username. Chess.com login access is needed only to recover partner boards that the public API omits.</p>
+            <p>Load public games by username, or paste both board PGNs for a complete credential-free replay.</p>
             <label>Chess.com username<input autoFocus value={usernameDraft} onChange={(event) => setUsernameDraft(event.target.value)} pattern="[A-Za-z0-9_-]+" minLength={2} maxLength={25} /></label>
             {connectMutation.error && <div className="form-error">{connectMutation.error.message}</div>}
             <button className="primary" disabled={connectMutation.isPending}>{connectMutation.isPending ? "Loading public archives…" : "Load public games"}</button>
-            <button type="button" className="authenticated-toggle" onClick={() => setAuthenticatedOpen(!authenticatedOpen)}>{authenticatedOpen ? "Hide partner-board connector" : "Load complete two-board data"}</button>
+            <button type="button" className="authenticated-toggle safe-import-toggle" onClick={() => setManualImportOpen(!manualImportOpen)}>
+              <FileInput size={15} /> {manualImportOpen ? "Hide PGN import" : "Import two-board PGNs"}
+            </button>
+            {manualImportOpen && (
+              <section className="authenticated-panel safe-import-panel">
+                <strong><ShieldCheck size={15} /> Credential-free two-board import</strong>
+                <p>Paste the PGN for each board from the same Bughouse game. Clock comments are used to synchronize the boards when present.</p>
+                <label>Board A PGN<textarea aria-label="Board A PGN" value={boardAPgn} onChange={(event) => setBoardAPgn(event.target.value)} placeholder={"[Variant \"Bughouse\"]\n\n1. e4 …"} spellCheck={false} /></label>
+                <label>Board B PGN<textarea aria-label="Board B PGN" value={boardBPgn} onChange={(event) => setBoardBPgn(event.target.value)} placeholder={"[Variant \"Bughouse\"]\n\n1. d4 …"} spellCheck={false} /></label>
+                {importMutation.error && <div className="form-error">{importMutation.error.message}</div>}
+                {importMutation.data && <div className="connector-success">Complete two-board game imported. No Chess.com credentials were used or stored.</div>}
+                <button type="button" className="primary" disabled={boardAPgn.trim().length < 8 || boardBPgn.trim().length < 8 || !usernameDraft.trim() || importMutation.isPending} onClick={importCompleteGame}>
+                  {importMutation.isPending ? "Importing both boards…" : "Import complete game"}
+                </button>
+              </section>
+            )}
+            <button type="button" className="authenticated-toggle temporary-toggle" onClick={() => setAuthenticatedOpen(!authenticatedOpen)}>{authenticatedOpen ? "Hide temporary fallback" : "Temporary pgn-info fallback"}</button>
             {authenticatedOpen && (
-              <section className="authenticated-panel">
-                <strong>Partner-board connector</strong>
-                <p>Open Chess.com and sign in. In Network, copy one <code>pgn-info</code> request as cURL (bash), then paste it here. It is used once and never stored.</p>
+              <section className="authenticated-panel temporary-panel">
+                <strong>Temporary advanced fallback</strong>
+                <p>This unofficial recovery path is not a supported Chess.com integration. It accepts a copied <code>pgn-info</code> cURL once and does not store it. Prefer the two-board PGN import above.</p>
                 <a href="https://www.chess.com/games/archive" target="_blank" rel="noreferrer">Open Chess.com archive</a>
                 <textarea value={curlText} onChange={(event) => setCurlText(event.target.value)} placeholder="Paste the pgn-info cURL request" spellCheck={false} />
                 {enrichMutation.error && <div className="form-error">{enrichMutation.error.message}</div>}

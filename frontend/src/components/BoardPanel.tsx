@@ -368,7 +368,7 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
         <div className="board-panel-unavailable" role="status">
           <strong>Second board unavailable</strong>
           <span>Partner Unknown · Diagonal Opponent Unknown</span>
-          <small>Load authenticated pgn-info or import a second-board PGN.</small>
+          <small>Import both board PGNs from Connect games. The temporary pgn-info fallback is optional.</small>
         </div>
       )}
     </section>

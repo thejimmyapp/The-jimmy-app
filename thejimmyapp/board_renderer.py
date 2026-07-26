@@ -312,6 +312,8 @@ def build_global_replay_frames(
     partner_debt: dict[tuple[bool, int], int] = {}
     main_warning = ""
     partner_warning = ""
+    main_stopped = False
+    partner_stopped = False
     main_position = _position_from_live_board(main_board, 0, None, [], "")
     partner_position = _position_from_live_board(partner_board, 0, None, [], "")
     frames = [
@@ -324,46 +326,68 @@ def build_global_replay_frames(
             board_b=partner_position,
         )
     ]
-    for global_ply, (board_name, local_ply, move) in enumerate(_combined_timeline(main_moves, partner_moves)[0], start=1):
+    timeline, clock_confident = _combined_timeline(main_moves, partner_moves)
+    ordering_warning = (
+        ""
+        if clock_confident
+        else "Cross-board move order is approximate because complete clock timestamps are unavailable."
+    )
+    for global_ply, (board_name, local_ply, move) in enumerate(timeline, start=1):
         if board_name == "main":
-            main_played.append(move)
-            try:
-                _apply_bughouse_move(
-                    main_board,
-                    partner_board,
-                    move,
-                    transfer_to_partner=True,
-                    drop_debt=main_debt,
-                    partner_drop_debt=partner_debt,
-                )
-            except Exception as exc:
-                main_warning = f"Stopped before {move.display_move}: {exc}"
+            if not main_stopped:
+                try:
+                    inferred = _apply_bughouse_move(
+                        main_board,
+                        partner_board,
+                        move,
+                        transfer_to_partner=True,
+                        drop_debt=main_debt,
+                        partner_drop_debt=partner_debt,
+                    )
+                    main_played.append(move)
+                    if inferred:
+                        main_warning = _merge_warning(
+                            main_warning,
+                            "A drop arrived before its matching capture; pocket confidence is low.",
+                        )
+                except Exception as exc:
+                    main_warning = _merge_warning(main_warning, f"Stopped before {move.display_move}: {exc}")
+                    main_stopped = True
         else:
-            partner_played.append(move)
-            try:
-                _apply_bughouse_move(
-                    partner_board,
-                    main_board,
-                    move,
-                    transfer_to_partner=True,
-                    drop_debt=partner_debt,
-                    partner_drop_debt=main_debt,
-                )
-            except Exception as exc:
-                partner_warning = f"Stopped before {move.display_move}: {exc}"
+            if not partner_stopped:
+                try:
+                    inferred = _apply_bughouse_move(
+                        partner_board,
+                        main_board,
+                        move,
+                        transfer_to_partner=True,
+                        drop_debt=partner_debt,
+                        partner_drop_debt=main_debt,
+                    )
+                    partner_played.append(move)
+                    if inferred:
+                        partner_warning = _merge_warning(
+                            partner_warning,
+                            "A drop arrived before its matching capture; pocket confidence is low.",
+                        )
+                except Exception as exc:
+                    partner_warning = _merge_warning(partner_warning, f"Stopped before {move.display_move}: {exc}")
+                    partner_stopped = True
+        frame_main_warning = _merge_warning(main_warning, ordering_warning) if ordering_warning else main_warning
+        frame_partner_warning = _merge_warning(partner_warning, ordering_warning) if ordering_warning else partner_warning
         main_position = _position_from_live_board(
             main_board,
             len(main_played),
             main_played[-1] if main_played else None,
             main_played,
-            main_warning,
+            frame_main_warning,
         )
         partner_position = _position_from_live_board(
             partner_board,
             len(partner_played),
             partner_played[-1] if partner_played else None,
             partner_played,
-            partner_warning,
+            frame_partner_warning,
         )
         main_position.partner_index = global_ply
         partner_position.partner_index = global_ply
@@ -498,14 +522,18 @@ def _apply_bughouse_move(
 ) -> bool:
     chess_move = _move_record_to_chess_move(board, move)
     inferred_drop = False
+    injected_piece_type: int | None = None
     if move.is_drop and chess_move not in board.legal_moves:
         piece_type = _ensure_drop_piece(board, move)
+        injected_piece_type = piece_type
         if chess_move in board.legal_moves:
             inferred_drop = True
             if drop_debt is not None:
                 key = (board.turn, piece_type)
                 drop_debt[key] = drop_debt.get(key, 0) + 1
     if chess_move not in board.legal_moves:
+        if injected_piece_type is not None:
+            _remove_from_pocket(board, board.turn, injected_piece_type)
         raise ValueError("move is not legal in reconstructed board")
 
     capturer = board.turn

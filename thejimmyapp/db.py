@@ -2117,10 +2117,11 @@ def _detect_partner(headers: dict[str, str], username: str, raw: dict[str, Any] 
     player2 = _optional_str(raw.get("bughousePlayer2Name"))
     partner1 = _optional_str(raw.get("bughousePartnerPlayer1Name"))
     partner2 = _optional_str(raw.get("bughousePartnerPlayer2Name"))
-    if player1 and player1.lower() == username and partner1:
-        return partner1
-    if player2 and player2.lower() == username and partner2:
+    # Bughouse partners play opposite colors across the two boards.
+    if player1 and player1.lower() == username and partner2:
         return partner2
+    if player2 and player2.lower() == username and partner1:
+        return partner1
 
     candidates = [
         headers.get("WhitePartner"),

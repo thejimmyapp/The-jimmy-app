@@ -143,7 +143,12 @@ def import_pgn(request: PgnImportRequest) -> dict[str, object]:
         "black": {"username": black_name, "result": headers.get("Result")},
     }
     if request.second_board_pgn:
+        partner_headers = parse_pgn_headers(request.second_board_pgn)
         raw_game["bughousePartnerPgn"] = request.second_board_pgn
+        raw_game["bughousePlayer1Name"] = white_name
+        raw_game["bughousePlayer2Name"] = black_name
+        raw_game["bughousePartnerPlayer1Name"] = partner_headers.get("White") or "White"
+        raw_game["bughousePartnerPlayer2Name"] = partner_headers.get("Black") or "Black"
     created = games.db.upsert_game(request.username, raw_game)
     return {"created": created, "source": "manual", "second_board_supplied": bool(request.second_board_pgn)}
 

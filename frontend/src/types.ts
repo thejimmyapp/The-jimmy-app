@@ -10,7 +10,10 @@ export interface ReplayPosition {
   black_pocket: string;
   white_clock: string;
   black_clock: string;
+  elapsed_seconds?: number | null;
   partner_index: number | null;
+  confidence?: "high" | "medium" | "low" | "study";
+  warning?: string;
   from_square: string | null;
   to_square: string | null;
 }

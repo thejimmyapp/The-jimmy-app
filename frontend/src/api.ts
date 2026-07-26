@@ -26,6 +26,14 @@ export const api = {
         body: JSON.stringify({ username, curl_text: curlText, limit: 5000 }),
       }),
     ),
+  importPgn: (username: string, pgn: string, secondBoardPgn: string) =>
+    json<{ created: boolean; source: "manual"; second_board_supplied: boolean }>(
+      fetch("/api/games/import-pgn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, pgn, second_board_pgn: secondBoardPgn }),
+      }),
+    ),
   games: (username: string) =>
     json<{ games: GameSummary[] }>(fetch(`/api/chesscom/${encodeURIComponent(username)}/bughouse-games?limit=1000`)),
   game: (gameId: number) => json<GamePayload>(fetch(`/api/games/${gameId}`)),
