@@ -50,6 +50,9 @@ For Railway, create a project from this repository, add PostgreSQL and Redis ser
 
 Important current limitation: the imported-game library still uses `data/bughouse.db`. A public deployment must attach persistent storage for `data/`, or complete the planned migration of imported games into PostgreSQL. Chess.com PubAPI can omit the partner board; the UI reports `Second board unavailable` instead of fabricating it.
 
+Verified deletion requests are handled with the dry-run-first operator procedure
+in [`docs/operations/data-deletion-runbook.md`](docs/operations/data-deletion-runbook.md).
+
 ### Exploration and legal annotations
 
 - Drag a piece belonging to the player to move to explore a legal alternative.
