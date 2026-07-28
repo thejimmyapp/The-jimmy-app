@@ -55,6 +55,10 @@ full-storage protections. Production health is green, `/api/chesscom/enrich`
 is absent, the engine request schema no longer accepts client FEN fields, the
 credential-free paired-PGN UI is live, and both legal pages render.
 
+The tested deletion workflow was subsequently deployed successfully as
+deployment `9921dff3-fb09-4336-8ec7-0a67aebf484d` from repository commit
+`4fd7e9e`.
+
 The remaining submission decisions are operational/owner facts rather than
 technical P0 failures: commercial status, operator identity/jurisdiction, a
 named deletion-request inbox operator with Railway access, and the desired
@@ -273,6 +277,8 @@ Served the production build through Uvicorn at `http://127.0.0.1:8765`.
 
 ### Current production checks
 
+- Railway deployment `9921dff3-fb09-4336-8ec7-0a67aebf484d` — **SUCCESS**;
+  includes the manual deletion tool and runbook.
 - Railway deployment `0279a85b-6445-4628-a4f9-fb4820aa86c6` — **SUCCESS**.
 - `/health` — 200 and healthy.
 - `/privacy` — renders the deployed policy and deletion contact.
@@ -329,8 +335,24 @@ Served the production build through Uvicorn at `http://127.0.0.1:8765`.
 
 - **Working project URL:** `https://jimmyapp-production.up.railway.app/`
   - Health verified 2026-07-27.
-  - Deployment `0279a85b-6445-4628-a4f9-fb4820aa86c6` is the verified
-    hardened build.
+  - Deployment `9921dff3-fb09-4336-8ec7-0a67aebf484d` is the current verified
+    build; it contains the deletion workflow on top of the hardened application.
+- **Railway ownership/plan evidence:**
+  - the project is in workspace `alfaswing's Projects`;
+  - Ryan Ackerman's authenticated CLI session can deploy but cannot access
+    workspace billing;
+  - historical Railway deployment metadata labels the plan `trial`, and the
+    exact 500 MB volume matches Railway's Trial/Free volume limit;
+  - this does not prove that Jimmy personally owns the workspace or establish
+    the current billing status. A workspace billing owner must confirm that.
+- **Custom-domain evidence:**
+  - authoritative nameservers are Namecheap's
+    `dns1.registrar-servers.com` / `dns2.registrar-servers.com`, not cPanel;
+  - the apex CNAME to Railway is propagated;
+  - Railway still requires the `_railway-verify` TXT ownership record and shows
+    the certificate as `VALIDATING_OWNERSHIP`;
+  - Google MX handles domain email. cPanel does not resolve the Railway volume,
+    Railway billing, or Google inbox-ownership questions.
 - **Privacy Policy URL:**
 
   `https://jimmyapp-production.up.railway.app/privacy`
