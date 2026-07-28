@@ -8,6 +8,26 @@ The Railway production hostname is healthy and hardened. The custom apex domain
 is not ready because Railway still reports ownership as unverified and has not
 issued a certificate for `thejimmyapp.com`.
 
+## Hobby-upgrade recheck
+
+Rechecked at `2026-07-28T03:38:06Z`.
+
+- Railway's plan page identifies `alfaswing's Projects` as the active workspace
+  and says `You're on the Hobby Plan`.
+- The production project remains `thorough-celebration`
+  (`6378186b-cd41-45ef-a72a-606d46c89403`) in that workspace.
+- The production environment remains attached to service `chess-coach-ai`
+  (`3d6ac845-fa28-4af1-9dd9-440a1907d269`).
+- The Hobby plan is recognized: Railway displays plan limits of 8 vCPU, 8 GB
+  memory, and up to 5 GB storage.
+- The existing volume did not automatically grow. `chess-coach-ai-data`
+  (`7108fe72-1242-4425-a6a0-ff2748eb568c`) is still configured at 500 MB,
+  with 498.720768 MB in use, mounted at `/app/data`, and in `Ready` state.
+- The volume page exposes a `Live resize` action, but it is disabled for the
+  current signed-in user with `Only workspace admins can resize volumes`.
+  A workspace admin may resize it within the Hobby plan's 5 GB storage limit.
+  No resize was performed.
+
 ## 1. DNS action
 
 Namecheap authentication was initially unavailable, then restored during the
@@ -55,11 +75,17 @@ Railway domain:
 ```text
 Domain ID: 4e8df60a-db18-40b5-bece-d79daec5c129
 Domain: thejimmyapp.com
+Created: 2026-07-22T15:01:43.570+00:00
+Last domain-record update: 2026-07-22T15:01:44.065+00:00
 Sync status: ACTIVE
 Traffic CNAME: PROPAGATED
 Ownership verified: false
 Certificate: CERTIFICATE_STATUS_TYPE_VALIDATING_OWNERSHIP
 ```
+
+Railway does not expose a separate validation-attempt timestamp. The two
+timestamps above are the domain record's available `createdAt` and `updatedAt`
+values.
 
 The Railway UI says `Waiting for DNS update` and shows the same CNAME and TXT
 values that are present at Namecheap.
@@ -70,8 +96,17 @@ current state is still `VALIDATING_OWNERSHIP`.
 
 The certificate currently presented for `thejimmyapp.com` is Railway's
 `*.up.railway.app` certificate, whose subject alternative name does not include
-the custom domain. Standards-valid HTTPS requests therefore fail hostname
-verification.
+the custom domain:
+
+```text
+Subject: CN=*.up.railway.app
+Issuer: Let's Encrypt YE1
+Valid from: 2026-07-03T14:01:30Z
+Valid until: 2026-10-01T14:01:29Z
+SAN: DNS:*.up.railway.app
+```
+
+Standards-valid HTTPS requests therefore fail hostname verification.
 
 ## 4. Route verification
 
@@ -105,11 +140,26 @@ https://jimmyapp-production.up.railway.app/api/oauth/chesscom/callback
 ### Custom apex hostname
 
 Standards-valid HTTPS cannot connect because the certificate does not cover
-`thejimmyapp.com`.
+`thejimmyapp.com`. The `/`, `/privacy`, `/terms`, `/health`, and
+`/api/oauth/chesscom/callback` checks all fail with curl exit 60 and HTTP status
+000 before an application response is accepted.
 
 With certificate verification deliberately bypassed for diagnosis, all five
 routes return Railway's `404 Application not found`, rather than the
-application. This confirms that Railway has not activated custom-host routing.
+application. The latest diagnostic request returned:
+
+```text
+HTTP/2 404
+x-railway-fallback: true
+x-railway-request-id: N1Yi5cCVTmaezAc5jq4OvQ
+x-railway-edge: sjc1
+Body: {"status":"error","code":404,"message":"Application not found",
+       "request_id":"N1Yi5cCVTmaezAc5jq4OvQ"}
+```
+
+Plain HTTP reaches Railway's edge at `69.46.46.124` and redirects each tested
+route once to the equivalent HTTPS apex URL. This confirms that public DNS
+reaches Railway, but Railway has not activated custom-host routing.
 
 There is no redirect loop. The apex does not currently reach the application.
 
@@ -210,7 +260,69 @@ Production security checks:
 - Railway hostname browser: correct canonical and legal links, no console
   warnings/errors.
 
-## 7. Remaining blockers
+## 7. Railway support evidence package
+
+The following evidence is sufficient for a Railway support ticket without
+changing DNS or recreating the domain:
+
+```text
+Workspace:
+  alfaswing's Projects
+  45877a8e-b027-4e22-947c-37268af17a57
+  Active plan shown by Railway: Hobby
+
+Project / environment / service:
+  thorough-celebration / production / chess-coach-ai
+  6378186b-cd41-45ef-a72a-606d46c89403
+  2681f126-78e5-4235-a492-51d345d798c3
+  3d6ac845-fa28-4af1-9dd9-440a1907d269
+
+Custom domain:
+  thejimmyapp.com
+  4e8df60a-db18-40b5-bece-d79daec5c129
+  createdAt: 2026-07-22T15:01:43.570+00:00
+  updatedAt: 2026-07-22T15:01:44.065+00:00
+  syncStatus: ACTIVE
+  CNAME status: DNS_RECORD_STATUS_PROPAGATED
+  ownership verified: false
+  certificate: CERTIFICATE_STATUS_TYPE_VALIDATING_OWNERSHIP
+
+Required and observed CNAME:
+  thejimmyapp.com CNAME 17drm471.up.railway.app.
+
+Required and observed TXT:
+  _railway-verify.thejimmyapp.com
+  railway-verify=d43affd740eedfa6b6d4e12ace1f3966514d0a243b4d7eba9ec956dc5c77d77e
+
+Public DNS checks:
+  Authoritative dns1.registrar-servers.com: exact TXT and CNAME present
+  Authoritative dns2.registrar-servers.com: exact TXT and CNAME present
+  Cloudflare 1.1.1.1: exact TXT present
+  Google 8.8.8.8: exact TXT present
+  Quad9 9.9.9.9: exact TXT present
+  Full DNS trace: exact TXT returned by the authoritative server
+
+Edge diagnostics:
+  Apex resolves to 69.46.46.124
+  HTTP redirects to HTTPS
+  TLS presents only DNS:*.up.railway.app
+  Insecure diagnostic reaches Railway fallback 404
+  Request ID: N1Yi5cCVTmaezAc5jq4OvQ
+  Edge: sjc1
+```
+
+Requested Railway support action:
+
+> The required ownership TXT and traffic CNAME resolve exactly from both
+> authoritative Namecheap nameservers and three independent public resolvers,
+> but domain `4e8df60a-db18-40b5-bece-d79daec5c129` remains
+> `verification.verified=false` and
+> `CERTIFICATE_STATUS_TYPE_VALIDATING_OWNERSHIP`. The owning workspace now
+> shows an active Hobby plan. Please re-run or repair backend ownership
+> validation for the existing domain and issue its certificate without asking
+> us to delete and recreate the domain.
+
+## 8. Remaining blockers
 
 1. Railway must recognize the already-propagated ownership TXT record.
 2. Railway must issue a certificate containing `thejimmyapp.com`.
@@ -221,4 +333,5 @@ Production security checks:
    only from HTTP.
 
 No billing, project transfer, production-data deletion, SQLite cleanup, or
-Chess.com form action was performed.
+Chess.com form action was performed. The Namecheap TXT and CNAME records and the
+submitted Railway OAuth callback were not modified.
