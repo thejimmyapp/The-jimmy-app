@@ -1,4 +1,6 @@
 FROM node:22-bookworm-slim AS frontend
+ARG VITE_PUBLIC_BASE_URL=https://thejimmyapp.com
+ENV VITE_PUBLIC_BASE_URL=$VITE_PUBLIC_BASE_URL
 WORKDIR /app/frontend
 RUN corepack enable
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./

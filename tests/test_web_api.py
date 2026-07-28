@@ -3,10 +3,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from fastapi import status
 from fastapi.testclient import TestClient
+import pytest
 from sqlalchemy.exc import SQLAlchemyError
+from starlette.websockets import WebSocketDisconnect
 
-from backend.main import app, get_session
+from backend.main import app, get_session, settings
 
 
 def receive_event_type(socket, expected_type: str) -> dict:
@@ -37,6 +40,74 @@ def test_chesscom_oauth_callback_is_reserved_without_claiming_authorization() ->
         "status": "pending_authorization",
         "detail": "Chess.com OAuth is not enabled. This callback is reserved for the requested integration.",
     }
+    assert (
+        settings.chesscom_oauth_callback_url
+        == "https://jimmyapp-production.up.railway.app/api/oauth/chesscom/callback"
+    )
+
+
+@pytest.mark.parametrize(
+    "host",
+    ["thejimmyapp.com", "jimmyapp-production.up.railway.app", "service.railway.internal"],
+)
+def test_production_hosts_are_trusted(host: str) -> None:
+    with TestClient(app) as client:
+        assert client.get("/health", headers={"host": host}).status_code == 200
+
+
+def test_unknown_host_is_rejected() -> None:
+    with TestClient(app) as client:
+        assert client.get("/health", headers={"host": "attacker.example"}).status_code == 400
+
+
+@pytest.mark.parametrize(
+    "origin",
+    ["https://thejimmyapp.com", "https://jimmyapp-production.up.railway.app"],
+)
+def test_production_cors_origins_are_allowed(origin: str) -> None:
+    with TestClient(app) as client:
+        response = client.options(
+            "/health",
+            headers={"origin": origin, "access-control-request-method": "GET"},
+        )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == origin
+
+
+def test_unknown_cors_origin_is_not_allowed() -> None:
+    with TestClient(app) as client:
+        response = client.options(
+            "/health",
+            headers={
+                "origin": "https://attacker.example",
+                "access-control-request-method": "GET",
+            },
+        )
+    assert "access-control-allow-origin" not in response.headers
+
+
+def test_room_websocket_rejects_unknown_browser_origin() -> None:
+    with TestClient(app) as client:
+        room = client.post("/api/rooms", json={"game_id": None}).json()
+        joined = client.post(f"/api/rooms/{room['id']}/join", json={"display_name": "Alex"}).json()
+        with pytest.raises(WebSocketDisconnect) as exc_info:
+            with client.websocket_connect(
+                f"/ws/rooms/{room['id']}?client_id={joined['client_id']}&display_name=Alex",
+                headers={"origin": "https://attacker.example"},
+            ):
+                pass
+    assert exc_info.value.code == status.WS_1008_POLICY_VIOLATION
+
+
+def test_room_websocket_accepts_custom_domain_origin() -> None:
+    with TestClient(app) as client:
+        room = client.post("/api/rooms", json={"game_id": None}).json()
+        joined = client.post(f"/api/rooms/{room['id']}/join", json={"display_name": "Alex"}).json()
+        with client.websocket_connect(
+            f"/ws/rooms/{room['id']}?client_id={joined['client_id']}&display_name=Alex",
+            headers={"origin": "https://thejimmyapp.com"},
+        ) as socket:
+            assert socket.receive_json()["type"] == "room.snapshot"
 
 
 def test_room_websocket_relays_versioned_event() -> None:

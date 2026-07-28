@@ -33,7 +33,18 @@ class Settings(BaseSettings):
     chesscom_cache_ttl_seconds: int = Field(default=900, ge=60, le=86_400)
     chesscom_max_archives: int = Field(default=12, ge=1, le=120)
     chesscom_max_games: int = Field(default=500, ge=1, le=5000)
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    chesscom_oauth_callback_url: str = (
+        "https://jimmyapp-production.up.railway.app/api/oauth/chesscom/callback"
+    )
+    cors_origins: str = (
+        "http://localhost:5173,http://127.0.0.1:5173,"
+        "https://thejimmyapp.com,https://jimmyapp-production.up.railway.app"
+    )
+    trusted_hosts: str = (
+        "localhost,127.0.0.1,testserver,thejimmyapp.com,"
+        "jimmyapp-production.up.railway.app,*.railway.app,*.railway.internal"
+    )
+    websocket_origins: str = ""
     max_pgn_bytes: int = 2_000_000
     engine_depth: int = Field(default=10, ge=4, le=24)
     engine_timeout_seconds: float = Field(default=8.0, ge=1, le=60)
@@ -41,7 +52,25 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [value.strip() for value in self.cors_origins.split(",") if value.strip()]
+        return _split_csv(self.cors_origins)
+
+    @property
+    def trusted_host_list(self) -> list[str]:
+        return _split_csv(self.trusted_hosts)
+
+    @property
+    def websocket_origin_list(self) -> list[str]:
+        return _split_csv(self.websocket_origins or self.cors_origins)
+
+    def is_allowed_websocket_origin(self, origin: str | None) -> bool:
+        if not origin:
+            return True
+        normalized = origin.rstrip("/")
+        return normalized in {value.rstrip("/") for value in self.websocket_origin_list}
+
+
+def _split_csv(value: str) -> list[str]:
+    return [item.strip() for item in value.split(",") if item.strip()]
 
 
 @lru_cache

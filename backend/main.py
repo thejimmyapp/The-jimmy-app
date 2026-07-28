@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from backend.chesscom import ChessComService
 from backend.config import get_settings
@@ -47,6 +48,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_host_list)
 
 
 def _is_disk_full_error(exc: Exception) -> bool:
@@ -302,6 +304,9 @@ async def room_socket(
     client_id: str = Query(min_length=1, max_length=80),
     display_name: str = Query(default="Guest", min_length=1, max_length=40),
 ) -> None:
+    if not settings.is_allowed_websocket_origin(websocket.headers.get("origin")):
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
     clean_display_name = " ".join(display_name.split()) or "Guest"
     await room_hub.connect(room_id, client_id, websocket, clean_display_name)
     try:
