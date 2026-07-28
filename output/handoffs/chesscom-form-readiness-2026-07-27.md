@@ -1,6 +1,6 @@
 # The Jimmy App — Chess.com Form Readiness Report
 
-Date: 2026-07-27
+Date: 2026-07-27; submission record updated 2026-07-28
 
 Repository: `/Users/user/Documents/Jimmys-App`
 
@@ -59,11 +59,18 @@ The tested deletion workflow was subsequently deployed successfully as
 deployment `9921dff3-fb09-4336-8ec7-0a67aebf484d` from repository commit
 `4fd7e9e`.
 
-The remaining submission decisions are operational/owner facts rather than
-technical P0 failures: commercial status, operator identity/jurisdiction, a
-named deletion-request inbox operator with Railway access, and the desired
-retention/no-bulk disclosure. A tested deletion tool and operator runbook now
-exist in the repository.
+A reserved, non-authorizing Chess.com OAuth callback was then added in commit
+`4020d07` and deployed successfully as
+`f39dba88-ff3c-4e25-a9f6-6140da810756`. The callback returns an explicit
+pending-authorization response and does not enable OAuth before Chess.com
+provides supported integration details.
+
+The official Chess.com OAuth / Connected Board Request form was submitted on
+2026-07-28 by Ryan Ackerman (`RyanTime`) using
+`hello@thejimmyapp.com`, with **No** selected for Connected Board. Google Forms
+confirmed: **Your response has been recorded**. Ryan's two-way access to the
+contact inbox and authenticated deployment access to the Railway project were
+verified before submission.
 
 ## 2. FILES CHANGED
 
@@ -78,6 +85,7 @@ exist in the repository.
 | `backend/chesscom.py` | Chess.com PubAPI client | Added completed-game filtering, serial access, process-local caching, bounded imports, polite delay, and safe `429` handling. |
 | `backend/config.py` | Runtime configuration | Added cache/import limits and the real project contact address. |
 | `backend/main.py` | Public API | Removed `/api/chesscom/enrich`; enforced terminal PGNs, Board A identity, completed reviews, and stored-position-only engine analysis. |
+| `backend/main.py` | OAuth callback reservation | Added a non-authorizing `/api/oauth/chesscom/callback` route for the exact redirect URI submitted to Chess.com. |
 | `backend/rooms.py` | Full-storage resilience | Retained the current production in-memory room fallback when persistent room storage is full. |
 | `docs/operations/data-deletion-runbook.md` | Deletion operations | Added request verification, dry-run, backup, execution, verification, and closure steps. |
 | `backend/schemas.py` | Request models | Removed the copied-cURL schema and arbitrary analysis FEN fields. |
@@ -103,7 +111,7 @@ exist in the repository.
 | `scripts/delete_stored_data.py` | Operator command | Added dry-run-by-default execution with a required audit ID for mutations. |
 | `tests/test_manual_pgn_import.py` | Replay tests | Updated fixtures to represent terminal completed games. |
 | `tests/test_review_outcome.py` | Analysis safety test | Verifies engine analysis uses the server-side stored snapshot. |
-| `tests/test_web_api.py` | Route safety test | Verifies the copied-session connector is absent from OpenAPI and unavailable. |
+| `tests/test_web_api.py` | Route safety tests | Verifies the copied-session connector is absent and the reserved OAuth callback reports pending authorization. |
 | `frontend/src/App.test.tsx` | Connector UI test | Verifies completed paired-PGN import, legal links, and absence of fallback UI. |
 | `frontend/src/components/LegalPage.test.tsx` | Policy tests | Verifies key Privacy/Terms disclosures and links. |
 
@@ -135,8 +143,9 @@ exist in the repository.
 - Deletion is by email to `hello@thejimmyapp.com`; there is no self-service
   deletion API. An operator must identify and delete the relevant SQLite and/or
   relational database rows.
-- The domain has Google MX routing, but mailbox ownership and the deletion
-  response procedure were not tested.
+- The domain has Google MX routing. Two-way delivery through
+  `hello@thejimmyapp.com` was verified, and Ryan Ackerman is the named inbox
+  operator with authenticated Railway project access.
 - Railway is named as the current hosting provider based on the production URL
   and deployment configuration. Its infrastructure logging/retention remains a
   provider-level operational matter.
@@ -237,7 +246,7 @@ credentials are not part of the normalized stored game payload.
 | 9. The app does not retain reusable Chess.com session credentials. | TRUE in production | No current intake/parser/storage path remains. | Confirm no historical credentials exist in external logs/backups. |
 | 10. Public Privacy Policy and Terms pages exist. | TRUE in production | `LegalPage.tsx`; `/privacy` and `/terms` render in production. | Owner/legal review remains advisable. |
 | 11. Those pages are linked publicly. | TRUE in production | `LegalLinks.tsx`, main header, and puzzle header; production DOM verified. | None. |
-| 12. Retention/deletion statements are accurate. | TRUE IN REPOSITORY; OPERATOR PENDING | Policy accurately discloses no automatic period/dashboard. The manual tool and runbook are tested across both stores. | Name the inbox operator and ensure that person has Railway/data-store access before accepting requests. |
+| 12. Retention/deletion statements are accurate. | TRUE IN PRODUCTION | Policy accurately discloses no automatic period/dashboard. The manual tool and runbook are tested across both stores. Ryan Ackerman is the verified inbox operator and has authenticated Railway project access. | Continue following the audited runbook for each request. |
 | 13. Requests are rate-limited and cached where appropriate. | PARTLY TRUE | Process-local serialization, 15-minute cache, 250 ms archive delay, 12-month/500-game bounds. No distributed/per-IP limiter or persistent ETag cache. | Optional distributed limiter/persistent cache before scale; disclose current bounds. |
 | 14. `429` responses are handled safely. | TRUE | `_raise` stops without retry and reports numeric `Retry-After`. | Deploy; consider UI-specific status later. |
 | 15. The app does not imply Chess.com affiliation/endorsement. | TRUE in production | Terms explicitly disclaim affiliation/sponsorship/endorsement; no Chess.com branding asset is used. | None. |
@@ -249,7 +258,7 @@ credentials are not part of the normalized stored game payload.
 ### Automated
 
 - `.venv/bin/python -m pytest -q`
-  - **55 passed**
+  - **56 passed**
   - one dependency deprecation warning from FastAPI `TestClient`.
 - `pnpm test -- --run`
   - **7 test files passed**
@@ -277,6 +286,8 @@ Served the production build through Uvicorn at `http://127.0.0.1:8765`.
 
 ### Current production checks
 
+- Railway deployment `f39dba88-ff3c-4e25-a9f6-6140da810756` — **SUCCESS**;
+  includes the reserved OAuth callback from commit `4020d07`.
 - Railway deployment `9921dff3-fb09-4336-8ec7-0a67aebf484d` — **SUCCESS**;
   includes the manual deletion tool and runbook.
 - Railway deployment `0279a85b-6445-4628-a4f9-fb4820aa86c6` — **SUCCESS**.
@@ -285,6 +296,8 @@ Served the production build through Uvicorn at `http://127.0.0.1:8765`.
 - `/terms` — renders completed-game, no-live-assistance, and non-affiliation
   language.
 - `/openapi.json` — `/api/chesscom/enrich` is absent.
+- `/api/oauth/chesscom/callback` — 200 and explicitly reports that Chess.com
+  OAuth remains pending authorization.
 - Production `AnalysisRequest` — only `game_id`, `global_ply`, `board`, and
   `depth`.
 - Main connector UI — public archive lookup plus credential-free completed
@@ -302,21 +315,17 @@ Served the production build through Uvicorn at `http://127.0.0.1:8765`.
 3. Retained and tested `origin/main` full-volume startup and room/invite
    protections before deployment.
 
-### P1 — should be fixed or explicitly resolved before submission
+### P1 — operational follow-up after submission
 
-1. Confirm that `hello@thejimmyapp.com` is monitored and name an operator with
-   Railway/data-store access. The tested deletion command and documented
-   procedure now exist.
-2. Decide whether the form should disclose that current imports are public
-   username-based and unauthenticated. OAuth is being requested but is not
-   currently implemented.
-3. Decide whether Chess.com needs a stronger no-bulk assurance than the current
+1. Decide whether Chess.com needs a stronger no-bulk assurance than the current
    12-month/500-game per-username bounds; there is no global retention cap.
-4. Have the policy/Terms reviewed by the responsible operator or counsel before
+2. Have the policy/Terms reviewed by the responsible operator or counsel before
    relying on them as legal commitments.
-5. Clean up or expand the Railway volume, which reported approximately
-   498.7 MB used of 500 MB. The deployed safeguards keep startup and room
-   creation functional when full, but capacity remains an operational risk.
+3. Clean up or expand the Railway volume, which is now reported as full at
+   500 MB. The deployed safeguards keep startup and room creation functional
+   when full, but capacity remains an operational risk. Billing for the
+   `alfaswing's Projects` workspace requires its owner; upgrading Ryan's
+   separate workspace would not expand this project volume.
 
 ### P2 — may be disclosed or scheduled after submission
 
@@ -334,9 +343,18 @@ Served the production build through Uvicorn at `http://127.0.0.1:8765`.
 ## 9. FORM-READINESS FACTS
 
 - **Working project URL:** `https://jimmyapp-production.up.railway.app/`
-  - Health verified 2026-07-27.
-  - Deployment `9921dff3-fb09-4336-8ec7-0a67aebf484d` is the current verified
-    build; it contains the deletion workflow on top of the hardened application.
+  - Health verified after submission on 2026-07-28.
+  - Deployment `f39dba88-ff3c-4e25-a9f6-6140da810756` is the current verified
+    build; it contains the reserved OAuth callback on top of the deletion
+    workflow and hardened application.
+- **Submitted by:** Ryan Ackerman.
+- **Chess.com username:** `RyanTime`.
+- **Contact email:** `hello@thejimmyapp.com`.
+- **OAuth redirect URI:**
+
+  `https://jimmyapp-production.up.railway.app/api/oauth/chesscom/callback`
+- **Submission confirmation:** Google Forms reported
+  **Your response has been recorded**.
 - **Railway ownership/plan evidence:**
   - the project is in workspace `alfaswing's Projects`;
   - Ryan Ackerman's authenticated CLI session can deploy but cannot access
@@ -385,7 +403,8 @@ Served the production build through Uvicorn at `http://127.0.0.1:8765`.
 - **Deletion method:** email `hello@thejimmyapp.com`; the operator verifies the
   request, previews matched counts, backs up, executes the scoped deletion
   command, and verifies zero remaining requested records. The implementation is
-  tested; inbox ownership and production access remain owner confirmations.
+  tested; Ryan Ackerman is the verified inbox operator and has authenticated
+  Railway project access.
 - **Authentication model:** no application accounts and no OAuth yet. Public
   username lookup plus unguessable room-link access. OAuth is the requested
   future route.
@@ -393,8 +412,8 @@ Served the production build through Uvicorn at `http://127.0.0.1:8765`.
   between archive requests; 15-minute per-username memory cache; default maximum
   12 recent archive months/500 completed Bughouse games; `429` stops without
   automatic retry.
-- **Contact email:** `hello@thejimmyapp.com`; Google MX exists, inbox operation
-  not verified.
+- **Contact email:** `hello@thejimmyapp.com`; Google MX and two-way delivery
+  were verified, with Ryan Ackerman named as the monitor.
 - **Current commercial status:** no payment, checkout, subscription, ad, or
   analytics integration was found. Business/commercial intent beyond the code
   is unverified.
@@ -410,14 +429,15 @@ Served the production build through Uvicorn at `http://127.0.0.1:8765`.
 
 ## 10. RECOMMENDATION
 
-# TECHNICAL P0 COMPLETE — OWNER/OPERATIONS CONFIRMATIONS REMAIN
+# FORM SUBMITTED — AWAITING CHESS.COM RESPONSE
 
 The deployed application now behaves consistently with the narrow technical
 claims in the form: Connected Board is **No**, the public credential boundary
 is enforced, legal pages are public, and completed-game analysis is enforced
 with the documented manual-PGN qualification.
 
-Codex does not make the final send/hold decision. Before submission, Jimmy,
-Ryan, and ChatGPT should confirm commercial status, legal operator identity and
-jurisdiction, that `hello@thejimmyapp.com` is monitored by an operator with
-Railway access, and the preferred retention/no-bulk disclosure.
+The official request has been submitted and confirmed. Approval remains at
+Chess.com's discretion. Follow-up work is operational: expand or safely clean
+the full Railway volume, add the Namecheap ownership TXT record so the custom
+domain can validate, and complete any remaining owner/legal review without
+changing the factual claims already submitted.
