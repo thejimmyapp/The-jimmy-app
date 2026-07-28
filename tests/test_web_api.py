@@ -28,6 +28,17 @@ def test_health_and_openapi() -> None:
         assert "/ws/rooms/{room_id}" not in client.get("/openapi.json").json()["paths"]
 
 
+def test_chesscom_oauth_callback_is_reserved_without_claiming_authorization() -> None:
+    with TestClient(app) as client:
+        response = client.get("/api/oauth/chesscom/callback")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "pending_authorization",
+        "detail": "Chess.com OAuth is not enabled. This callback is reserved for the requested integration.",
+    }
+
+
 def test_room_websocket_relays_versioned_event() -> None:
     with TestClient(app) as client:
         room = client.post("/api/rooms", json={"game_id": None}).json()

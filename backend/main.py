@@ -58,6 +58,14 @@ def health() -> dict[str, str]:
     return {"status": "ok", "service": "thejimmyapp"}
 
 
+@app.get("/api/oauth/chesscom/callback")
+def chesscom_oauth_callback() -> dict[str, str]:
+    return {
+        "status": "pending_authorization",
+        "detail": "Chess.com OAuth is not enabled. This callback is reserved for the requested integration.",
+    }
+
+
 @app.post("/api/chesscom/connect")
 async def connect_chesscom(request: ChessComConnectRequest) -> dict[str, object]:
     service = ChessComService(settings)
