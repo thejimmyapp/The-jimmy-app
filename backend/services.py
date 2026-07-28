@@ -11,6 +11,7 @@ from backend.config import Settings
 from thejimmyapp.board_renderer import build_bughouse_pair_positions, build_global_replay_frames, build_replay_positions
 from thejimmyapp.db import Database
 from thejimmyapp.engine import EngineConfig, FairyStockfishEngine
+from thejimmyapp.game_completion import is_completed_stored_game
 from thejimmyapp.pgn_parser import parse_game_data, parse_partner_game_data
 
 
@@ -22,9 +23,13 @@ class GameService:
     def list_games(self, username: str, limit: int = 500) -> list[dict[str, object]]:
         return self.db.list_games(username=username, limit=limit)
 
+    def is_completed_game(self, game_id: int) -> bool:
+        game = self.db.get_game(game_id)
+        return bool(game and is_completed_stored_game(game))
+
     def get_game_payload(self, game_id: int) -> dict[str, object] | None:
         game = self.db.get_game(game_id)
-        if not game:
+        if not game or not is_completed_stored_game(game):
             return None
         parsed = parse_game_data(str(game.get("pgn") or ""), str(game.get("raw_json") or ""))
         partner = parse_partner_game_data(str(game.get("raw_json") or ""))
@@ -111,9 +116,6 @@ class AnalysisJobs:
         global_ply: int,
         board: str,
         depth: int,
-        variant_fen: str | None = None,
-        board_a_fen: str | None = None,
-        board_b_fen: str | None = None,
     ) -> str:
         job_id = str(uuid4())
         self.jobs[job_id] = {
@@ -124,7 +126,7 @@ class AnalysisJobs:
             "depth": depth,
         }
         asyncio.create_task(
-            self._run(job_id, game_id, global_ply, board, depth, variant_fen, board_a_fen, board_b_fen)
+            self._run(job_id, game_id, global_ply, board, depth)
         )
         return job_id
 
@@ -135,23 +137,13 @@ class AnalysisJobs:
         global_ply: int,
         board: str,
         depth: int,
-        variant_fen: str | None,
-        board_a_fen: str | None,
-        board_b_fen: str | None,
     ) -> None:
         async with self.semaphore:
             metadata = self.jobs[job_id]
             self.jobs[job_id] = {**metadata, "status": "running"}
-            snapshot = None
-            if variant_fen:
-                snapshot = {
-                    "board_a": {"variant_fen": board_a_fen or (variant_fen if board == "A" else "")},
-                    "board_b": {"variant_fen": board_b_fen or (variant_fen if board == "B" else "")},
-                }
-            else:
-                snapshot = await asyncio.to_thread(self.games.snapshot, game_id, global_ply)
+            snapshot = await asyncio.to_thread(self.games.snapshot, game_id, global_ply)
             position = snapshot.get("board_a" if board == "A" else "board_b") if snapshot else None
-            fen = variant_fen or (str(position.get("variant_fen") or "") if isinstance(position, dict) else "")
+            fen = str(position.get("variant_fen") or "") if isinstance(position, dict) else ""
             if not fen:
                 self.jobs[job_id] = {**metadata, "status": "failed", "error": "Board position unavailable"}
                 return

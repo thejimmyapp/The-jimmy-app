@@ -29,7 +29,10 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite:///{(ROOT_DIR / 'data' / 'webapp.db').as_posix()}"
     legacy_database_path: Path = ROOT_DIR / "data" / "bughouse.db"
     fairy_stockfish_path: Path = Field(default_factory=_default_fairy_stockfish_path)
-    chesscom_user_agent: str = "thejimmyapp/1.0 contact=admin@example.com"
+    chesscom_user_agent: str = "thejimmyapp/1.0 contact=hello@thejimmyapp.com"
+    chesscom_cache_ttl_seconds: int = Field(default=900, ge=60, le=86_400)
+    chesscom_max_archives: int = Field(default=12, ge=1, le=120)
+    chesscom_max_games: int = Field(default=500, ge=1, le=5000)
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     max_pgn_bytes: int = 2_000_000
     engine_depth: int = Field(default=10, ge=4, le=24)

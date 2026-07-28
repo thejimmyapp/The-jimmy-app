@@ -3,6 +3,7 @@ import { AlertTriangle, Check, Copy, FileInput, LogOut, Palette, Radio, Redo2, R
 import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { BoardPanel } from "./components/BoardPanel";
+import { LegalLinks } from "./components/LegalLinks";
 import { SidePanel } from "./components/SidePanel";
 import { Timeline } from "./components/Timeline";
 import { applyRoomSnapshot, connectRoomSocket, sendRoomEvent } from "./socket";
@@ -68,8 +69,6 @@ export default function App() {
   const [manualImportOpen, setManualImportOpen] = useState(false);
   const [boardAPgn, setBoardAPgn] = useState("");
   const [boardBPgn, setBoardBPgn] = useState("");
-  const [authenticatedOpen, setAuthenticatedOpen] = useState(false);
-  const [curlText, setCurlText] = useState("");
   const gamesQuery = useQuery({ queryKey: ["games", store.username], queryFn: () => api.games(store.username), enabled: Boolean(store.username) });
   const roomQuery = useQuery({ queryKey: ["room", store.roomId], queryFn: () => api.room(store.roomId as string), enabled: Boolean(store.roomId) });
   useEffect(() => { if (gamesQuery.data) useCoachStore.getState().setGames(gamesQuery.data.games); }, [gamesQuery.data]);
@@ -84,13 +83,6 @@ export default function App() {
     onSuccess: () => {
       setBoardAPgn("");
       setBoardBPgn("");
-      return queryClient.invalidateQueries({ queryKey: ["games"] });
-    },
-  });
-  const enrichMutation = useMutation({
-    mutationFn: () => api.enrichChessCom(usernameDraft.trim(), curlText),
-    onSuccess: () => {
-      setCurlText("");
       return queryClient.invalidateQueries({ queryKey: ["games"] });
     },
   });
@@ -143,6 +135,7 @@ export default function App() {
       <header className="app-header">
         <div className="brand"><span className="brand-mark">J</span><div><strong>THE JIMMY APP</strong><small>COLLABORATIVE BUGHOUSE COACH</small></div></div>
         <div className="header-actions">
+          <LegalLinks />
           {store.mode === "exploration" && <button className="icon-button" title="Undo exploration move" onClick={store.undoExploration}><Undo2 size={16} /></button>}
           {store.explorationFuture.length > 0 && <button className="icon-button" title="Redo exploration move" onClick={store.redoExploration}><Redo2 size={16} /></button>}
           {store.mode === "exploration" && <button className="return-game" onClick={() => { store.returnToGame(); sendRoomEvent("variation.return_to_game", {}); }}><RotateCcw size={16} /> Return to move {store.explorationStartPly}</button>}
@@ -198,7 +191,7 @@ export default function App() {
             {manualImportOpen && (
               <section className="authenticated-panel safe-import-panel">
                 <strong><ShieldCheck size={15} /> Credential-free two-board import</strong>
-                <p>Paste the PGN for each board from the same Bughouse game. Clock comments are used to synchronize the boards when present.</p>
+                <p>Paste completed PGNs for both boards from the same Bughouse game. Each PGN must contain a final result; clock comments are used to synchronize the boards when present.</p>
                 <label>Board A PGN<textarea aria-label="Board A PGN" value={boardAPgn} onChange={(event) => setBoardAPgn(event.target.value)} placeholder={"[Variant \"Bughouse\"]\n\n1. e4 …"} spellCheck={false} /></label>
                 <label>Board B PGN<textarea aria-label="Board B PGN" value={boardBPgn} onChange={(event) => setBoardBPgn(event.target.value)} placeholder={"[Variant \"Bughouse\"]\n\n1. d4 …"} spellCheck={false} /></label>
                 {importMutation.error && <div className="form-error">{importMutation.error.message}</div>}
@@ -206,18 +199,6 @@ export default function App() {
                 <button type="button" className="primary" disabled={boardAPgn.trim().length < 8 || boardBPgn.trim().length < 8 || !usernameDraft.trim() || importMutation.isPending} onClick={importCompleteGame}>
                   {importMutation.isPending ? "Importing both boards…" : "Import complete game"}
                 </button>
-              </section>
-            )}
-            <button type="button" className="authenticated-toggle temporary-toggle" onClick={() => setAuthenticatedOpen(!authenticatedOpen)}>{authenticatedOpen ? "Hide temporary fallback" : "Temporary pgn-info fallback"}</button>
-            {authenticatedOpen && (
-              <section className="authenticated-panel temporary-panel">
-                <strong>Temporary advanced fallback</strong>
-                <p>This unofficial recovery path is not a supported Chess.com integration. It accepts a copied <code>pgn-info</code> cURL once and does not store it. Prefer the two-board PGN import above.</p>
-                <a href="https://www.chess.com/games/archive" target="_blank" rel="noreferrer">Open Chess.com archive</a>
-                <textarea value={curlText} onChange={(event) => setCurlText(event.target.value)} placeholder="Paste the pgn-info cURL request" spellCheck={false} />
-                {enrichMutation.error && <div className="form-error">{enrichMutation.error.message}</div>}
-                {enrichMutation.data && <div className="connector-success">Loaded {enrichMutation.data.enriched} complete games. Credentials stored: no.</div>}
-                <button type="button" className="primary" disabled={curlText.length < 40 || enrichMutation.isPending} onClick={() => enrichMutation.mutate()}>{enrichMutation.isPending ? "Loading both boards…" : "Load both boards"}</button>
               </section>
             )}
             {store.username && <button type="button" className="text-button" onClick={() => setConnectOpen(false)}><LogOut size={15} /> Continue as {store.username}</button>}

@@ -16,7 +16,6 @@ engines/*.exe
 !engines/.gitkeep
 secrets/*
 !secrets/.gitkeep
-!secrets/chesscom_pgn_info_curl.example.txt
 *.mp4
 *.mov
 *.avi

@@ -1218,7 +1218,7 @@ def _html(
         <div id="partnerWarning" class="warning"></div>
       </div>
       <div id="partnerEmpty" class="partner-empty">
-        Copy an authenticated Chess.com pgn-info cURL into the configured local file, then import again to load this board.
+        Import completed PGNs for both boards to load the synchronized partner board.
       </div>
     </section>
   </div>

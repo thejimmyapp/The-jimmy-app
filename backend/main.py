@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-import asyncio
-import re
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect, status
@@ -22,7 +20,6 @@ from backend.puzzles import check_move, get_puzzle, next_move, solution
 from backend.schemas import (
     AnalysisRequest,
     ChessComConnectRequest,
-    ChessComEnrichRequest,
     ExplorationMoveRequest,
     ExplorationSanMoveRequest,
     NoteCreateRequest,
@@ -33,7 +30,7 @@ from backend.schemas import (
     SocketEvent,
 )
 from thejimmyapp.chesscom_api import parse_pgn_headers
-from thejimmyapp.chesscom_pgn_info import PgnInfoClient, merge_pgn_info, parse_curl_auth
+from thejimmyapp.game_completion import is_completed_pgn, pgn_result, player_results
 from backend.services import AnalysisJobs, GameService
 
 
@@ -75,45 +72,6 @@ async def connect_chesscom(request: ChessComConnectRequest) -> dict[str, object]
     }
 
 
-@app.post("/api/chesscom/enrich")
-async def enrich_chesscom(request: ChessComEnrichRequest) -> dict[str, object]:
-    try:
-        return await asyncio.to_thread(_enrich_from_curl, request.username, request.curl_text, request.limit)
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-def _enrich_from_curl(username: str, curl_text: str, limit: int) -> dict[str, object]:
-    client = PgnInfoClient(auth=parse_curl_auth(curl_text))
-    candidates = games.db.list_games_for_pgn_info_enrichment(username, limit=limit)
-    enriched_count = 0
-    checked_count = 0
-    for start in range(0, len(candidates), 100):
-        batch = candidates[start : start + 100]
-        payloads = client.fetch_for_games(batch)
-        checked_count += len(batch)
-        for raw_game in batch:
-            game_id = _raw_chesscom_game_id(raw_game)
-            enriched = payloads.get(game_id) if game_id else None
-            if enriched:
-                games.db.upsert_game(username, merge_pgn_info(raw_game, enriched))
-                enriched_count += 1
-    return {
-        "checked": checked_count,
-        "enriched": enriched_count,
-        "remaining_without_second_board": max(0, len(candidates) - enriched_count),
-        "credentials_stored": False,
-    }
-
-
-def _raw_chesscom_game_id(game: dict[str, object]) -> str | None:
-    for key in ("game_id", "gameId", "id"):
-        if game.get(key) is not None:
-            return str(game[key])
-    match = re.search(r"/(?:live|daily)/(\d+)", str(game.get("url") or ""))
-    return match.group(1) if match else None
-
-
 @app.get("/api/chesscom/{username}/bughouse-games")
 def list_bughouse_games(username: str, limit: int = Query(default=500, ge=1, le=5000)) -> dict[str, object]:
     return {"username": username, "games": games.list_games(username, limit)}
@@ -121,6 +79,8 @@ def list_bughouse_games(username: str, limit: int = Query(default=500, ge=1, le=
 
 @app.get("/api/games/{game_id}")
 def get_game(game_id: int) -> dict[str, object]:
+    if games.db.get_game(game_id) and not games.is_completed_game(game_id):
+        raise HTTPException(status_code=409, detail="Only completed games can be reviewed")
     payload = games.get_game_payload(game_id)
     if not payload:
         raise HTTPException(status_code=404, detail="Game not found")
@@ -129,9 +89,25 @@ def get_game(game_id: int) -> dict[str, object]:
 
 @app.post("/api/games/import-pgn")
 def import_pgn(request: PgnImportRequest) -> dict[str, object]:
+    if not is_completed_pgn(request.pgn):
+        raise HTTPException(
+            status_code=422,
+            detail='Board A PGN must be completed and contain Result "1-0", "0-1", or "1/2-1/2"',
+        )
+    if request.second_board_pgn and not is_completed_pgn(request.second_board_pgn):
+        raise HTTPException(
+            status_code=422,
+            detail='Board B PGN must be completed and contain Result "1-0", "0-1", or "1/2-1/2"',
+        )
     headers = parse_pgn_headers(request.pgn)
+    result = pgn_result(request.pgn)
+    if result is None:
+        raise HTTPException(status_code=422, detail="Board A PGN does not contain a terminal result")
+    white_result, black_result = player_results(result)
     white_name = headers.get("White") or "White"
     black_name = headers.get("Black") or "Black"
+    if request.username.lower() not in {white_name.lower(), black_name.lower()}:
+        raise HTTPException(status_code=422, detail="The importing username must be a player on Board A")
     game_key = uuid4()
     raw_game = {
         "url": f"manual://{game_key}",
@@ -139,8 +115,8 @@ def import_pgn(request: PgnImportRequest) -> dict[str, object]:
         "pgn": request.pgn,
         "rules": "bughouse",
         "time_control": headers.get("TimeControl"),
-        "white": {"username": white_name, "result": headers.get("Result")},
-        "black": {"username": black_name, "result": headers.get("Result")},
+        "white": {"username": white_name, "result": white_result},
+        "black": {"username": black_name, "result": black_result},
     }
     if request.second_board_pgn:
         partner_headers = parse_pgn_headers(request.second_board_pgn)
@@ -155,6 +131,8 @@ def import_pgn(request: PgnImportRequest) -> dict[str, object]:
 
 @app.get("/api/games/{game_id}/snapshot/{global_ply}")
 def get_snapshot(game_id: int, global_ply: int) -> dict[str, object]:
+    if not games.is_completed_game(game_id):
+        raise HTTPException(status_code=409, detail="Only completed games can be reviewed")
     snapshot = games.snapshot(game_id, global_ply)
     if not snapshot:
         raise HTTPException(status_code=404, detail="Game not found")
@@ -213,14 +191,13 @@ def puzzle_solution(puzzle_id: str, request: PuzzleHistoryRequest) -> dict[str, 
 
 @app.post("/api/analysis", status_code=status.HTTP_202_ACCEPTED)
 async def start_analysis(request: AnalysisRequest) -> dict[str, str]:
+    if not games.is_completed_game(request.game_id):
+        raise HTTPException(status_code=409, detail="Engine analysis is available only for stored completed games")
     job_id = await analysis_jobs.submit(
         request.game_id,
         request.global_ply,
         request.board,
         request.depth,
-        request.variant_fen,
-        request.board_a_fen,
-        request.board_b_fen,
     )
     return {"job_id": job_id, "status": "queued", "engine": "Fairy-Stockfish"}
 

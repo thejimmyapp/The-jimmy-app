@@ -8,7 +8,6 @@ const apiMock = vi.hoisted(() => ({
   games: vi.fn(),
   game: vi.fn(),
   connectChessCom: vi.fn(),
-  enrichChessCom: vi.fn(),
   importPgn: vi.fn(),
   createRoom: vi.fn(),
   room: vi.fn(),
@@ -39,21 +38,23 @@ describe("two-board PGN import", () => {
     apiMock.importPgn.mockResolvedValue({ created: true, source: "manual", second_board_supplied: true });
   });
 
-  it("offers a credential-free complete-game path before the temporary fallback", async () => {
+  it("offers only a credential-free completed-game import path", async () => {
     renderApp();
     fireEvent.change(screen.getByRole("textbox", { name: "Chess.com username" }), { target: { value: "FixtureUser" } });
     fireEvent.click(screen.getByRole("button", { name: "Import two-board PGNs" }));
-    fireEvent.change(screen.getByRole("textbox", { name: "Board A PGN" }), { target: { value: '[Variant "Bughouse"]\n\n1. e4 *' } });
-    fireEvent.change(screen.getByRole("textbox", { name: "Board B PGN" }), { target: { value: '[Variant "Bughouse"]\n\n1. d4 *' } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Board A PGN" }), { target: { value: '[Variant "Bughouse"]\n[Result "1-0"]\n\n1. e4 1-0' } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Board B PGN" }), { target: { value: '[Variant "Bughouse"]\n[Result "0-1"]\n\n1. d4 0-1' } });
     fireEvent.click(screen.getByRole("button", { name: "Import complete game" }));
 
     await waitFor(() => expect(apiMock.importPgn).toHaveBeenCalledWith(
       "FixtureUser",
-      '[Variant "Bughouse"]\n\n1. e4 *',
-      '[Variant "Bughouse"]\n\n1. d4 *',
+      '[Variant "Bughouse"]\n[Result "1-0"]\n\n1. e4 1-0',
+      '[Variant "Bughouse"]\n[Result "0-1"]\n\n1. d4 0-1',
     ));
     await waitFor(() => expect(apiMock.games.mock.calls.length).toBeGreaterThan(1));
     expect(await screen.findByText("Complete two-board game imported. No Chess.com credentials were used or stored.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Temporary pgn-info fallback" })).toBeTruthy();
+    expect(screen.queryByText(/pgn-info/i)).toBeNull();
+    expect(screen.getByRole("link", { name: "Privacy" }).getAttribute("href")).toBe("/privacy");
+    expect(screen.getByRole("link", { name: "Terms" }).getAttribute("href")).toBe("/terms");
   });
 });

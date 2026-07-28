@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any
 
 from thejimmyapp.chesscom_api import parse_pgn_headers
-from thejimmyapp.chesscom_pgn_info import has_partner_board_data
 from thejimmyapp.versioning import ANALYSIS_VERSION
 
 
@@ -394,7 +393,7 @@ class Database:
         only_two_board: bool = True,
         selection: str = "recent",
     ) -> list[dict[str, object]]:
-        clauses = ["username = ?"]
+        clauses = ["username = ?", "result IN ('win', 'loss', 'draw')"]
         values: list[object] = [username.lower()]
         if only_two_board:
             clauses.append("raw_json LIKE '%bughousePartnerTcnMoves%'")
@@ -1036,7 +1035,7 @@ class Database:
         result: str | None = None,
         limit: int = 100,
     ) -> list[dict[str, object]]:
-        clauses = ["username = ?"]
+        clauses = ["username = ?", "result IN ('win', 'loss', 'draw')"]
         values: list[object] = [username.lower()]
         if opponent:
             clauses.append("LOWER(COALESCE(opponent, '')) LIKE ?")
@@ -1078,35 +1077,6 @@ class Database:
                 values,
             ).fetchall()
         return [dict(row) for row in rows]
-
-    def list_games_for_pgn_info_enrichment(self, username: str, limit: int = 500) -> list[dict[str, Any]]:
-        with closing(self.connect()) as conn:
-            rows = conn.execute(
-                """
-                SELECT id, username, url, uuid, raw_json
-                FROM games
-                WHERE username = ?
-                    AND uuid IS NOT NULL
-                    AND uuid != ''
-                    AND (
-                        partner IS NULL
-                        OR partner = ''
-                        OR raw_json NOT LIKE '%bughousePartnerTcnMoves%'
-                    )
-                ORDER BY end_time DESC
-                LIMIT ?
-                """,
-                (username.lower(), limit),
-            ).fetchall()
-        games: list[dict[str, Any]] = []
-        for row in rows:
-            raw = _json_object(str(row["raw_json"] or ""))
-            if not raw:
-                continue
-            raw.setdefault("url", row["url"])
-            raw.setdefault("uuid", row["uuid"])
-            games.append(raw)
-        return games
 
     def get_game(self, game_id: int) -> dict[str, object] | None:
         with closing(self.connect()) as conn:
@@ -2097,6 +2067,15 @@ class Database:
             "raw_json": json.dumps(game, ensure_ascii=False),
             "imported_at": _utc_now(),
         }
+
+
+def has_partner_board_data(game: dict[str, Any]) -> bool:
+    return bool(
+        game.get("bughousePartnerTcnMoves")
+        or game.get("bughouse_partner_tcn_moves")
+        or game.get("bughousePartnerPgn")
+        or game.get("bughouse_partner_pgn")
+    )
 
 
 def _player(value: object) -> dict[str, Any]:

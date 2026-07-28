@@ -48,7 +48,7 @@ docker compose up --build
 
 For Railway, create a project from this repository, add PostgreSQL and Redis services, copy the variables from `.env.example`, set `DATABASE_URL` to the Railway PostgreSQL URL, and deploy. Railway uses `railway.json` and checks `/health`.
 
-Important current limitation: the existing imported-game library still uses `data/bughouse.db` so the current 395 MB local archive is immediately reusable. A public deployment must attach persistent storage for `data/`, or complete the planned migration of imported games into PostgreSQL. Chess.com PubAPI can omit the partner board; the UI reports `Second board unavailable` instead of fabricating it.
+Important current limitation: the imported-game library still uses `data/bughouse.db`. A public deployment must attach persistent storage for `data/`, or complete the planned migration of imported games into PostgreSQL. Chess.com PubAPI can omit the partner board; the UI reports `Second board unavailable` instead of fabricating it.
 
 ### Exploration and legal annotations
 
@@ -62,7 +62,7 @@ Important current limitation: the existing imported-game library still uses `dat
 
 ### Complete two-board import
 
-The public Chess.com API does not consistently expose the authenticated `pgn-info` payload containing the partner board. A normal web page also cannot read another site's Chess.com cookies because of browser origin isolation.
+The public Chess.com API does not consistently expose the partner board.
 
 The web app therefore makes credential-free paired PGN paste the supported complete-game path:
 
@@ -71,9 +71,9 @@ The web app therefore makes credential-free paired PGN paste the supported compl
 3. Paste Board A and Board B from the same game.
 4. The app reconstructs one synchronized replay and uses PGN clock comments when present.
 
-The older copied-`pgn-info` cURL path remains visible only as a temporary advanced fallback. It is not an official or supported Chess.com integration, and it must not be used with credentials outside a user's own local recovery workflow. A fully one-click public flow still requires an official Chess.com API that exposes the partner-board payload.
+The application does not accept Chess.com passwords, cookies, CSRF tokens, copied authenticated requests, or reusable session credentials. A fully one-click public flow still requires an official Chess.com API that exposes complete partner-board data.
 
-Local Streamlit app for importing Chess.com Bughouse games, enriching partner-board data when available, and building a practical coaching dashboard with stats, training drills, opening review, and Fairy-Stockfish analysis.
+Local Streamlit app for importing completed Chess.com Bughouse games and building a practical coaching dashboard with stats, training drills, opening review, and Fairy-Stockfish analysis.
 
 The app is designed to run locally first. A GitHub copy should contain code and setup files only, not private Chess.com cookies, imported games, engine binaries, logs, or personal reports.
 
@@ -81,26 +81,18 @@ The app is designed to run locally first. A GitHub copy should contain code and 
 
 This repository is safe to share only if these files stay out of Git:
 
-- `secrets/chesscom_pgn_info_curl.txt`
 - `data/bughouse.db`
 - `logs/*.log`
 - `engines/fairy-stockfish.exe`
 - `.venv/`
 - videos, ZIP exports, and generated reports
 
-Each user should create their own local `secrets/chesscom_pgn_info_curl.txt` if they want authenticated two-board enrichment. The template file is:
-
-```text
-secrets/chesscom_pgn_info_curl.example.txt
-```
-
-Basic public game import can work without the cURL file, but many Bughouse games will not have partner-board replay data.
+Basic public game import works without credentials, but many Bughouse games will not have partner-board replay data. Use paired completed PGNs when both boards are available.
 
 ## Product Features
 
 - Guided username-first setup and public Chess.com archive import.
 - Credential-free paired PGN import with both boards, four player names, pockets, and clocks when present.
-- Explicitly temporary authenticated enrichment fallback for legacy recovery only.
 - Chronological two-board replay with captured pieces transferred to the partner board.
 - Fairy-Stockfish mistake analysis, legal best-move overlays, mate-aware scoring, and versioned caching.
 - Coaching priorities, context filters, session reports, smart training queue, and spaced repetition.
@@ -114,25 +106,7 @@ The current analysis generation is `timeline-v2`. It reconstructs both boards on
 
 Older analysis rows remain stored in SQLite but are excluded from current dashboards and training. Run new Coach Analysis and Opening Explorer batches to rebuild trusted results. When exact cross-board clocks or partner data are absent, the replay is explicitly marked lower confidence instead of presenting an inferred state as certain.
 
-Public Chess.com sources do not consistently include the second board. The authenticated `pgn-info` request is currently the most complete source observed for `bughousePartnerTcnMoves` and both clock streams.
-
-## Legacy local Chess.com pgn-info fallback
-
-This temporary fallback is retained for the legacy local Streamlit workflow. The web app's supported complete-game path is paired PGN paste. Do not share, commit, or send the copied request.
-
-1. In a browser where you are logged in to Chess.com, open `https://www.chess.com/games/archive`.
-2. Open DevTools, then the Network tab.
-3. Trigger a PGN/archive request and find `https://www.chess.com/callback/game/pgn-info`.
-4. Copy the request as cURL.
-5. Save it locally as:
-
-```text
-secrets/chesscom_pgn_info_curl.txt
-```
-
-6. Start the app, confirm that path in the sidebar, then import games.
-
-The app reads that file only to call Chess.com during import. It stores the returned game data in SQLite, not the cookies or tokens. `secrets/` is ignored by Git.
+Public Chess.com sources do not consistently include the second board or both clock streams. The supported complete-game path is paired PGN import while an official complete Bughouse data route is pursued.
 
 ## Windows Setup
 
@@ -225,7 +199,6 @@ thejimmyapp/
   board_renderer.py
   bughouse_reconstructor.py
   chesscom_api.py
-  chesscom_pgn_info.py
   db.py
   engine.py
   pgn_parser.py

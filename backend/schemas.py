@@ -11,12 +11,6 @@ class ChessComConnectRequest(BaseModel):
     username: str = Field(min_length=2, max_length=25, pattern=r"^[A-Za-z0-9_-]+$")
 
 
-class ChessComEnrichRequest(BaseModel):
-    username: str = Field(min_length=2, max_length=25, pattern=r"^[A-Za-z0-9_-]+$")
-    curl_text: str = Field(min_length=40, max_length=100_000)
-    limit: int = Field(default=5000, ge=1, le=20_000)
-
-
 class PgnImportRequest(BaseModel):
     username: str = Field(min_length=2, max_length=25, pattern=r"^[A-Za-z0-9_-]+$")
     pgn: str = Field(min_length=8, max_length=2_000_000)
@@ -28,9 +22,6 @@ class AnalysisRequest(BaseModel):
     global_ply: int = Field(ge=0)
     board: Literal["A", "B"] = "A"
     depth: int = Field(default=10, ge=4, le=24)
-    variant_fen: str | None = Field(default=None, min_length=10, max_length=220)
-    board_a_fen: str | None = Field(default=None, min_length=10, max_length=220)
-    board_b_fen: str | None = Field(default=None, min_length=10, max_length=220)
 
 
 class ExplorationMoveRequest(BaseModel):

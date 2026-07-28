@@ -8,8 +8,9 @@ BOARD_A_PGN = """\
 [White "FixtureUser"]
 [Black "Opponent"]
 [TimeControl "180"]
+[Result "1-0"]
 
-1. e4 {[%clk 0:02:59]} e5 {[%clk 0:02:58]} *
+1. e4 {[%clk 0:02:59]} e5 {[%clk 0:02:58]} 1-0
 """
 
 BOARD_B_PGN = """\
@@ -17,8 +18,9 @@ BOARD_B_PGN = """\
 [White "DiagonalOpponent"]
 [Black "Partner"]
 [TimeControl "180"]
+[Result "0-1"]
 
-1. d4 {[%clk 0:02:57]} d5 {[%clk 0:02:56]} *
+1. d4 {[%clk 0:02:57]} d5 {[%clk 0:02:56]} 0-1
 """
 
 
@@ -60,9 +62,11 @@ def test_manual_two_board_pgn_reports_approximate_order_without_clocks(tmp_path:
     service = GameService(tmp_path / "games.db")
     raw_game = {
         "url": "manual://no-clocks",
-        "pgn": '[Variant "Bughouse"]\n\n1. e4 e5 *',
-        "bughousePartnerPgn": '[Variant "Bughouse"]\n\n1. d4 d5 *',
+        "pgn": '[Variant "Bughouse"]\n[Result "1-0"]\n\n1. e4 e5 1-0',
+        "bughousePartnerPgn": '[Variant "Bughouse"]\n[Result "0-1"]\n\n1. d4 d5 0-1',
         "rules": "bughouse",
+        "white": {"username": "FixtureUser", "result": "win"},
+        "black": {"username": "Opponent", "result": "checkmated"},
     }
 
     service.db.upsert_game("FixtureUser", raw_game)

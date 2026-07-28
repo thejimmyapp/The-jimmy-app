@@ -39,15 +39,10 @@ The app can open without it, but engine analysis and coaching batches will not w
 
 Basic public imports work with a Chess.com username.
 
-Full two-board Bughouse import requires your own authenticated Chess.com `pgn-info` cURL file.
-
-Save it here:
-
-```text
-secrets/chesscom_pgn_info_curl.txt
-```
-
-Never share someone else's `secrets/` folder. It can contain private cookies or tokens.
+For a full synchronized Bughouse replay, use the paired-PGN import and provide
+completed PGNs for both boards. The application does not accept Chess.com
+passwords, cookies, CSRF tokens, copied authenticated requests, or reusable
+session credentials.
 
 ## What Is Stored Locally
 

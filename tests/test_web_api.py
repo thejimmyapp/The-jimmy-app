@@ -175,12 +175,12 @@ def test_exploration_lists_legal_targets_for_piece_selection() -> None:
     assert payload["legal_destinations"] == ["f3", "h3"]
 
 
-def test_authenticated_connector_does_not_store_credentials() -> None:
-    curl_text = "curl 'https://www.chess.com/callback/game/pgn-info' -H 'content-type: application/json' -b 'session=fake' --data-raw '{\"_token\":\"fake\"}'"
+def test_authenticated_session_connector_is_not_exposed() -> None:
     with TestClient(app) as client:
         response = client.post(
             "/api/chesscom/enrich",
-            json={"username": "fixture-user", "curl_text": curl_text, "limit": 10},
+            json={"username": "fixture-user", "curl_text": "credential material", "limit": 10},
         )
-    assert response.status_code == 200
-    assert response.json()["credentials_stored"] is False
+        paths = client.get("/openapi.json").json()["paths"]
+    assert response.status_code in {404, 405}
+    assert "/api/chesscom/enrich" not in paths
