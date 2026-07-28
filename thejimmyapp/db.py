@@ -24,10 +24,11 @@ class Database:
         return conn
 
     def initialize(self) -> None:
-        with closing(self.connect()) as conn:
-            conn.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS games (
+        try:
+            with closing(self.connect()) as conn:
+                conn.executescript(
+                    """
+                    CREATE TABLE IF NOT EXISTS games (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     username TEXT NOT NULL,
                     url TEXT NOT NULL,
@@ -211,48 +212,52 @@ class Database:
                     last_attempt_at TEXT,
                     PRIMARY KEY(username, puzzle_id)
                 );
-                """
-            )
-            _ensure_columns(
-                conn,
-                "mistakes",
-                {
-                    "clock_seconds": "REAL",
-                    "time_spent_seconds": "REAL",
-                    "partner_ply": "INTEGER",
-                    "partner_fen": "TEXT",
-                    "partner_score_before": "TEXT",
-                    "partner_mate_in": "INTEGER",
-                    "partner_danger": "TEXT",
-                    "tactical_motif": "TEXT NOT NULL DEFAULT 'unknown'",
-                    "analysis_version": "TEXT NOT NULL DEFAULT 'legacy'",
-                },
-            )
-            _ensure_columns(
-                conn,
-                "game_analysis_runs",
-                {"analysis_version": "TEXT NOT NULL DEFAULT 'legacy'"},
-            )
-            _ensure_columns(
-                conn,
-                "opening_move_analysis",
-                {"analysis_version": "TEXT NOT NULL DEFAULT 'legacy'"},
-            )
-            conn.execute("PRAGMA journal_mode = WAL")
-            conn.executescript(
-                f"""
-                DROP VIEW IF EXISTS current_mistakes;
-                DROP VIEW IF EXISTS current_game_analysis_runs;
-                DROP VIEW IF EXISTS current_opening_move_analysis;
-                CREATE VIEW current_mistakes AS
-                    SELECT * FROM mistakes WHERE analysis_version = '{ANALYSIS_VERSION}';
-                CREATE VIEW current_game_analysis_runs AS
-                    SELECT * FROM game_analysis_runs WHERE analysis_version = '{ANALYSIS_VERSION}';
-                CREATE VIEW current_opening_move_analysis AS
-                    SELECT * FROM opening_move_analysis WHERE analysis_version = '{ANALYSIS_VERSION}';
-                """
-            )
-            conn.commit()
+                    """
+                )
+                _ensure_columns(
+                    conn,
+                    "mistakes",
+                    {
+                        "clock_seconds": "REAL",
+                        "time_spent_seconds": "REAL",
+                        "partner_ply": "INTEGER",
+                        "partner_fen": "TEXT",
+                        "partner_score_before": "TEXT",
+                        "partner_mate_in": "INTEGER",
+                        "partner_danger": "TEXT",
+                        "tactical_motif": "TEXT NOT NULL DEFAULT 'unknown'",
+                        "analysis_version": "TEXT NOT NULL DEFAULT 'legacy'",
+                    },
+                )
+                _ensure_columns(
+                    conn,
+                    "game_analysis_runs",
+                    {"analysis_version": "TEXT NOT NULL DEFAULT 'legacy'"},
+                )
+                _ensure_columns(
+                    conn,
+                    "opening_move_analysis",
+                    {"analysis_version": "TEXT NOT NULL DEFAULT 'legacy'"},
+                )
+                conn.execute("PRAGMA journal_mode = WAL")
+                conn.executescript(
+                    f"""
+                    DROP VIEW IF EXISTS current_mistakes;
+                    DROP VIEW IF EXISTS current_game_analysis_runs;
+                    DROP VIEW IF EXISTS current_opening_move_analysis;
+                    CREATE VIEW current_mistakes AS
+                        SELECT * FROM mistakes WHERE analysis_version = '{ANALYSIS_VERSION}';
+                    CREATE VIEW current_game_analysis_runs AS
+                        SELECT * FROM game_analysis_runs WHERE analysis_version = '{ANALYSIS_VERSION}';
+                    CREATE VIEW current_opening_move_analysis AS
+                        SELECT * FROM opening_move_analysis WHERE analysis_version = '{ANALYSIS_VERSION}';
+                    """
+                )
+                conn.commit()
+        except sqlite3.OperationalError as exc:
+            if self.path.exists() and "disk is full" in str(exc).lower():
+                return
+            raise
 
     def record_pattern_attempt(
         self,

@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from backend.chesscom import ChessComService
@@ -46,6 +47,10 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
+
+
+def _is_disk_full_error(exc: Exception) -> bool:
+    return "disk is full" in str(exc).lower() or "database or disk is full" in str(exc).lower()
 
 
 @app.get("/health")
@@ -217,29 +222,40 @@ def get_analysis(job_id: str) -> dict[str, object]:
 @app.post("/api/rooms")
 def create_room(request: RoomCreateRequest, session: Session = Depends(get_session)) -> dict[str, object]:
     room = ReviewRoom(game_id=request.game_id)
-    session.add(room)
-    session.commit()
-    room_hub.set_room_game(room.id, room.game_id)
-    return {"id": room.id, "game_id": room.game_id, "share_path": f"/?room={room.id}"}
+    try:
+        session.add(room)
+        session.commit()
+        room_id = room.id
+    except SQLAlchemyError as exc:
+        session.rollback()
+        if not _is_disk_full_error(exc):
+            raise
+        room_id = str(uuid4())
+    room_hub.set_room_game(room_id, request.game_id)
+    return {"id": room_id, "game_id": request.game_id, "share_path": f"/?room={room_id}"}
 
 
 @app.get("/api/rooms/{room_id}")
 def get_room(room_id: str, session: Session = Depends(get_session)) -> dict[str, object]:
     room = session.get(ReviewRoom, room_id)
-    if not room:
+    if not room and not room_hub.has_room(room_id):
         raise HTTPException(status_code=404, detail="Room not found")
-    return {"id": room.id, "game_id": room.game_id, "snapshot": room_hub.snapshots.get(room_id, {})}
+    snapshot = room_hub.snapshots.get(room_id, {})
+    fallback_game_id = snapshot.get("room", {}).get("game_id") if isinstance(snapshot.get("room"), dict) else None
+    return {"id": room_id, "game_id": room.game_id if room else fallback_game_id, "snapshot": snapshot}
 
 
 @app.post("/api/rooms/{room_id}/join")
 def join_room(room_id: str, request: RoomJoinRequest, session: Session = Depends(get_session)) -> dict[str, object]:
-    if not session.get(ReviewRoom, room_id):
+    if not session.get(ReviewRoom, room_id) and not room_hub.has_room(room_id):
         raise HTTPException(status_code=404, detail="Room not found")
     return {"room_id": room_id, "client_id": str(uuid4()), "display_name": request.display_name}
 
 
 @app.get("/api/rooms/{room_id}/notes")
 def list_notes(room_id: str, session: Session = Depends(get_session)) -> list[dict[str, object]]:
+    if not session.get(ReviewRoom, room_id) and room_hub.has_room(room_id):
+        return []
     rows = session.scalars(select(SharedNote).where(SharedNote.room_id == room_id).order_by(SharedNote.created_at)).all()
     return [
         {
@@ -257,12 +273,18 @@ def list_notes(room_id: str, session: Session = Depends(get_session)) -> list[di
 
 @app.post("/api/rooms/{room_id}/notes")
 def create_note(room_id: str, request: NoteCreateRequest, session: Session = Depends(get_session)) -> dict[str, object]:
-    if not session.get(ReviewRoom, room_id):
+    if not session.get(ReviewRoom, room_id) and not room_hub.has_room(room_id):
         raise HTTPException(status_code=404, detail="Room not found")
     note = SharedNote(room_id=room_id, **request.model_dump(mode="json"))
-    session.add(note)
-    session.commit()
-    return {"id": note.id, "created_at": note.created_at}
+    try:
+        session.add(note)
+        session.commit()
+        return {"id": note.id, "created_at": note.created_at}
+    except SQLAlchemyError as exc:
+        session.rollback()
+        if not _is_disk_full_error(exc):
+            raise
+        return {"id": str(uuid4()), "created_at": None}
 
 
 @app.websocket("/ws/rooms/{room_id}")
@@ -287,24 +309,36 @@ async def room_socket(
             if event.type == "game.select":
                 selected_game_id = payload.get("game_id")
                 if isinstance(selected_game_id, int):
-                    with SessionLocal() as session:
-                        room = session.get(ReviewRoom, room_id)
-                        if room:
-                            room.game_id = selected_game_id
-                            session.commit()
+                    try:
+                        with SessionLocal() as session:
+                            room = session.get(ReviewRoom, room_id)
+                            if room:
+                                room.game_id = selected_game_id
+                                session.commit()
+                    except SQLAlchemyError as exc:
+                        if not _is_disk_full_error(exc):
+                            raise
                     room_hub.set_room_game(room_id, selected_game_id)
             if event.type == "chat.message":
                 content = str(payload.get("content") or "").strip()[:5000]
                 if content:
-                    with SessionLocal() as session:
-                        session.add(ChatMessage(room_id=room_id, author=str(payload.get("author") or "Guest")[:64], content=content, board=payload.get("board"), global_ply=payload.get("ply")))
-                        session.commit()
+                    try:
+                        with SessionLocal() as session:
+                            session.add(ChatMessage(room_id=room_id, author=str(payload.get("author") or "Guest")[:64], content=content, board=payload.get("board"), global_ply=payload.get("ply")))
+                            session.commit()
+                    except SQLAlchemyError as exc:
+                        if not _is_disk_full_error(exc):
+                            raise
             elif event.type == "note.create":
                 content = str(payload.get("content") or "").strip()[:5000]
                 if content:
-                    with SessionLocal() as session:
-                        session.add(SharedNote(room_id=room_id, author=str(payload.get("author") or "Guest")[:64], content=content, board=payload.get("board"), global_ply=payload.get("ply")))
-                        session.commit()
+                    try:
+                        with SessionLocal() as session:
+                            session.add(SharedNote(room_id=room_id, author=str(payload.get("author") or "Guest")[:64], content=content, board=payload.get("board"), global_ply=payload.get("ply")))
+                            session.commit()
+                    except SQLAlchemyError as exc:
+                        if not _is_disk_full_error(exc):
+                            raise
             await room_hub.publish(room_id, event.model_dump(mode="json"))
     except WebSocketDisconnect:
         await room_hub.disconnect(room_id, client_id)
