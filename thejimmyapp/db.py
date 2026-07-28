@@ -1371,6 +1371,40 @@ class Database:
     def get_mistake_rows(self, username: str, limit: int = 100) -> list[dict[str, object]]:
         return self.search_mistakes(username=username, limit=limit)
 
+    def get_primary_mistake_for_game(self, game_id: int) -> dict[str, object] | None:
+        """Return the strongest current, review-safe engine finding for a game."""
+        with closing(self.connect()) as conn:
+            row = conn.execute(
+                """
+                SELECT
+                    id,
+                    game_id,
+                    ply,
+                    move,
+                    category,
+                    tactical_motif,
+                    severity,
+                    estimated_loss_cp,
+                    bestmove,
+                    confidence,
+                    depth,
+                    partner_danger
+                FROM current_mistakes
+                WHERE game_id = ?
+                  AND confidence IN ('high', 'medium')
+                  AND bestmove IS NOT NULL
+                  AND TRIM(bestmove) != ''
+                ORDER BY
+                    CASE confidence WHEN 'high' THEN 0 ELSE 1 END,
+                    estimated_loss_cp DESC,
+                    COALESCE(depth, 0) DESC,
+                    id ASC
+                LIMIT 1
+                """,
+                (game_id,),
+            ).fetchone()
+        return dict(row) if row else None
+
     def search_mistakes(
         self,
         username: str,

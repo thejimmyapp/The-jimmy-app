@@ -109,6 +109,14 @@ The current analysis generation is `timeline-v2`. It reconstructs both boards on
 
 Older analysis rows remain stored in SQLite but are excluded from current dashboards and training. Run new Coach Analysis and Opening Explorer batches to rebuild trusted results. When exact cross-board clocks or partner data are absent, the replay is explicitly marked lower confidence instead of presenting an inferred state as certain.
 
+When a completed game already has a current-version, high- or medium-confidence
+mistake with a legal engine best move, the web review shows one **moment to
+revisit**. The card links to the synchronized timeline position and displays
+only stored engine evidence: played move, suggested move, estimated swing,
+pattern, depth/confidence, and partner-board danger when that context was
+actually analyzed. Games without qualifying evidence do not receive a generated
+lesson.
+
 Public Chess.com sources do not consistently include the second board or both clock streams. The supported complete-game path is paired PGN import while an official complete Bughouse data route is pursued.
 
 ## Windows Setup

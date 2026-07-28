@@ -523,6 +523,52 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.review-lesson {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  display: grid;
+  grid-template-columns: 18px auto minmax(160px, auto) minmax(180px, 1fr);
+  align-items: center;
+  gap: 9px;
+  padding: 6px 10px;
+  overflow: hidden;
+  border: 1px solid #30536b;
+  border-left: 3px solid var(--cyan);
+  border-radius: 4px;
+  background: #0b1b29;
+  color: #dceaf7;
+  text-align: left;
+  cursor: pointer;
+}
+.review-lesson:hover,
+.review-lesson:focus-visible {
+  border-color: var(--cyan);
+  background: #0e2434;
+}
+.review-lesson > svg { color: var(--cyan); }
+.review-lesson > span {
+  color: #72cad4;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  white-space: nowrap;
+}
+.review-lesson > strong,
+.review-lesson > small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.review-lesson > strong {
+  color: #edf7ff;
+  font-size: 11px;
+}
+.review-lesson > small {
+  color: #8eacc0;
+  font-size: 9px;
+}
 .board-panel-unavailable {
   position: absolute;
   inset: 0;

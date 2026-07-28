@@ -4,6 +4,7 @@ import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { BoardPanel } from "./components/BoardPanel";
 import { LegalLinks } from "./components/LegalLinks";
+import { ReviewLesson } from "./components/ReviewLesson";
 import { SidePanel } from "./components/SidePanel";
 import { Timeline } from "./components/Timeline";
 import { applyRoomSnapshot, connectRoomSocket, sendRoomEvent } from "./socket";
@@ -166,6 +167,15 @@ export default function App() {
                   <strong>{store.game.outcome.summary}</strong>
                   <small>{store.game.outcome.detail}</small>
                 </div>
+              )}
+              {store.game.lesson && (
+                <ReviewLesson
+                  lesson={store.game.lesson}
+                  onReview={(globalPly) => {
+                    store.seek(globalPly);
+                    sendRoomEvent("timeline.seek", { global_ply: globalPly });
+                  }}
+                />
               )}
               {integrityNotices.length > 0 && (
                 <div className="replay-integrity" role="status">

@@ -71,6 +71,7 @@ class GameService:
         else:
             limitations.append("Second board unavailable")
         limitations = list(dict.fromkeys(item for item in limitations if item))
+        timeline_payload = [asdict(frame) for frame in timeline]
         return {
             "game": game,
             "players": players,
@@ -78,10 +79,16 @@ class GameService:
             "moves_b": [{**asdict(move), "display_move": move.display_move} for move in partner.moves] if partner else [],
             "positions_a": [asdict(position) for position in main_positions],
             "positions_b": [asdict(position) for position in partner_positions],
-            "timeline": [asdict(frame) for frame in timeline],
+            "timeline": timeline_payload,
             "second_board_available": bool(partner_positions),
             "limitations": limitations,
             "outcome": _game_outcome(game, raw, players, parsed.moves, partner.moves if partner else []),
+            "lesson": _review_lesson(
+                self.db.get_primary_mistake_for_game(game_id),
+                timeline_payload,
+                len(main_positions),
+                bool(partner_positions),
+            ),
         }
 
     def snapshot(self, game_id: int, global_ply: int) -> dict[str, object] | None:
@@ -183,6 +190,45 @@ class AnalysisJobs:
 
 
 _LOSS_RESULTS = {"checkmated", "resigned", "timeout", "abandoned", "lose", "kingofthehill", "threecheck"}
+
+
+def _review_lesson(
+    mistake: dict[str, object] | None,
+    timeline: list[dict[str, object]],
+    main_position_count: int,
+    partner_available: bool,
+) -> dict[str, object] | None:
+    """Expose stored engine evidence without generating unsupported coaching prose."""
+    if not mistake:
+        return None
+    local_ply = max(0, int(mistake["ply"]))
+    global_ply = _global_ply_for_main_move(timeline, local_ply)
+    if global_ply is None:
+        global_ply = min(local_ply, max(0, main_position_count - 1))
+    motif = str(mistake.get("tactical_motif") or "").strip()
+    category = str(mistake.get("category") or "tactical miss").strip()
+    partner_context = str(mistake.get("partner_danger") or "").strip()
+    return {
+        "board": "A",
+        "local_ply": local_ply,
+        "global_ply": global_ply,
+        "played_move": str(mistake["move"]),
+        "best_move": str(mistake["bestmove"]),
+        "severity": str(mistake["severity"]),
+        "estimated_loss_cp": int(mistake["estimated_loss_cp"]),
+        "category": category,
+        "pattern": motif if motif and motif.lower() != "unknown" else category,
+        "confidence": str(mistake["confidence"]),
+        "depth": int(mistake["depth"]) if mistake.get("depth") is not None else None,
+        "partner_context": partner_context if partner_available and partner_context else None,
+    }
+
+
+def _global_ply_for_main_move(timeline: list[dict[str, object]], local_ply: int) -> int | None:
+    for frame in timeline:
+        if frame.get("board") == "A" and int(frame.get("local_ply") or 0) == local_ply:
+            return int(frame.get("global_ply") or 0)
+    return None
 
 
 def _game_outcome(

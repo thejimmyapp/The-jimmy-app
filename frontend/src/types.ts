@@ -55,6 +55,22 @@ export interface GamePayload {
     board_role: "high" | "low" | null;
     move_number: number | null;
   };
+  lesson?: ReviewLesson | null;
+}
+
+export interface ReviewLesson {
+  board: "A";
+  local_ply: number;
+  global_ply: number;
+  played_move: string;
+  best_move: string;
+  severity: "inaccuracy" | "mistake" | "blunder";
+  estimated_loss_cp: number;
+  category: string;
+  pattern: string;
+  confidence: "high" | "medium";
+  depth: number | null;
+  partner_context: string | null;
 }
 
 export interface Annotation {
