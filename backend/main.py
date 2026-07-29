@@ -18,6 +18,7 @@ from backend.chesscom import ChessComService
 from backend.coach import prepare_coach_context
 from backend.coach_jobs import CoachJobs
 from backend.config import get_settings
+from backend.leak_map_jobs import LeakMapJobs
 from backend.database import Base, SessionLocal, engine, get_session
 from backend.models import ChatMessage, ReviewRoom, SharedNote
 from backend.exploration import apply_exploration_move, apply_exploration_san_move
@@ -31,6 +32,7 @@ from backend.schemas import (
     CoachPrepareRequest,
     ExplorationMoveRequest,
     ExplorationSanMoveRequest,
+    LeakMapAnalysisRequest,
     NoteCreateRequest,
     PgnImportRequest,
     PuzzleHistoryRequest,
@@ -50,6 +52,7 @@ games = GameService(settings.legacy_database_path)
 analysis_jobs = AnalysisJobs(settings, games)
 qwen_runtime = QwenRuntime(settings)
 coach_jobs = CoachJobs(settings, games, qwen_runtime)
+leak_map_jobs = LeakMapJobs(settings, games)
 app = FastAPI(title=settings.app_name, version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
@@ -297,6 +300,20 @@ def player_stats(username: str) -> dict[str, object]:
     if not re.fullmatch(r"[A-Za-z0-9_-]{2,25}", username):
         raise HTTPException(status_code=400, detail="Invalid Chess.com username")
     return games.player_stats(username)
+
+
+@app.post("/api/leak-map/analyze", status_code=status.HTTP_202_ACCEPTED)
+async def analyze_leak_map(request: LeakMapAnalysisRequest) -> dict[str, object]:
+    job_id = await leak_map_jobs.submit(request)
+    return {"job_id": job_id, "status": "queued"}
+
+
+@app.get("/api/leak-map/jobs/{job_id}")
+def get_leak_map_job(job_id: str) -> dict[str, object]:
+    job = leak_map_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Leak-map job not found")
+    return job
 
 
 @app.post("/api/rooms")

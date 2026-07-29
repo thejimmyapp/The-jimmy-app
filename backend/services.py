@@ -84,6 +84,7 @@ class GameService:
         opponents = self.db.get_opponent_stats(username, min_games=3)
         mistake_summary = self.db.get_mistake_summary(username)
         categories = _aggregate_categories(self.db.get_mistake_category_stats(username))
+        coverage = self.db.get_analysis_coverage(username, 10)
         return {
             "username": username,
             "summary": {
@@ -103,6 +104,7 @@ class GameService:
                 "two_board_games": dashboard.get("partner_boards", 0),
                 "total_games": dashboard.get("total_games", 0),
                 "analysis_positions": mistake_summary.get("mistakes", 0),
+                "analyzed_games": coverage.get("analyzed_at_depth", 0),
             },
         }
 

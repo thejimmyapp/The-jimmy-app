@@ -40,6 +40,14 @@ def test_coach_status_and_stats_username_validation() -> None:
         assert invalid.status_code == 400
 
 
+def test_leak_map_analysis_routes_validate_requests_and_jobs() -> None:
+    with TestClient(app) as client:
+        invalid = client.post("/api/leak-map/analyze", json={"username": "not valid"})
+        assert invalid.status_code == 422
+        missing = client.get("/api/leak-map/jobs/not-a-real-job")
+        assert missing.status_code == 404
+
+
 def test_room_websocket_relays_versioned_event() -> None:
     with TestClient(app) as client:
         room = client.post("/api/rooms", json={"game_id": None}).json()

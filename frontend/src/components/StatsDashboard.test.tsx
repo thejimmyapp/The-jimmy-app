@@ -1,10 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PlayerStats } from "../types";
 import { StatsDashboard } from "./StatsDashboard";
 
-const apiMock = vi.hoisted(() => ({ playerStats: vi.fn() }));
+const apiMock = vi.hoisted(() => ({ playerStats: vi.fn(), runLeakMapAnalysis: vi.fn(), leakMapJob: vi.fn() }));
 vi.mock("../api", () => ({ api: apiMock }));
 
 const fixture: PlayerStats = {
@@ -16,7 +16,7 @@ const fixture: PlayerStats = {
   partners: [{ partner: "RyanTime", games: 40, wins: 28, winrate: 70 }],
   opponents: [{ opponent: "Nemesis", games: 10, wins: 3, winrate: 30, avg_rating: 2100 }],
   mistake_categories: [{ category: "ignored partner danger", count: 8, avg_loss: 180, max_loss: 700 }],
-  data_quality: { two_board_games: 80, total_games: 100, analysis_positions: 12 },
+  data_quality: { two_board_games: 80, total_games: 100, analysis_positions: 12, analyzed_games: 10 },
 };
 
 afterEach(cleanup);
@@ -31,5 +31,25 @@ describe("StatsDashboard", () => {
     expect(screen.getAllByText("RyanTime").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Nemesis").length).toBeGreaterThan(0);
     expect(screen.getByText("ignored partner danger")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Analyze next 10 games" })).toBeTruthy();
+  });
+
+  it("starts a Fairy-Stockfish batch from the empty leak map", async () => {
+    apiMock.playerStats.mockResolvedValue({ ...fixture, mistake_categories: [], data_quality: { ...fixture.data_quality, analyzed_games: 0 } });
+    apiMock.runLeakMapAnalysis.mockResolvedValue({ job_id: "job-1", status: "queued" });
+    apiMock.leakMapJob.mockResolvedValue({
+      status: "completed",
+      stage: "Leak map updated",
+      processed: 10,
+      total: 10,
+      result: { games_seen: 10, games_with_moves: 10, critical_positions: 20, stored_mistakes: 7, skipped_games: 0 },
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    render(<QueryClientProvider client={client}><StatsDashboard username="Jimmy" /></QueryClientProvider>);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Analyze first 10 games" }));
+
+    await waitFor(() => expect(apiMock.runLeakMapAnalysis).toHaveBeenCalledWith("Jimmy"));
+    expect(await screen.findByText("10 games analyzed - 7 recurring mistakes found.")).toBeTruthy();
   });
 });

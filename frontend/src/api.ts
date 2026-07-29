@@ -1,4 +1,4 @@
-import type { BoardId, CoachJob, CoachPreparedPayload, CoachPrepareRequest, ExplorationMoveResult, GamePayload, GameSummary, PlayerStats, PuzzleMove, PuzzlePayload, PuzzleResponse, QwenStatus, RoomPayload } from "./types";
+import type { BoardId, CoachJob, CoachPreparedPayload, CoachPrepareRequest, ExplorationMoveResult, GamePayload, GameSummary, LeakMapJob, PlayerStats, PuzzleMove, PuzzlePayload, PuzzleResponse, QwenStatus, RoomPayload } from "./types";
 
 const json = async <T>(responsePromise: Promise<Response>): Promise<T> => {
   const response = await responsePromise;
@@ -85,6 +85,13 @@ export const api = {
     })),
   coachJob: (jobId: string) => json<CoachJob>(fetch(`/api/coach/jobs/${encodeURIComponent(jobId)}`)),
   playerStats: (username: string) => json<PlayerStats>(fetch(`/api/stats/${encodeURIComponent(username)}`)),
+  runLeakMapAnalysis: (username: string) =>
+    json<{ job_id: string; status: string }>(fetch("/api/leak-map/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, game_limit: 10, max_positions_per_game: 6 }),
+    })),
+  leakMapJob: (jobId: string) => json<LeakMapJob>(fetch(`/api/leak-map/jobs/${encodeURIComponent(jobId)}`)),
   explorationMove: (request: {
     board_a_fen: string;
     board_b_fen?: string;

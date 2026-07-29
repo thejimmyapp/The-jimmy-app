@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { Activity, AlertTriangle, BarChart3, CheckCircle2, Database, Target, Trophy, Users } from "lucide-react";
-import type { CSSProperties, ReactNode } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Activity, AlertTriangle, BarChart3, BrainCircuit, CheckCircle2, Database, Target, Trophy, Users } from "lucide-react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { api } from "../api";
 
 interface Props { username: string }
@@ -8,7 +8,40 @@ interface Props { username: string }
 const pct = (value: number | null | undefined) => value == null ? "N/A" : `${value.toFixed(1)}%`;
 
 export function StatsDashboard({ username }: Props) {
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [analysisNotice, setAnalysisNotice] = useState<string | null>(null);
   const query = useQuery({ queryKey: ["player-stats", username], queryFn: () => api.playerStats(username), enabled: Boolean(username) });
+  const refetchStats = query.refetch;
+  const analysisMutation = useMutation({
+    mutationFn: () => api.runLeakMapAnalysis(username),
+    onSuccess: (result) => {
+      setAnalysisNotice(null);
+      setJobId(result.job_id);
+    },
+  });
+  const jobQuery = useQuery({
+    queryKey: ["leak-map-job", jobId],
+    queryFn: () => api.leakMapJob(jobId!),
+    enabled: Boolean(jobId),
+    refetchInterval: (current) => current.state.data?.status === "queued" || current.state.data?.status === "running" ? 1500 : false,
+  });
+
+  useEffect(() => {
+    const job = jobQuery.data;
+    if (!job || !jobId) return;
+    if (job.status === "completed") {
+      const result = job.result;
+      setAnalysisNotice(result?.games_seen
+        ? `${result.games_seen} games analyzed - ${result.stored_mistakes} recurring mistakes found.`
+        : "All complete two-board games are already analyzed.");
+      void refetchStats();
+      setJobId(null);
+    } else if (job.status === "failed") {
+      setAnalysisNotice(job.error ?? "The analysis could not be completed.");
+      setJobId(null);
+    }
+  }, [jobId, jobQuery.data, refetchStats]);
+
   if (!username) return <main className="stats-empty"><BarChart3 /><strong>Connect a Chess.com username</strong><span>Your performance profile will appear here.</span></main>;
   if (query.isPending) return <main className="stats-empty"><Activity className="spin" /><strong>Building {username}'s profile</strong><span>Reading games, partners and coaching labels.</span></main>;
   if (query.error || !query.data) return <main className="stats-empty error"><AlertTriangle /><strong>Statistics unavailable</strong><span>{query.error?.message}</span></main>;
@@ -20,6 +53,8 @@ export function StatsDashboard({ username }: Props) {
   const nemesis = stats.opponents.filter((item) => item.opponent !== "Unknown" && item.games >= 3).sort((a, b) => (a.winrate ?? 100) - (b.winrate ?? 100))[0];
   const maxMonthGames = Math.max(1, ...stats.monthly.map((item) => item.games));
   const maxMistakes = Math.max(1, ...stats.mistake_categories.map((item) => item.count));
+  const analysisRunning = analysisMutation.isPending || jobQuery.data?.status === "queued" || jobQuery.data?.status === "running";
+  const analyzedGames = stats.data_quality.analyzed_games ?? 0;
 
   return (
     <main className="stats-dashboard">
@@ -59,7 +94,24 @@ export function StatsDashboard({ username }: Props) {
         </div>
         <div className="stats-section leaks-section">
           <SectionTitle eyebrow="COACHING" title="Recurring leaks" detail={`${summary.mistakes} stored positions · ${summary.blunders} blunders`} />
-          {stats.mistake_categories.length ? <div className="leak-list">{stats.mistake_categories.slice(0, 6).map((item) => <div key={item.category}><span>{item.category}<small>{item.avg_loss.toFixed(0)} avg cp loss</small></span><i><b style={{ width: `${item.count / maxMistakes * 100}%` }} /></i><strong>{item.count}</strong></div>)}</div> : <div className="stats-no-data"><CheckCircle2 />Run coach analysis to build your leak map.</div>}
+          <div className="leak-map-content">
+            {stats.mistake_categories.length
+              ? <div className="leak-list">{stats.mistake_categories.slice(0, 6).map((item) => <div key={item.category}><span>{item.category}<small>{item.avg_loss.toFixed(0)} avg cp loss</small></span><i><b style={{ width: `${item.count / maxMistakes * 100}%` }} /></i><strong>{item.count}</strong></div>)}</div>
+              : <div className="stats-no-data"><CheckCircle2 /><strong>Your leak map is ready to build</strong><span>Fairy-Stockfish will review ten complete games and skip anything already analyzed.</span></div>}
+            {analysisRunning && jobQuery.data && (
+              <div className="leak-job" role="status">
+                <span>{jobQuery.data.stage}</span>
+                <div><i style={{ width: `${jobQuery.data.total ? Math.round(jobQuery.data.processed / jobQuery.data.total * 100) : 5}%` }} /></div>
+              </div>
+            )}
+            {analysisNotice && <div className="leak-notice">{analysisNotice}</div>}
+            {(analysisMutation.error || jobQuery.error) && <div className="leak-notice leak-error">{analysisMutation.error?.message ?? jobQuery.error?.message}</div>}
+            <button className="leak-analyze-button" disabled={analysisRunning} onClick={() => analysisMutation.mutate()}>
+              {analysisRunning ? <Activity className="spin" /> : <BrainCircuit />}
+              {analysisRunning ? "Analyzing with Fairy-Stockfish..." : analyzedGames ? "Analyze next 10 games" : "Analyze first 10 games"}
+            </button>
+            <small className="leak-coverage">{analyzedGames.toLocaleString()} complete games analyzed at depth 10</small>
+          </div>
         </div>
       </section>
 

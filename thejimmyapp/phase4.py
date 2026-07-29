@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 from thejimmyapp.analyzer import EngineMomentAnalysis, _analyze_with_cache, analyze_critical_positions
 from thejimmyapp.board_renderer import ReplayPosition, build_bughouse_pair_positions, build_replay_positions
@@ -33,6 +34,7 @@ def analyze_recent_games_for_mistakes(
     only_two_board: bool = True,
     only_unanalyzed: bool = True,
     selection: str = "recent",
+    progress_callback: Callable[[int, int, BatchAnalysisResult], None] | None = None,
 ) -> BatchAnalysisResult:
     config = EngineConfig(path=engine_path, depth=engine_depth)
     games = db.list_games_for_mistake_analysis(
@@ -44,7 +46,7 @@ def analyze_recent_games_for_mistakes(
         selection=selection,
     )
     result = BatchAnalysisResult(games_seen=len(games))
-    for game in games:
+    for index, game in enumerate(games, start=1):
         pgn = str(game.get("pgn") or "")
         raw_json = str(game.get("raw_json") or "")
         parsed = parse_game_data(pgn, raw_json)
@@ -59,6 +61,8 @@ def analyze_recent_games_for_mistakes(
                 mistakes_found=0,
                 status="skipped",
             )
+            if progress_callback:
+                progress_callback(index, len(games), result)
             continue
         result.games_with_moves += 1
         moments = extract_critical_moments(parsed)
@@ -73,6 +77,8 @@ def analyze_recent_games_for_mistakes(
                 mistakes_found=0,
                 status="complete",
             )
+            if progress_callback:
+                progress_callback(index, len(games), result)
             continue
         selected = moments[:max_positions_per_game]
         moves_by_ply = {move.ply: move for move in parsed.moves}
@@ -116,6 +122,8 @@ def analyze_recent_games_for_mistakes(
             status="complete",
         )
         result.stored_mistakes += len(mistakes)
+        if progress_callback:
+            progress_callback(index, len(games), result)
     return result
 
 

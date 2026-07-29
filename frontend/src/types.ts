@@ -217,6 +217,21 @@ export interface CoachJob {
   };
 }
 
+export interface LeakMapJob {
+  status: "queued" | "running" | "completed" | "failed";
+  stage: string;
+  processed: number;
+  total: number;
+  error?: string;
+  result?: {
+    games_seen: number;
+    games_with_moves: number;
+    critical_positions: number;
+    stored_mistakes: number;
+    skipped_games: number;
+  };
+}
+
 export interface PlayerStats {
   username: string;
   summary: {
@@ -239,5 +254,5 @@ export interface PlayerStats {
   partners: Array<{ partner: string; games: number; wins: number; winrate: number | null }>;
   opponents: Array<{ opponent: string; games: number; wins: number; winrate: number | null; avg_rating: number | null }>;
   mistake_categories: Array<{ category: string; count: number; avg_loss: number; max_loss: number }>;
-  data_quality: { two_board_games: number; total_games: number; analysis_positions: number };
+  data_quality: { two_board_games: number; total_games: number; analysis_positions: number; analyzed_games: number };
 }

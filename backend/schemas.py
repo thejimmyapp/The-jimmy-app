@@ -75,6 +75,12 @@ class CoachPrepareRequest(BaseModel):
     engine_suggestions: list[CoachEngineSuggestion] = Field(default_factory=list, max_length=2)
 
 
+class LeakMapAnalysisRequest(BaseModel):
+    username: str = Field(min_length=2, max_length=25, pattern=r"^[A-Za-z0-9_-]+$")
+    game_limit: int = Field(default=10, ge=1, le=50)
+    max_positions_per_game: int = Field(default=6, ge=1, le=12)
+
+
 class ExplorationMoveRequest(BaseModel):
     board_a_fen: str = Field(min_length=10, max_length=200)
     board_b_fen: str | None = Field(default=None, min_length=10, max_length=200)
