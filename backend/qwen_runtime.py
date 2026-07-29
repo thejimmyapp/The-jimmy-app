@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -120,6 +121,8 @@ class QwenRuntime:
                 str(self.settings.qwen_threads),
                 "--conversation",
                 "--single-turn",
+                "--log-disable",
+                "--no-show-timings",
                 "--no-display-prompt",
                 "--simple-io",
                 "--file",
@@ -144,7 +147,14 @@ class QwenRuntime:
         if completed.returncode != 0:
             error = completed.stderr.strip().splitlines()[-1:] or ["unknown llama-cli error"]
             raise RuntimeError(f"Qwen inference failed: {error[0]}")
-        answer = completed.stdout.strip()
+        answer = self._extract_answer(completed.stdout)
         if not answer:
             raise RuntimeError("Qwen returned an empty coaching explanation")
         return answer + f"\n\n[Generated locally in {time.monotonic() - started:.1f}s]"
+
+    @staticmethod
+    def _extract_answer(output: str) -> str:
+        summary = re.search(r"(?im)^(?:#{1,6}\s*)?Summary\s*:?[ \t]*$", output)
+        answer = output[summary.start() :] if summary else output
+        answer = re.split(r"(?m)^\[ Prompt:|^Exiting\.\.\.$", answer, maxsplit=1)[0]
+        return answer.strip()
