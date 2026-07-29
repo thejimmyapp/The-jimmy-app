@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     qwen_max_tokens: int = Field(default=1200, ge=128, le=4096)
     qwen_temperature: float = Field(default=0.15, ge=0, le=1)
     qwen_top_p: float = Field(default=0.85, gt=0, le=1)
+    qwen_reasoning_budget: int = Field(default=0, ge=-1, le=512)
     qwen_threads: int = Field(default=2, ge=1, le=16)
     qwen_timeout_seconds: float = Field(default=300, ge=30, le=900)
     qwen_min_free_bytes: int = 3_200_000_000

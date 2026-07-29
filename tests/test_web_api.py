@@ -35,6 +35,7 @@ def test_coach_status_and_stats_username_validation() -> None:
         assert status_response.status_code == 200
         assert status_response.json()["temperature"] == 0.15
         assert status_response.json()["context_size"] == 8192
+        assert status_response.json()["reasoning_budget"] == 0
         invalid = client.get("/api/stats/not%20valid")
         assert invalid.status_code == 400
 

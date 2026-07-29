@@ -139,6 +139,7 @@ Hard constraints:
 - If evidence is incomplete, say exactly what is missing.
 
 Return these sections: Summary, Board A, Board B, Team plan, Piece request, Urgency.
+Keep the complete answer concise and under 350 words.
 
 POSITION CONTEXT
 {serialized}

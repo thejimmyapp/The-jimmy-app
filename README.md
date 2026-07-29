@@ -63,6 +63,8 @@ The public app does not contain a shared hosted-AI API key. Its coaching pipelin
 
 The GGUF model is not committed to Git and is not embedded in the Docker image. On first use, Railway downloads `Qwen3.5-4B-Q4_K_M.gguf` to the attached persistent volume. `llama-cli` runs once per review and exits after the response so its RAM is released. If the model, binary, storage or memory is unavailable, the app returns the validated Fairy/coupled evidence without inventing a LLM answer.
 
+The runtime keeps the requested `8192` context, `1200` maximum output tokens, `0.15` temperature and `0.85` top-p. Its reasoning budget is `0`: Fairy-Stockfish and the coupled validator perform the tactical work, while Qwen writes a concise explanation directly.
+
 Recommended Railway settings are a Hobby volume of at least 5 GB mounted at `/app/data`, enough RAM for the 2.71 GB quantized model plus context, and a spending limit. CPU inference can take significantly longer than Fairy-Stockfish analysis.
 
 ### Player Statistics

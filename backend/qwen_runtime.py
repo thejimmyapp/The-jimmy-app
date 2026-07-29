@@ -37,6 +37,7 @@ class QwenRuntime:
             "max_tokens": self.settings.qwen_max_tokens,
             "temperature": self.settings.qwen_temperature,
             "top_p": self.settings.qwen_top_p,
+            "reasoning_budget": self.settings.qwen_reasoning_budget,
         }
 
     async def explain(self, prompt: str) -> str:
@@ -111,6 +112,8 @@ class QwenRuntime:
                 str(self.settings.qwen_temperature),
                 "--top-p",
                 str(self.settings.qwen_top_p),
+                "--reasoning-budget",
+                str(self.settings.qwen_reasoning_budget),
                 "--threads",
                 str(self.settings.qwen_threads),
                 "--no-display-prompt",
