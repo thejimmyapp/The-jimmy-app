@@ -25,7 +25,18 @@ def test_health_and_openapi() -> None:
         assert response.status_code == 200
         assert response.json()["status"] == "ok"
         assert response.json()["service"] == "thejimmyapp"
+        assert response.json()["ai_coach"]["model_file"] == "Qwen3.5-4B-Q4_K_M.gguf"
         assert "/ws/rooms/{room_id}" not in client.get("/openapi.json").json()["paths"]
+
+
+def test_coach_status_and_stats_username_validation() -> None:
+    with TestClient(app) as client:
+        status_response = client.get("/api/coach/status")
+        assert status_response.status_code == 200
+        assert status_response.json()["temperature"] == 0.15
+        assert status_response.json()["context_size"] == 8192
+        invalid = client.get("/api/stats/not%20valid")
+        assert invalid.status_code == 400
 
 
 def test_room_websocket_relays_versioned_event() -> None:

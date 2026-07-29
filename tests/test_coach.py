@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from backend.coach import prepare_coach_context
+from backend.coupled_analysis import analyze_coupled_position
 from backend.schemas import CoachPrepareRequest
 
 
@@ -60,13 +61,43 @@ def test_coach_prompt_couples_both_boards_without_shared_api_key() -> None:
 
     result = prepare_coach_context(request, FakeGames())
 
-    assert result["mode"] == "user_owned_ai"
+    assert result["mode"] == "validated_context"
     assert result["board_a"]["best_move"] == "N@f7"
     assert result["board_b"]["available"] is True
     assert "captured piece transfers" in result["prompt"]
     assert "N@f7" in result["prompt"]
     assert '"board": "B"' in result["prompt"]
-    assert "No shared AI key" in result["privacy"]
+    assert "No external AI API key" in result["privacy"]
+    assert result["context"]["coupled_analysis"]["source_of_truth"].startswith("deterministic")
+
+
+def test_coupled_analyzer_sends_capture_to_partner_instead_of_local_pocket() -> None:
+    context = {
+        "boards": {
+            "A": {
+                "variant_fen": "4k3/8/8/3n4/4P3/8/8/4K3[] w - - 0 1",
+                "side_to_move": "white",
+                "white_clock": "0:40",
+                "black_clock": "0:36",
+                "engine": {"bestmove": "e4d5", "score_cp": 220, "pv": ["e4d5"]},
+            },
+            "B": {
+                "variant_fen": "4k3/8/8/8/8/8/8/4K3[] b - - 0 1",
+                "side_to_move": "black",
+                "white_clock": "0:38",
+                "black_clock": "0:42",
+                "engine": {"bestmove": "e8e7", "score_cp": 0, "pv": ["e8e7"]},
+            },
+        }
+    }
+
+    result = analyze_coupled_position(context)
+    capture = next(item for item in result["candidate_impacts"] if item["board"] == "A")
+
+    assert capture["legal"] is True
+    assert capture["piece_transferred"] == "knight"
+    assert capture["new_partner_pocket"] == "n"
+    assert "Board B" in capture["impact_on_partner_board"]
 
 
 def test_coach_rejects_unknown_game() -> None:

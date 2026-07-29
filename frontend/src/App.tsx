@@ -1,10 +1,11 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Bot, Check, Copy, ExternalLink, LogOut, Palette, Radio, Redo2, RotateCcw, Settings, ShieldCheck, Undo2, UserRoundPlus, Users, X } from "lucide-react";
+import { BarChart3, Bot, Check, Copy, ExternalLink, LogOut, Palette, Radio, Redo2, RotateCcw, Settings, ShieldCheck, Swords, Undo2, UserRoundPlus, Users, X } from "lucide-react";
 import { CSSProperties, FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { buildChessComConnectorPrompt } from "./chesscomConnectorPrompt";
 import { BoardPanel, type BoardAnalysisState } from "./components/BoardPanel";
 import { SidePanel } from "./components/SidePanel";
+import { StatsDashboard } from "./components/StatsDashboard";
 import { TeamCoach } from "./components/TeamCoach";
 import { Timeline } from "./components/Timeline";
 import { applyRoomSnapshot, connectRoomSocket, sendRoomEvent } from "./socket";
@@ -64,6 +65,7 @@ export default function App() {
   const [pieceSize, setPieceSize] = useState<PieceSizeId>(initialPieceSize);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
+  const [view, setView] = useState<"review" | "stats">("review");
   const [boardAnalyses, setBoardAnalyses] = useState<Partial<Record<BoardId, BoardAnalysisState>>>({});
   const [connectOpen, setConnectOpen] = useState(!store.username && !store.roomId);
   const [usernameDraft, setUsernameDraft] = useState(store.username);
@@ -131,10 +133,14 @@ export default function App() {
   };
 
   return (
-    <main className="app-shell" data-board-theme={boardTheme} data-piece-style={pieceStyle} data-piece-size={pieceSize}>
+    <main className={`app-shell ${view === "stats" ? "stats-view" : ""}`} data-board-theme={boardTheme} data-piece-style={pieceStyle} data-piece-size={pieceSize}>
       <div className="small-screen-message">The Jimmy App is optimized for desktop screens of 1366×768 or larger.</div>
       <header className="app-header">
         <div className="brand"><span className="brand-mark">J</span><div><strong>THE JIMMY APP</strong><small>COLLABORATIVE BUGHOUSE COACH</small></div></div>
+        <nav className="primary-nav" aria-label="Main views">
+          <button className={view === "review" ? "active" : ""} onClick={() => setView("review")}><Swords size={14} />Review</button>
+          <button className={view === "stats" ? "active" : ""} onClick={() => setView("stats")}><BarChart3 size={14} />Statistics</button>
+        </nav>
         <div className="header-actions">
           {store.mode === "exploration" && <button className="icon-button" title="Undo exploration move" onClick={store.undoExploration}><Undo2 size={16} /></button>}
           {store.explorationFuture.length > 0 && <button className="icon-button" title="Redo exploration move" onClick={store.redoExploration}><Redo2 size={16} /></button>}
@@ -143,12 +149,12 @@ export default function App() {
           {shareCopied && <span className="copy-confirm">Link copied</span>}
           {roomMutation.error && <span className="room-error" title={roomMutation.error.message}>Invite failed</span>}
           {store.roomId && <span className="viewer-pill" title={store.participants.map((item) => item.display_name).join(", ") || "Waiting for viewers"}><Users size={14} /> {viewerCount}</span>}
-          <button className="coach-button" disabled={!store.game} title="Prepare a two-board review for your own AI" onClick={() => setCoachOpen(true)}><Bot size={16} /> Team Coach</button>
+          {view === "review" && <button className="coach-button" disabled={!store.game} title="Run the coupled Bughouse coaching pipeline" onClick={() => setCoachOpen(true)}><Bot size={16} /> Team Coach</button>}
           <button className="icon-button" title="Board settings" onClick={() => setSettingsOpen(true)}><Settings size={16} /></button>
           <button className="connect-button" onClick={() => setConnectOpen(true)}><Radio size={15} /> {store.username || "Connect Chess.com"}</button>
         </div>
       </header>
-      <section className="workspace">
+      {view === "review" ? <><section className="workspace">
         <SidePanel onSelectGame={selectGame} loadingGame={gameMutation.isPending} />
         <div className={`boards-zone ${store.game ? "has-game" : ""}`}>
           {store.game?.outcome && (
@@ -166,7 +172,7 @@ export default function App() {
         </div>
       </section>
       <Timeline />
-      <TeamCoach open={coachOpen} onClose={() => setCoachOpen(false)} boardA={boardA} boardB={boardB} orientationA={userIsWhite ? "white" : "black"} orientationB={userIsWhite ? "black" : "white"} analyses={boardAnalyses} />
+      <TeamCoach open={coachOpen} onClose={() => setCoachOpen(false)} boardA={boardA} boardB={boardB} orientationA={userIsWhite ? "white" : "black"} orientationB={userIsWhite ? "black" : "white"} analyses={boardAnalyses} /></> : <StatsDashboard username={store.username} />}
       {connectOpen && (
         <div className="modal-backdrop" role="presentation">
           <form className={`connect-modal ${authenticatedOpen ? "connector-mode" : ""}`} onSubmit={connect}>

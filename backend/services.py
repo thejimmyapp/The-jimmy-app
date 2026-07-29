@@ -6,6 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
+from collections import defaultdict
 
 from backend.config import Settings
 from thejimmyapp.board_renderer import build_bughouse_pair_positions, build_global_replay_frames, build_replay_positions
@@ -74,6 +75,36 @@ class GameService:
         positions_b = payload["positions_b"]
         position_b = positions_b[partner_index] if positions_b and partner_index is not None else None
         return {"global_ply": index, "board_a": position_a, "board_b": position_b}
+
+    def player_stats(self, username: str) -> dict[str, object]:
+        games = self.db.list_games(username=username, limit=100_000)
+        dashboard = self.db.get_dashboard_stats(username)
+        colors = self.db.get_color_stats(username)
+        partners = self.db.get_partner_stats(username)
+        opponents = self.db.get_opponent_stats(username, min_games=3)
+        mistake_summary = self.db.get_mistake_summary(username)
+        categories = _aggregate_categories(self.db.get_mistake_category_stats(username))
+        return {
+            "username": username,
+            "summary": {
+                **dashboard,
+                **mistake_summary,
+                "wins": sum(1 for game in games if game.get("result") == "win"),
+                "losses": sum(1 for game in games if game.get("result") == "loss"),
+                "draws": sum(1 for game in games if game.get("result") == "draw"),
+            },
+            "colors": colors,
+            "monthly": _monthly_stats(games),
+            "rating_bands": _rating_band_stats(games),
+            "partners": partners[:12],
+            "opponents": opponents[:12],
+            "mistake_categories": categories[:10],
+            "data_quality": {
+                "two_board_games": dashboard.get("partner_boards", 0),
+                "total_games": dashboard.get("total_games", 0),
+                "analysis_positions": mistake_summary.get("mistakes", 0),
+            },
+        }
 
 
 class AnalysisJobs:
@@ -167,6 +198,72 @@ class AnalysisJobs:
     def _analyze(fen: str, config: EngineConfig) -> dict[str, object]:
         with FairyStockfishEngine(config) as engine:
             return asdict(engine.analyze_fen(fen))
+
+
+def _monthly_stats(games: list[dict[str, object]]) -> list[dict[str, object]]:
+    buckets: dict[str, dict[str, int]] = defaultdict(lambda: {"games": 0, "wins": 0, "losses": 0})
+    for game in games:
+        month = str(game.get("played_at") or "")[:7]
+        if len(month) != 7:
+            continue
+        buckets[month]["games"] += 1
+        result = str(game.get("result") or "")
+        if result == "win":
+            buckets[month]["wins"] += 1
+        elif result == "loss":
+            buckets[month]["losses"] += 1
+    rows = []
+    for month in sorted(buckets)[-12:]:
+        item = buckets[month]
+        rows.append({
+            "month": month,
+            **item,
+            "winrate": None if item["games"] == 0 else round(item["wins"] / item["games"] * 100, 1),
+        })
+    return rows
+
+
+def _rating_band_stats(games: list[dict[str, object]]) -> list[dict[str, object]]:
+    bands = [
+        ("Under 1600", 0, 1599),
+        ("1600-1799", 1600, 1799),
+        ("1800-1999", 1800, 1999),
+        ("2000-2199", 2000, 2199),
+        ("2200+", 2200, 9999),
+    ]
+    rows = []
+    for label, low, high in bands:
+        selected = [game for game in games if isinstance(game.get("opponent_rating"), int) and low <= int(game["opponent_rating"]) <= high]
+        wins = sum(1 for game in selected if game.get("result") == "win")
+        rows.append({
+            "label": label,
+            "games": len(selected),
+            "wins": wins,
+            "winrate": None if not selected else round(wins / len(selected) * 100, 1),
+        })
+    return rows
+
+
+def _aggregate_categories(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    grouped: dict[str, dict[str, float]] = defaultdict(lambda: {"count": 0, "weighted_loss": 0, "max_loss": 0})
+    for row in rows:
+        category = str(row.get("category") or "unknown")
+        count = int(row.get("count") or 0)
+        avg_loss = float(row.get("avg_loss") or 0)
+        target = grouped[category]
+        target["count"] += count
+        target["weighted_loss"] += avg_loss * count
+        target["max_loss"] = max(target["max_loss"], float(row.get("max_loss") or 0))
+    result = [
+        {
+            "category": category,
+            "count": int(values["count"]),
+            "avg_loss": round(values["weighted_loss"] / values["count"], 1) if values["count"] else 0,
+            "max_loss": int(values["max_loss"]),
+        }
+        for category, values in grouped.items()
+    ]
+    return sorted(result, key=lambda item: (int(item["count"]), float(item["avg_loss"])), reverse=True)
 
 
 _LOSS_RESULTS = {"checkmated", "resigned", "timeout", "abandoned", "lose", "kingofthehill", "threecheck"}

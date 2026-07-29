@@ -52,17 +52,22 @@ Important current limitation: the existing imported-game library still uses `dat
 
 The `/health` endpoint verifies the application database and reports whether the Fairy-Stockfish executable is available. It never exposes credentials.
 
-### Zero-cost Team Coach
+### Coupled Team Coach
 
-The public app does not contain a shared OpenAI, Gemini, or other hosted-AI API key. This prevents public usage from creating an AI bill for the app owner.
+The public app does not contain a shared hosted-AI API key. Its coaching pipeline is deliberately layered:
 
-1. Open a complete game in the review room.
-2. Optionally run Fairy-Stockfish on Board A and Board B.
-3. Select `Team Coach`, choose or write a question, then select `Prepare AI review`.
-4. Copy the generated two-board prompt.
-5. Paste it into the user's own Codex, ChatGPT, Gemini, or another AI account.
+1. Fairy-Stockfish validates each available board and produces tactical lines.
+2. `backend/coupled_analysis.py` verifies legal moves, cross-board transfers, resulting pockets, mates, clocks and partner danger.
+3. Qwen3.5-4B Q4_K_M receives only that validated evidence.
+4. Qwen ranks and explains the evidence using the fixed sections `Summary`, `Board A`, `Board B`, `Team plan`, `Piece request`, and `Urgency`.
 
-The prompt includes both board positions, players, pockets, clocks, recent moves, legal annotations, available engine suggestions, Bughouse transfer rules, and explicit uncertainty markers. No account key is sent to or stored by The Jimmy App. Game context leaves the app only when the user deliberately copies and submits it to an external AI service.
+The GGUF model is not committed to Git and is not embedded in the Docker image. On first use, Railway downloads `Qwen3.5-4B-Q4_K_M.gguf` to the attached persistent volume. `llama-cli` runs once per review and exits after the response so its RAM is released. If the model, binary, storage or memory is unavailable, the app returns the validated Fairy/coupled evidence without inventing a LLM answer.
+
+Recommended Railway settings are a Hobby volume of at least 5 GB mounted at `/app/data`, enough RAM for the 2.71 GB quantized model plus context, and a spending limit. CPU inference can take significantly longer than Fairy-Stockfish analysis.
+
+### Player Statistics
+
+The web `Statistics` view summarizes the complete imported history with win rate, color split, twelve-month form, rating-band performance, partner chemistry, opponent history, two-board coverage and recurring coaching leaks. The API source is `GET /api/stats/{username}`.
 
 ### Exploration and legal annotations
 

@@ -5,7 +5,7 @@ import { useCoachStore } from "../store";
 import type { CoachPreparedPayload, GamePayload, ReplayPosition } from "../types";
 import { TeamCoach } from "./TeamCoach";
 
-const apiMock = vi.hoisted(() => ({ prepareCoach: vi.fn() }));
+const apiMock = vi.hoisted(() => ({ coachStatus: vi.fn(), runCoach: vi.fn(), coachJob: vi.fn() }));
 vi.mock("../api", () => ({ api: apiMock }));
 
 const position = (fen: string, side: string): ReplayPosition => ({
@@ -33,14 +33,14 @@ const game = {
 } satisfies GamePayload;
 
 const prepared: CoachPreparedPayload = {
-  mode: "user_owned_ai",
+  mode: "validated_context",
   summary: "Both boards are ready.",
   prompt: "complete two-board prompt",
   context: {},
   board_a: { available: true, best_move: "N@f7", threats: [], mistakes: [] },
   board_b: { available: true, best_move: null, threats: [], mistakes: [] },
   team_plan: [], piece_requests: [], urgency: "unknown", quick_questions: [],
-  privacy: "No shared AI key is used or stored.",
+  privacy: "No external AI API key is used.",
 };
 
 const renderCoach = () => {
@@ -51,18 +51,21 @@ const renderCoach = () => {
 describe("Team Coach", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    apiMock.prepareCoach.mockResolvedValue(prepared);
+    const modelStatus = { enabled: true, state: "ready", detail: "Model ready", model: "Qwen", model_file: "Qwen3.5-4B-Q4_K_M.gguf", model_downloaded: true, runtime_available: true, context_size: 8192, max_tokens: 1200, temperature: 0.15, top_p: 0.85 };
+    apiMock.coachStatus.mockResolvedValue(modelStatus);
+    apiMock.runCoach.mockResolvedValue({ job_id: "job-1", status: "queued" });
+    apiMock.coachJob.mockResolvedValue({ status: "completed", stage: "Review ready", result: { explanation: "Validated coaching", qwen_error: null, prepared, model: modelStatus } });
     useCoachStore.setState({ game, username: "Jimmy", globalPly: 4, annotations: [] });
     Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
   });
   afterEach(cleanup);
 
-  it("prepares both boards and copies the user-owned AI prompt", async () => {
+  it("runs both boards through the coupled pipeline and copies validated evidence", async () => {
     renderCoach();
-    fireEvent.click(screen.getByRole("button", { name: "Prepare AI review" }));
-    expect(await screen.findByText("Context ready")).toBeTruthy();
-    expect(apiMock.prepareCoach.mock.calls[0][0]).toEqual(expect.objectContaining({ game_id: 42, board_a: expect.any(Object), board_b: expect.any(Object) }));
-    fireEvent.click(screen.getByRole("button", { name: "Copy for Codex or any AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run coupled AI review" }));
+    expect(await screen.findByText("Coupled review ready")).toBeTruthy();
+    expect(apiMock.runCoach.mock.calls[0][0]).toEqual(expect.objectContaining({ game_id: 42, board_a: expect.any(Object), board_b: expect.any(Object) }));
+    fireEvent.click(screen.getByRole("button", { name: "Copy validated evidence" }));
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith("complete two-board prompt"));
   });
 });

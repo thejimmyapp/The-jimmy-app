@@ -1,10 +1,10 @@
-import { useMutation } from "@tanstack/react-query";
-import { Bot, Check, Copy, ExternalLink, ShieldCheck, X } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Bot, BrainCircuit, Check, Copy, Cpu, ShieldCheck, X } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { api } from "../api";
 import { useCoachStore } from "../store";
-import type { BoardAnalysisState } from "./BoardPanel";
 import type { BoardId, CoachPrepareRequest, ReplayPosition } from "../types";
+import type { BoardAnalysisState } from "./BoardPanel";
 
 const quickQuestions = [
   "What should our team play next?",
@@ -39,18 +39,25 @@ const boardInput = (position: ReplayPosition) => ({
 export function TeamCoach({ open, onClose, boardA, boardB, orientationA, orientationB, analyses }: Props) {
   const store = useCoachStore();
   const [question, setQuestion] = useState(quickQuestions[0]);
+  const [jobId, setJobId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const mutation = useMutation({ mutationFn: api.prepareCoach });
+  const statusQuery = useQuery({ queryKey: ["coach-status"], queryFn: api.coachStatus, enabled: open, refetchInterval: open ? 5000 : false });
+  const mutation = useMutation({ mutationFn: api.runCoach, onSuccess: (data) => setJobId(data.job_id) });
+  const jobQuery = useQuery({
+    queryKey: ["coach-job", jobId],
+    queryFn: () => api.coachJob(jobId as string),
+    enabled: Boolean(jobId),
+    refetchInterval: (query) => ["completed", "failed"].includes(query.state.data?.status ?? "") ? false : 1200,
+  });
   if (!open) return null;
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    if (!store.game || !boardA || question.trim().length < 3) return;
+  const buildRequest = (): CoachPrepareRequest | null => {
+    if (!store.game || !boardA) return null;
     const engineSuggestions = (["A", "B"] as BoardId[]).flatMap((board) => {
       const result = analyses[board];
       return result?.status === "completed" ? [{ board, bestmove: result.bestmove, score_cp: result.scoreCp, mate_in: result.mateIn, depth: result.depth, pv: result.pv }] : [];
     });
-    const request: CoachPrepareRequest = {
+    return {
       game_id: store.game.game.id,
       global_ply: store.globalPly,
       question: question.trim(),
@@ -63,12 +70,21 @@ export function TeamCoach({ open, onClose, boardA, boardB, orientationA, orienta
       annotations: store.annotations.filter((item) => item.ply === store.globalPly).map((item) => ({ board: item.board, type: item.type, from: item.from, to: item.to, color: item.color })),
       engine_suggestions: engineSuggestions,
     };
+  };
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    const request = buildRequest();
+    if (!request || request.question.length < 3) return;
+    setJobId(null);
     mutation.mutate(request);
   };
 
-  const copyPrompt = async () => {
-    if (!mutation.data) return;
-    await navigator.clipboard.writeText(mutation.data.prompt);
+  const job = jobQuery.data;
+  const prepared = job?.result?.prepared;
+  const copyEvidence = async () => {
+    if (!prepared) return;
+    await navigator.clipboard.writeText(prepared.prompt);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);
   };
@@ -77,9 +93,12 @@ export function TeamCoach({ open, onClose, boardA, boardB, orientationA, orienta
     <div className="modal-backdrop" role="presentation">
       <section className="coach-modal" role="dialog" aria-modal="true" aria-labelledby="coach-title">
         <button type="button" className="modal-close" onClick={onClose} aria-label="Close Team Coach"><X /></button>
-        <span className="modal-kicker">ZERO-COST TEAM COACH</span>
-        <h1 id="coach-title"><Bot size={25} /> Ask about both boards</h1>
-        <p>The Jimmy App prepares the exact Bughouse position. You use your own AI account, so no shared API key or usage charge is passed to the app owner.</p>
+        <span className="modal-kicker">COUPLED BUGHOUSE COACH</span>
+        <h1 id="coach-title"><BrainCircuit size={25} /> Ask about both boards</h1>
+        <p>Fairy-Stockfish validates tactics on each board. The coupled analyzer calculates transfers and partner danger. Qwen only explains those verified facts.</p>
+        <div className="coach-pipeline" aria-label="Coaching pipeline">
+          <span><Cpu size={13} /> Fairy A + B</span><i>→</i><span>Transfer validator</span><i>→</i><span><Bot size={13} /> Qwen 3.5 4B</span>
+        </div>
         <div className="coach-context-strip">
           <span><strong>A</strong>{boardA ? `${boardA.side_to_move} to move` : "Unavailable"}</span>
           <span><strong>B</strong>{boardB ? `${boardB.side_to_move} to move` : "Unavailable"}</span>
@@ -91,22 +110,21 @@ export function TeamCoach({ open, onClose, boardA, boardB, orientationA, orienta
         <form onSubmit={submit}>
           <label htmlFor="coach-question">Your question</label>
           <textarea id="coach-question" value={question} onChange={(event) => setQuestion(event.target.value)} maxLength={1000} />
-          <button className="coach-prepare" disabled={!store.game || !boardA || mutation.isPending} type="submit"><Bot size={16} />{mutation.isPending ? "Preparing both boards..." : "Prepare AI review"}</button>
+          <button className="coach-prepare" disabled={!store.game || !boardA || mutation.isPending || job?.status === "running"} type="submit"><BrainCircuit size={16} />{mutation.isPending || job?.status === "running" || job?.status === "queued" ? job?.stage ?? "Starting the pipeline..." : "Run coupled AI review"}</button>
         </form>
-        {mutation.error && <div className="coach-error" role="alert">{mutation.error.message}</div>}
-        {mutation.data && (
+        {!boardB && <div className="coach-warning">Board B is unavailable. The coach will preserve that limitation instead of inventing partner data.</div>}
+        {(mutation.error || jobQuery.error || job?.status === "failed") && <div className="coach-error" role="alert">{mutation.error?.message ?? jobQuery.error?.message ?? job?.error}</div>}
+        {statusQuery.data && <div className={`qwen-status ${statusQuery.data.state}`}><span /><strong>{statusQuery.data.model_file}</strong><small>{statusQuery.data.detail}</small></div>}
+        {job?.status === "completed" && job.result && (
           <div className="coach-ready" role="status">
-            <div><Check size={18} /><span><strong>Context ready</strong><small>{mutation.data.summary}</small></span></div>
+            <div><Check size={18} /><span><strong>{job.result.explanation ? "Coupled review ready" : "Validated evidence ready"}</strong><small>{job.stage}</small></span></div>
             <div className="coach-board-preview">
-              <span>Board A <b>{mutation.data.board_a.best_move ? `Best ${mutation.data.board_a.best_move}` : "Run engine for best move"}</b></span>
-              <span>Board B <b>{mutation.data.board_b.best_move ? `Best ${mutation.data.board_b.best_move}` : boardB ? "Run engine for best move" : "Unavailable"}</b></span>
+              <span>Board A <b>{prepared?.board_a.best_move ? `Best ${prepared.board_a.best_move}` : "No engine move"}</b></span>
+              <span>Board B <b>{prepared?.board_b.best_move ? `Best ${prepared.board_b.best_move}` : boardB ? "No engine move" : "Unavailable"}</b></span>
             </div>
-            <button type="button" className="copy-coach-prompt" onClick={() => void copyPrompt()}>{copied ? <Check size={15} /> : <Copy size={15} />}{copied ? "Copied for Codex" : "Copy for Codex or any AI"}</button>
-            <div className="coach-open-links">
-              <a href="https://chatgpt.com/" target="_blank" rel="noreferrer">Open ChatGPT <ExternalLink size={13} /></a>
-              <a href="https://gemini.google.com/app" target="_blank" rel="noreferrer">Open Gemini <ExternalLink size={13} /></a>
-            </div>
-            <small className="coach-privacy"><ShieldCheck size={13} />{mutation.data.privacy}</small>
+            {job.result.explanation ? <article className="coach-explanation">{job.result.explanation}</article> : <div className="coach-warning">Qwen is unavailable: {job.result.qwen_error}</div>}
+            <button type="button" className="copy-coach-prompt" onClick={() => void copyEvidence()}>{copied ? <Check size={15} /> : <Copy size={15} />}{copied ? "Evidence copied" : "Copy validated evidence"}</button>
+            <small className="coach-privacy"><ShieldCheck size={13} />{prepared?.privacy}</small>
           </div>
         )}
       </section>

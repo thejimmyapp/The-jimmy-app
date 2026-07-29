@@ -178,7 +178,7 @@ export interface CoachPrepareRequest {
 }
 
 export interface CoachPreparedPayload {
-  mode: "user_owned_ai";
+  mode: "validated_context";
   summary: string;
   prompt: string;
   context: Record<string, unknown>;
@@ -186,7 +186,58 @@ export interface CoachPreparedPayload {
   board_b: { available: boolean; best_move?: string | null; side_to_move?: string; threats: string[]; mistakes: string[] };
   team_plan: string[];
   piece_requests: string[];
-  urgency: "critical" | "unknown";
+  urgency: "critical" | "high" | "normal" | "unknown";
   quick_questions: string[];
   privacy: string;
+}
+
+export interface QwenStatus {
+  enabled: boolean;
+  state: "disabled" | "not_downloaded" | "downloading" | "ready" | "running" | "failed";
+  detail: string;
+  model: string;
+  model_file: string;
+  model_downloaded: boolean;
+  runtime_available: boolean;
+  context_size: number;
+  max_tokens: number;
+  temperature: number;
+  top_p: number;
+}
+
+export interface CoachJob {
+  status: "queued" | "running" | "completed" | "failed";
+  stage: string;
+  error?: string;
+  result?: {
+    explanation: string | null;
+    qwen_error: string | null;
+    prepared: CoachPreparedPayload;
+    model: QwenStatus;
+  };
+}
+
+export interface PlayerStats {
+  username: string;
+  summary: {
+    total_games: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    winrate: number | null;
+    partner_boards: number;
+    mistakes: number;
+    blunders: number;
+    avg_loss: number | null;
+    most_common_losing_pattern: string | null;
+    most_common_tactical_miss: string | null;
+    time_trouble_frequency: string | null;
+  };
+  colors: Array<{ color: string; games: number; wins: number; losses: number; winrate: number | null }>;
+  monthly: Array<{ month: string; games: number; wins: number; losses: number; winrate: number | null }>;
+  rating_bands: Array<{ label: string; games: number; wins: number; winrate: number | null }>;
+  partners: Array<{ partner: string; games: number; wins: number; winrate: number | null }>;
+  opponents: Array<{ opponent: string; games: number; wins: number; winrate: number | null; avg_rating: number | null }>;
+  mistake_categories: Array<{ category: string; count: number; avg_loss: number; max_loss: number }>;
+  data_quality: { two_board_games: number; total_games: number; analysis_positions: number };
 }

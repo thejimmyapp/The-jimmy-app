@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+import os
 import shutil
 
 from pydantic import Field
@@ -9,6 +10,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
+
+
+def _runtime_data_dir() -> Path:
+    mount = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH")
+    return Path(mount) if mount else ROOT_DIR / "data"
 
 
 def _default_fairy_stockfish_path() -> Path:
@@ -35,6 +41,24 @@ class Settings(BaseSettings):
     engine_depth: int = Field(default=10, ge=4, le=24)
     engine_timeout_seconds: float = Field(default=8.0, ge=1, le=60)
     room_ttl_hours: int = Field(default=168, ge=1, le=2160)
+    qwen_enabled: bool = True
+    qwen_model_name: str = "lmstudio-community/Qwen3.5-4B-GGUF"
+    qwen_model_filename: str = "Qwen3.5-4B-Q4_K_M.gguf"
+    qwen_model_url: str = (
+        "https://huggingface.co/lmstudio-community/Qwen3.5-4B-GGUF/resolve/main/"
+        "Qwen3.5-4B-Q4_K_M.gguf?download=true"
+    )
+    qwen_model_path: Path = Field(
+        default_factory=lambda: _runtime_data_dir() / "models" / "Qwen3.5-4B-Q4_K_M.gguf"
+    )
+    llama_cli_path: Path = ROOT_DIR / "llama" / "llama-cli"
+    qwen_context_size: int = Field(default=8192, ge=2048, le=32768)
+    qwen_max_tokens: int = Field(default=1200, ge=128, le=4096)
+    qwen_temperature: float = Field(default=0.15, ge=0, le=1)
+    qwen_top_p: float = Field(default=0.85, gt=0, le=1)
+    qwen_threads: int = Field(default=2, ge=1, le=16)
+    qwen_timeout_seconds: float = Field(default=300, ge=30, le=900)
+    qwen_min_free_bytes: int = 3_200_000_000
 
     @property
     def cors_origin_list(self) -> list[str]:

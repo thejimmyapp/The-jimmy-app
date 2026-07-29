@@ -13,10 +13,10 @@ The production target is the FastAPI/React application. The Streamlit app remain
 | Legal exploration and drops | Partial | Yes | React/FastAPI | High | Keep server-validated moves and partner transfers. |
 | Shared annotations and presence | No | Yes | Web | High | Preserve room WebSockets and versioned events. |
 | Fairy-Stockfish | Yes | Yes | Combination | High | Keep the tested adapter and bounded async queue. |
-| Coaching statistics | Yes | Partial | Local modules | Medium | Migrate as separate API/report slices after the review workspace. |
+| Coaching statistics | Yes | Yes | `GameService.player_stats` + React | Medium | Web dashboard includes form, colors, ratings, partners, opponents, coverage and recurring leaks. |
 | Opening Explorer | Yes | No | Local modules | Medium | Add a dedicated web route and view in a later slice. |
 | Pattern Academy | Yes | Partial | Combination | Medium | Keep the web puzzle player and expand from local motifs. |
-| Multi-board AI prompt | No | Yes | `backend/coach.py` | Medium | Export validated Board A + Board B context to an AI account owned by the user; keep the public app free of shared API keys. |
+| Coupled local AI coach | No | Yes | Fairy + coupled analyzer + Qwen | High | Qwen explains only validated engine/transfer facts and fails back to evidence when unavailable. |
 | Railway deployment | No | Yes | Web | High | Keep Docker, Alembic, static serving and Railway health checks. |
 
 ## Migration order

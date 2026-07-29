@@ -16,12 +16,14 @@ from sqlalchemy.orm import Session
 
 from backend.chesscom import ChessComService
 from backend.coach import prepare_coach_context
+from backend.coach_jobs import CoachJobs
 from backend.config import get_settings
 from backend.database import Base, SessionLocal, engine, get_session
 from backend.models import ChatMessage, ReviewRoom, SharedNote
 from backend.exploration import apply_exploration_move, apply_exploration_san_move
 from backend.rooms import room_hub
 from backend.puzzles import check_move, get_puzzle, next_move, solution
+from backend.qwen_runtime import QwenRuntime
 from backend.schemas import (
     AnalysisRequest,
     ChessComConnectRequest,
@@ -46,6 +48,8 @@ logger = logging.getLogger(__name__)
 Base.metadata.create_all(bind=engine)
 games = GameService(settings.legacy_database_path)
 analysis_jobs = AnalysisJobs(settings, games)
+qwen_runtime = QwenRuntime(settings)
+coach_jobs = CoachJobs(settings, games, qwen_runtime)
 app = FastAPI(title=settings.app_name, version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
@@ -81,7 +85,7 @@ def health() -> dict[str, object]:
         "service": "thejimmyapp",
         "database": "available" if database_available else "unavailable",
         "fairy_stockfish": "available" if engine_available else "unavailable",
-        "ai_coach": "user-owned account; no shared API key",
+        "ai_coach": qwen_runtime.status(),
     }
 
 
@@ -267,6 +271,32 @@ def prepare_coach(request: CoachPrepareRequest) -> dict[str, object]:
         return prepare_coach_context(request, games)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/api/coach/status")
+def coach_status() -> dict[str, object]:
+    return qwen_runtime.status()
+
+
+@app.post("/api/coach/analyze")
+async def analyze_with_coach(request: CoachPrepareRequest) -> dict[str, object]:
+    job_id = await coach_jobs.submit(request)
+    return {"job_id": job_id, "status": "queued"}
+
+
+@app.get("/api/coach/jobs/{job_id}")
+def get_coach_job(job_id: str) -> dict[str, object]:
+    job = coach_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Coach job not found")
+    return job
+
+
+@app.get("/api/stats/{username}")
+def player_stats(username: str) -> dict[str, object]:
+    if not re.fullmatch(r"[A-Za-z0-9_-]{2,25}", username):
+        raise HTTPException(status_code=400, detail="Invalid Chess.com username")
+    return games.player_stats(username)
 
 
 @app.post("/api/rooms")

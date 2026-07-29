@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from backend.coupled_analysis import analyze_coupled_position
 from backend.schemas import CoachPrepareRequest
 from backend.services import GameService
 
@@ -64,10 +65,12 @@ def prepare_coach_context(request: CoachPrepareRequest, games: GameService) -> d
         ],
         "data_limitations": game.get("limitations") or [],
     }
+    coupled = analyze_coupled_position(context)
+    context["coupled_analysis"] = coupled
     prompt = _build_prompt(context)
     return {
-        "mode": "user_owned_ai",
-        "summary": "Two-board Bughouse context is ready for your personal AI account.",
+        "mode": "validated_context",
+        "summary": "Fairy-Stockfish and coupled Bughouse facts are ready for Qwen.",
         "prompt": prompt,
         "context": context,
         "board_a": _board_preview(board_a, suggestions.get("A")),
@@ -77,10 +80,10 @@ def prepare_coach_context(request: CoachPrepareRequest, games: GameService) -> d
             "Check whether a capture helps your partner more than it helps the opposing team.",
             "Include clock pressure before recommending a forcing line.",
         ],
-        "piece_requests": [],
-        "urgency": _urgency(suggestions),
+        "piece_requests": coupled["piece_requests"],
+        "urgency": coupled["urgency"],
         "quick_questions": QUICK_QUESTIONS,
-        "privacy": "No shared AI key is used or stored. Paste this prompt into an AI account you control.",
+        "privacy": "Qwen runs through the app's local GGUF runtime. No external AI API key is used.",
     }
 
 
@@ -126,15 +129,14 @@ def _urgency(suggestions: dict[str, dict[str, object]]) -> str:
 
 def _build_prompt(context: dict[str, Any]) -> str:
     serialized = json.dumps(context, ensure_ascii=True, indent=2, separators=(",", ": "))
-    return f"""You are an expert Bughouse team coach. Answer the user's question using both boards as one coupled position.
+    return f"""You are the explanation layer of a Bughouse coaching pipeline. You do not calculate chess moves. Answer the user's question using only the validated facts below.
 
-Required reasoning:
-- Respect legal drops, pockets and cross-board piece transfers.
-- Explain how each recommended capture changes the partner board.
-- Prioritize immediate mate threats, partner danger, requested pieces and clock pressure.
-- Distinguish verified data from inference. Never invent a missing second board, clock or move.
-- Give concrete recommendations for Board A, Board B and the team plan.
-- Treat engine suggestions as tactical evidence, not as complete Bughouse strategy.
+Hard constraints:
+- Move legality and tactical lines come exclusively from Fairy-Stockfish and the deterministic coupled analyzer.
+- Never propose a move that is absent from candidate_impacts or engine PV data.
+- Never invent a transfer, pocket piece, clock, mate, evaluation or missing board.
+- Explain how verified captures change the other board and prioritize partner danger.
+- If evidence is incomplete, say exactly what is missing.
 
 Return these sections: Summary, Board A, Board B, Team plan, Piece request, Urgency.
 
