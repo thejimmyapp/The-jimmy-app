@@ -33,6 +33,48 @@ class AnalysisRequest(BaseModel):
     board_b_fen: str | None = Field(default=None, min_length=10, max_length=220)
 
 
+class CoachBoardInput(BaseModel):
+    variant_fen: str = Field(min_length=10, max_length=220)
+    side_to_move: str = Field(min_length=1, max_length=10)
+    white_pocket: str = Field(default="-", max_length=32)
+    black_pocket: str = Field(default="-", max_length=32)
+    white_clock: str = Field(default="-", max_length=16)
+    black_clock: str = Field(default="-", max_length=16)
+    from_square: str | None = Field(default=None, pattern=r"^[a-h][1-8]$")
+    to_square: str | None = Field(default=None, pattern=r"^[a-h][1-8]$")
+
+
+class CoachAnnotationInput(BaseModel):
+    board: Literal["A", "B"]
+    type: Literal["arrow", "highlight"]
+    from_square: str = Field(pattern=r"^[a-h][1-8]$", alias="from")
+    to_square: str | None = Field(default=None, pattern=r"^[a-h][1-8]$", alias="to")
+    color: str = Field(default="cyan", max_length=20)
+
+
+class CoachEngineSuggestion(BaseModel):
+    board: Literal["A", "B"]
+    bestmove: str | None = Field(default=None, max_length=24)
+    score_cp: int | None = None
+    mate_in: int | None = None
+    depth: int | None = Field(default=None, ge=1, le=99)
+    pv: list[str] = Field(default_factory=list, max_length=12)
+
+
+class CoachPrepareRequest(BaseModel):
+    game_id: int = Field(gt=0)
+    global_ply: int = Field(ge=0)
+    question: str = Field(min_length=3, max_length=1000)
+    username: str = Field(default="Player", min_length=1, max_length=40)
+    user_color: Literal["white", "black"] = "white"
+    orientation_a: Literal["white", "black"] = "white"
+    orientation_b: Literal["white", "black"] = "black"
+    board_a: CoachBoardInput | None = None
+    board_b: CoachBoardInput | None = None
+    annotations: list[CoachAnnotationInput] = Field(default_factory=list, max_length=80)
+    engine_suggestions: list[CoachEngineSuggestion] = Field(default_factory=list, max_length=2)
+
+
 class ExplorationMoveRequest(BaseModel):
     board_a_fen: str = Field(min_length=10, max_length=200)
     board_b_fen: str | None = Field(default=None, min_length=10, max_length=200)

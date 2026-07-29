@@ -1,14 +1,15 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Bot, Check, Copy, ExternalLink, LogOut, Palette, Radio, Redo2, RotateCcw, Settings, ShieldCheck, Undo2, UserRoundPlus, Users, X } from "lucide-react";
-import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
+import { CSSProperties, FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { buildChessComConnectorPrompt } from "./chesscomConnectorPrompt";
-import { BoardPanel } from "./components/BoardPanel";
+import { BoardPanel, type BoardAnalysisState } from "./components/BoardPanel";
 import { SidePanel } from "./components/SidePanel";
+import { TeamCoach } from "./components/TeamCoach";
 import { Timeline } from "./components/Timeline";
 import { applyRoomSnapshot, connectRoomSocket, sendRoomEvent } from "./socket";
 import { currentPosition, useCoachStore } from "./store";
-import type { GameSummary } from "./types";
+import type { BoardId, GameSummary } from "./types";
 
 const boardThemes = [
   { id: "slate", name: "Slate", light: "#c8d2d8", dark: "#58717e", white: "#f7f5ed", black: "#17202b" },
@@ -62,6 +63,8 @@ export default function App() {
   const [pieceStyle, setPieceStyle] = useState<PieceStyleId>(initialPieceStyle);
   const [pieceSize, setPieceSize] = useState<PieceSizeId>(initialPieceSize);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [coachOpen, setCoachOpen] = useState(false);
+  const [boardAnalyses, setBoardAnalyses] = useState<Partial<Record<BoardId, BoardAnalysisState>>>({});
   const [connectOpen, setConnectOpen] = useState(!store.username && !store.roomId);
   const [usernameDraft, setUsernameDraft] = useState(store.username);
   const [authenticatedOpen, setAuthenticatedOpen] = useState(false);
@@ -109,6 +112,9 @@ export default function App() {
     setPieceSize(size);
     localStorage.setItem(pieceSizeStorageKey, size);
   };
+  const updateBoardAnalysis = useCallback((board: BoardId, analysis: BoardAnalysisState) => {
+    setBoardAnalyses((current) => ({ ...current, [board]: analysis }));
+  }, []);
   const viewerCount = store.participants.length || (store.roomId ? 1 : 0);
   const inviteUrl = store.roomId ? `${location.origin}/?room=${store.roomId}` : "";
   const copyInviteLink = async () => {
@@ -137,6 +143,7 @@ export default function App() {
           {shareCopied && <span className="copy-confirm">Link copied</span>}
           {roomMutation.error && <span className="room-error" title={roomMutation.error.message}>Invite failed</span>}
           {store.roomId && <span className="viewer-pill" title={store.participants.map((item) => item.display_name).join(", ") || "Waiting for viewers"}><Users size={14} /> {viewerCount}</span>}
+          <button className="coach-button" disabled={!store.game} title="Prepare a two-board review for your own AI" onClick={() => setCoachOpen(true)}><Bot size={16} /> Team Coach</button>
           <button className="icon-button" title="Board settings" onClick={() => setSettingsOpen(true)}><Settings size={16} /></button>
           <button className="connect-button" onClick={() => setConnectOpen(true)}><Radio size={15} /> {store.username || "Connect Chess.com"}</button>
         </div>
@@ -152,13 +159,14 @@ export default function App() {
             </div>
           )}
           <div className="boards-grid">
-            <BoardPanel boardId="A" position={boardA} orientation={userIsWhite ? "white" : "black"} pieceStyle={pieceStyle} title="BOARD A · YOUR BOARD" playerTop={userIsWhite ? players?.board_a_black ?? "Opponent" : players?.board_a_white ?? "Opponent"} playerBottom={userIsWhite ? players?.board_a_white ?? store.username : players?.board_a_black ?? store.username} />
-            <BoardPanel boardId="B" position={boardB} orientation={userIsWhite ? "black" : "white"} pieceStyle={pieceStyle} title="BOARD B · PARTNER BOARD" playerTop={secondBoardAvailable ? (userIsWhite ? players?.board_b_white ?? "Diagonal Opponent Unknown" : players?.board_b_black ?? "Diagonal Opponent Unknown") : "Diagonal Opponent Unknown"} playerBottom={secondBoardAvailable ? (userIsWhite ? players?.board_b_black ?? "Partner Unknown" : players?.board_b_white ?? "Partner Unknown") : "Partner Unknown"} unavailable={Boolean(store.game) && !secondBoardAvailable} />
+            <BoardPanel boardId="A" position={boardA} orientation={userIsWhite ? "white" : "black"} pieceStyle={pieceStyle} title="BOARD A · YOUR BOARD" playerTop={userIsWhite ? players?.board_a_black ?? "Opponent" : players?.board_a_white ?? "Opponent"} playerBottom={userIsWhite ? players?.board_a_white ?? store.username : players?.board_a_black ?? store.username} onAnalysisChange={updateBoardAnalysis} />
+            <BoardPanel boardId="B" position={boardB} orientation={userIsWhite ? "black" : "white"} pieceStyle={pieceStyle} title="BOARD B · PARTNER BOARD" playerTop={secondBoardAvailable ? (userIsWhite ? players?.board_b_white ?? "Diagonal Opponent Unknown" : players?.board_b_black ?? "Diagonal Opponent Unknown") : "Diagonal Opponent Unknown"} playerBottom={secondBoardAvailable ? (userIsWhite ? players?.board_b_black ?? "Partner Unknown" : players?.board_b_white ?? "Partner Unknown") : "Partner Unknown"} unavailable={Boolean(store.game) && !secondBoardAvailable} onAnalysisChange={updateBoardAnalysis} />
           </div>
           {!store.game && <div className="empty-workspace"><strong>Select a Bughouse game</strong><span>Choose a game from the Games panel.</span></div>}
         </div>
       </section>
       <Timeline />
+      <TeamCoach open={coachOpen} onClose={() => setCoachOpen(false)} boardA={boardA} boardB={boardB} orientationA={userIsWhite ? "white" : "black"} orientationB={userIsWhite ? "black" : "white"} analyses={boardAnalyses} />
       {connectOpen && (
         <div className="modal-backdrop" role="presentation">
           <form className={`connect-modal ${authenticatedOpen ? "connector-mode" : ""}`} onSubmit={connect}>

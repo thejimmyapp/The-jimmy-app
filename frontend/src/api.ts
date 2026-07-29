@@ -1,4 +1,4 @@
-import type { BoardId, ExplorationMoveResult, GamePayload, GameSummary, PuzzleMove, PuzzlePayload, PuzzleResponse, RoomPayload } from "./types";
+import type { BoardId, CoachPreparedPayload, CoachPrepareRequest, ExplorationMoveResult, GamePayload, GameSummary, PuzzleMove, PuzzlePayload, PuzzleResponse, RoomPayload } from "./types";
 
 const json = async <T>(responsePromise: Promise<Response>): Promise<T> => {
   const response = await responsePromise;
@@ -70,6 +70,12 @@ export const api = {
       result?: { bestmove?: string; score_cp?: number; mate_in?: number; depth?: number; pv?: string[]; engine_name?: string; variant_supported?: boolean };
       error?: string;
     }>(fetch(`/api/analysis/${jobId}`)),
+  prepareCoach: (request: CoachPrepareRequest) =>
+    json<CoachPreparedPayload>(fetch("/api/coach/prepare", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    })),
   explorationMove: (request: {
     board_a_fen: string;
     board_b_fen?: string;

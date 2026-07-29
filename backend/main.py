@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import asyncio
+import logging
 import re
 from uuid import uuid4
 
@@ -14,6 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from backend.chesscom import ChessComService
+from backend.coach import prepare_coach_context
 from backend.config import get_settings
 from backend.database import Base, SessionLocal, engine, get_session
 from backend.models import ChatMessage, ReviewRoom, SharedNote
@@ -24,6 +26,7 @@ from backend.schemas import (
     AnalysisRequest,
     ChessComConnectRequest,
     ChessComEnrichRequest,
+    CoachPrepareRequest,
     ExplorationMoveRequest,
     ExplorationSanMoveRequest,
     NoteCreateRequest,
@@ -39,6 +42,7 @@ from backend.services import AnalysisJobs, GameService
 
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 Base.metadata.create_all(bind=engine)
 games = GameService(settings.legacy_database_path)
 analysis_jobs = AnalysisJobs(settings, games)
@@ -56,9 +60,29 @@ def _is_disk_full_error(exc: Exception) -> bool:
     return "disk is full" in str(exc).lower() or "database or disk is full" in str(exc).lower()
 
 
+def _rollback_quietly(session: Session) -> None:
+    try:
+        session.rollback()
+    except SQLAlchemyError as exc:
+        logger.warning("Database rollback failed after room storage error: %s", exc)
+
+
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "service": "thejimmyapp"}
+def health() -> dict[str, object]:
+    database_available = True
+    try:
+        with engine.connect() as connection:
+            connection.exec_driver_sql("SELECT 1")
+    except SQLAlchemyError:
+        database_available = False
+    engine_available = settings.fairy_stockfish_path.is_file()
+    return {
+        "status": "ok" if database_available else "degraded",
+        "service": "thejimmyapp",
+        "database": "available" if database_available else "unavailable",
+        "fairy_stockfish": "available" if engine_available else "unavailable",
+        "ai_coach": "user-owned account; no shared API key",
+    }
 
 
 @app.post("/api/chesscom/connect")
@@ -237,18 +261,24 @@ def get_analysis(job_id: str) -> dict[str, object]:
     return response
 
 
+@app.post("/api/coach/prepare")
+def prepare_coach(request: CoachPrepareRequest) -> dict[str, object]:
+    try:
+        return prepare_coach_context(request, games)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 @app.post("/api/rooms")
 def create_room(request: RoomCreateRequest, session: Session = Depends(get_session)) -> dict[str, object]:
-    room = ReviewRoom(game_id=request.game_id)
+    room_id = str(uuid4())
+    room = ReviewRoom(id=room_id, game_id=request.game_id)
     try:
         session.add(room)
         session.commit()
-        room_id = room.id
     except SQLAlchemyError as exc:
-        session.rollback()
-        if not _is_disk_full_error(exc):
-            raise
-        room_id = str(uuid4())
+        _rollback_quietly(session)
+        logger.warning("Falling back to in-memory review room after database error: %s", exc)
     room_hub.set_room_game(room_id, request.game_id)
     return {"id": room_id, "game_id": request.game_id, "share_path": f"/?room={room_id}"}
 
@@ -299,7 +329,7 @@ def create_note(room_id: str, request: NoteCreateRequest, session: Session = Dep
         session.commit()
         return {"id": note.id, "created_at": note.created_at}
     except SQLAlchemyError as exc:
-        session.rollback()
+        _rollback_quietly(session)
         if not _is_disk_full_error(exc):
             raise
         return {"id": str(uuid4()), "created_at": None}

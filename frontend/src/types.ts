@@ -153,3 +153,40 @@ export interface PuzzlePayload {
   source: { player: string; game_id: string; partner_game_id: string; url: string };
   players: { board_a_white: string; board_a_black: string; board_b_white: string; board_b_black: string };
 }
+
+export interface EngineSuggestionContext {
+  board: BoardId;
+  bestmove?: string;
+  score_cp?: number;
+  mate_in?: number;
+  depth?: number;
+  pv?: string[];
+}
+
+export interface CoachPrepareRequest {
+  game_id: number;
+  global_ply: number;
+  question: string;
+  username: string;
+  user_color: "white" | "black";
+  orientation_a: "white" | "black";
+  orientation_b: "white" | "black";
+  board_a: Pick<ReplayPosition, "variant_fen" | "side_to_move" | "white_pocket" | "black_pocket" | "white_clock" | "black_clock" | "from_square" | "to_square">;
+  board_b?: Pick<ReplayPosition, "variant_fen" | "side_to_move" | "white_pocket" | "black_pocket" | "white_clock" | "black_clock" | "from_square" | "to_square">;
+  annotations: Array<{ board: BoardId; type: "arrow" | "highlight"; from: string; to?: string; color: string }>;
+  engine_suggestions: EngineSuggestionContext[];
+}
+
+export interface CoachPreparedPayload {
+  mode: "user_owned_ai";
+  summary: string;
+  prompt: string;
+  context: Record<string, unknown>;
+  board_a: { available: boolean; best_move?: string | null; side_to_move?: string; threats: string[]; mistakes: string[] };
+  board_b: { available: boolean; best_move?: string | null; side_to_move?: string; threats: string[]; mistakes: string[] };
+  team_plan: string[];
+  piece_requests: string[];
+  urgency: "critical" | "unknown";
+  quick_questions: string[];
+  privacy: string;
+}

@@ -40,7 +40,7 @@ pnpm run build
 
 ### Docker and Railway
 
-`Dockerfile` builds the React bundle, compiles the official Fairy-Stockfish `fairy_sf_14` Linux engine, installs the Python service, runs Alembic, and serves the complete app through FastAPI.
+`Dockerfile` builds the React bundle, installs the official Fairy-Stockfish Linux x86-64 release binary, installs the Python service, runs Alembic, and serves the complete app through FastAPI.
 
 ```powershell
 docker compose up --build
@@ -49,6 +49,20 @@ docker compose up --build
 For Railway, create a project from this repository, add PostgreSQL and Redis services, copy the variables from `.env.example`, set `DATABASE_URL` to the Railway PostgreSQL URL, and deploy. Railway uses `railway.json` and checks `/health`.
 
 Important current limitation: the existing imported-game library still uses `data/bughouse.db` so the current 395 MB local archive is immediately reusable. A public deployment must attach persistent storage for `data/`, or complete the planned migration of imported games into PostgreSQL. Chess.com PubAPI can omit the partner board; the UI reports `Second board unavailable` instead of fabricating it.
+
+The `/health` endpoint verifies the application database and reports whether the Fairy-Stockfish executable is available. It never exposes credentials.
+
+### Zero-cost Team Coach
+
+The public app does not contain a shared OpenAI, Gemini, or other hosted-AI API key. This prevents public usage from creating an AI bill for the app owner.
+
+1. Open a complete game in the review room.
+2. Optionally run Fairy-Stockfish on Board A and Board B.
+3. Select `Team Coach`, choose or write a question, then select `Prepare AI review`.
+4. Copy the generated two-board prompt.
+5. Paste it into the user's own Codex, ChatGPT, Gemini, or another AI account.
+
+The prompt includes both board positions, players, pockets, clocks, recent moves, legal annotations, available engine suggestions, Bughouse transfer rules, and explicit uncertainty markers. No account key is sent to or stored by The Jimmy App. Game context leaves the app only when the user deliberately copies and submits it to an external AI service.
 
 ### Exploration and legal annotations
 

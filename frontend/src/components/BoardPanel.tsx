@@ -46,19 +46,22 @@ interface Props {
     to: string;
     dropPiece?: "P" | "N" | "B" | "R" | "Q";
   }) => Promise<ExplorationMoveResult>;
+  onAnalysisChange?: (board: BoardId, analysis: BoardAnalysisState) => void;
 }
 
-type AnalysisState = {
+export type BoardAnalysisState = {
   status: "idle" | "queued" | "running" | "completed" | "failed";
   bestmove?: string;
   score?: string;
+  scoreCp?: number;
+  mateIn?: number;
   depth?: number;
   pv?: string[];
   queuePosition?: number;
   error?: string;
 };
 
-export function BoardPanel({ boardId, position, pairedPosition, orientation, pieceStyle, title, playerTop, playerBottom, unavailable = false, locked = false, onMoveIntent }: Props) {
+export function BoardPanel({ boardId, position, pairedPosition, orientation, pieceStyle, title, playerTop, playerBottom, unavailable = false, locked = false, onMoveIntent, onAnalysisChange }: Props) {
   const boardRef = useRef<HTMLDivElement>(null);
   const lastWheelAt = useRef(0);
   const [arrowStart, setArrowStart] = useState<string | null>(null);
@@ -66,7 +69,7 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
   const [selectedDrop, setSelectedDrop] = useState<"P" | "N" | "B" | "R" | "Q" | null>(null);
   const [legalTargets, setLegalTargets] = useState<string[]>([]);
   const [interactionStatus, setInteractionStatus] = useState("");
-  const [analysis, setAnalysis] = useState<AnalysisState>({ status: "idle" });
+  const [analysis, setAnalysis] = useState<BoardAnalysisState>({ status: "idle" });
   const { game, globalPly, mode, explorationPositions, explorationFuture, annotations, addAnnotation, removeAnnotation, applyExploration, undoExploration, redoExploration, seek } = useCoachStore();
   const visible = useMemo(
     () => annotations.filter((item) => item.board === boardId && item.ply === globalPly),
@@ -81,7 +84,8 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
 
   useEffect(() => {
     setAnalysis({ status: "idle" });
-  }, [position?.variant_fen]);
+    onAnalysisChange?.(boardId, { status: "idle" });
+  }, [boardId, onAnalysisChange, position?.variant_fen]);
 
   const removeDrawing = (annotation: Annotation) => {
     removeAnnotation(annotation.id);
@@ -287,7 +291,9 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
         }
         if (job.status === "completed") {
           const score = job.result?.mate_in != null ? `M${job.result.mate_in}` : job.result?.score_cp != null ? `${job.result.score_cp} cp` : "—";
-          setAnalysis({ status: "completed", bestmove: job.result?.bestmove, score, depth: job.result?.depth, pv: job.result?.pv });
+          const completed: BoardAnalysisState = { status: "completed", bestmove: job.result?.bestmove, score, scoreCp: job.result?.score_cp, mateIn: job.result?.mate_in, depth: job.result?.depth, pv: job.result?.pv };
+          setAnalysis(completed);
+          onAnalysisChange?.(boardId, completed);
           return;
         }
         if (job.status === "failed") throw new Error(job.error ?? "Engine analysis failed");
@@ -405,7 +411,7 @@ function PocketRail({ color, value, draggable, pieceStyle, selectedPiece, onSele
   return <div className={`pocket-rail ${color.toLowerCase()}`} aria-label={`${color} droppers`}><small>Droppers</small>{entries.map(([piece, count]) => { const symbol = piece.toUpperCase() as "P" | "N" | "B" | "R" | "Q"; return <span className={selectedPiece === symbol && draggable ? "selected-pocket-piece" : ""} key={piece} draggable={draggable} onClick={() => { if (draggable) onSelectPiece(symbol); }} onDragStart={(event) => { if (!draggable) { event.preventDefault(); return; } event.dataTransfer.setData("bughouse/drop", symbol); event.dataTransfer.effectAllowed = "move"; onDragPiece(symbol); }}>{displayPiece(piece, pieceStyle)}{count > 1 && <b>{count}</b>}</span>; })}</div>;
 }
 
-function AnalysisLabel({ analysis }: { analysis: AnalysisState }) {
+function AnalysisLabel({ analysis }: { analysis: BoardAnalysisState }) {
   if (analysis.status === "queued") return <>Fairy-Stockfish queued · #{analysis.queuePosition ?? 1}</>;
   if (analysis.status === "running") return <>Fairy-Stockfish analyzing…</>;
   if (analysis.status === "completed") return <>Best {analysis.bestmove ?? "—"} · {analysis.score} {analysis.depth ? `· d${analysis.depth}` : ""}</>;
