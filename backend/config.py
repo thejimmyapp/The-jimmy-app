@@ -35,11 +35,33 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite:///{(ROOT_DIR / 'data' / 'webapp.db').as_posix()}"
     legacy_database_path: Path = ROOT_DIR / "data" / "bughouse.db"
     fairy_stockfish_path: Path = Field(default_factory=_default_fairy_stockfish_path)
-    chesscom_user_agent: str = "thejimmyapp/1.0 contact=admin@example.com"
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    chesscom_user_agent: str = "thejimmyapp/1.0 contact=hello@thejimmyapp.com"
+    chesscom_cache_ttl_seconds: int = Field(default=900, ge=60, le=86_400)
+    chesscom_max_archives: int = Field(default=12, ge=1, le=120)
+    chesscom_max_games: int = Field(default=500, ge=1, le=5000)
+    chesscom_oauth_callback_url: str = (
+        "https://jimmyapp-production.up.railway.app/api/oauth/chesscom/callback"
+    )
+    cors_origins: str = (
+        "http://localhost:5173,http://127.0.0.1:5173,"
+        "https://thejimmyapp.com,https://jimmyapp-production.up.railway.app"
+    )
+    trusted_hosts: str = (
+        "localhost,127.0.0.1,testserver,thejimmyapp.com,"
+        "jimmyapp-production.up.railway.app,*.railway.app,*.railway.internal"
+    )
+    websocket_origins: str = ""
     max_pgn_bytes: int = 2_000_000
     engine_depth: int = Field(default=10, ge=4, le=24)
     engine_timeout_seconds: float = Field(default=8.0, ge=1, le=60)
+    analysis_max_active_jobs: int = Field(default=4, ge=1, le=32)
+    analysis_max_job_records: int = Field(default=100, ge=4, le=1000)
+    analysis_cache_records: int = Field(default=200, ge=1, le=2000)
+    coach_max_active_jobs: int = Field(default=2, ge=1, le=8)
+    coach_max_job_records: int = Field(default=50, ge=2, le=500)
+    leak_map_max_active_jobs: int = Field(default=1, ge=1, le=4)
+    leak_map_max_job_records: int = Field(default=25, ge=1, le=250)
+    compute_job_ttl_seconds: int = Field(default=900, ge=60, le=86_400)
     room_ttl_hours: int = Field(default=168, ge=1, le=2160)
     qwen_enabled: bool = True
     qwen_model_name: str = "lmstudio-community/Qwen3.5-4B-GGUF"
@@ -52,18 +74,36 @@ class Settings(BaseSettings):
         default_factory=lambda: _runtime_data_dir() / "models" / "Qwen3.5-4B-Q4_K_M.gguf"
     )
     llama_cli_path: Path = ROOT_DIR / "llama" / "llama-cli"
-    qwen_context_size: int = Field(default=8192, ge=2048, le=32768)
-    qwen_max_tokens: int = Field(default=1200, ge=128, le=4096)
+    qwen_context_size: int = Field(default=4096, ge=2048, le=32768)
+    qwen_max_tokens: int = Field(default=384, ge=128, le=4096)
     qwen_temperature: float = Field(default=0.15, ge=0, le=1)
     qwen_top_p: float = Field(default=0.85, gt=0, le=1)
     qwen_reasoning_budget: int = Field(default=0, ge=-1, le=512)
     qwen_threads: int = Field(default=2, ge=1, le=16)
-    qwen_timeout_seconds: float = Field(default=300, ge=30, le=900)
+    qwen_timeout_seconds: float = Field(default=180, ge=30, le=900)
     qwen_min_free_bytes: int = 3_200_000_000
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [value.strip() for value in self.cors_origins.split(",") if value.strip()]
+        return _split_csv(self.cors_origins)
+
+    @property
+    def trusted_host_list(self) -> list[str]:
+        return _split_csv(self.trusted_hosts)
+
+    @property
+    def websocket_origin_list(self) -> list[str]:
+        return _split_csv(self.websocket_origins or self.cors_origins)
+
+    def is_allowed_websocket_origin(self, origin: str | None) -> bool:
+        if not origin:
+            return True
+        normalized = origin.rstrip("/")
+        return normalized in {value.rstrip("/") for value in self.websocket_origin_list}
+
+
+def _split_csv(value: str) -> list[str]:
+    return [item.strip() for item in value.split(",") if item.strip()]
 
 
 @lru_cache

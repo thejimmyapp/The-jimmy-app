@@ -266,17 +266,13 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
   };
 
   const analyze = async () => {
-    if (!game || !position || unavailable) return;
-    const { boardA, boardB } = boardPair();
+    if (!game || !position || unavailable || mode === "exploration") return;
     setAnalysis({ status: "queued", queuePosition: 1 });
     try {
       const submitted = await api.analyze({
         gameId: game.game.id,
         globalPly,
         board: boardId,
-        variantFen: position.variant_fen,
-        boardAFen: boardA?.variant_fen,
-        boardBFen: boardB?.variant_fen,
       });
       for (let attempt = 0; attempt < 120; attempt += 1) {
         await new Promise((resolve) => window.setTimeout(resolve, 250));
@@ -364,7 +360,7 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
       </div>
       <PlayerBar name={playerBottom} clock={orientation === "white" ? position?.white_clock : position?.black_clock} bottom />
       <div className={`board-footer analysis-${analysis.status}`}>
-        <button className="analyze-button" title="Queue this exact position for Fairy-Stockfish" onClick={analyze} disabled={!game || !position || unavailable || analysis.status === "queued" || analysis.status === "running"}>
+        <button className="analyze-button" title={mode === "exploration" ? "Return to the completed game before running engine analysis" : "Queue this completed-game position for Fairy-Stockfish"} onClick={analyze} disabled={!game || !position || unavailable || mode === "exploration" || analysis.status === "queued" || analysis.status === "running"}>
           <BrainCircuit size={15} /> <AnalysisLabel analysis={analysis} />
         </button>
         {analysis.status === "completed" && analysis.pv?.length ? <span className="analysis-pv" title={analysis.pv.join(" ")}>PV {analysis.pv.slice(0, 4).join(" ")}</span> : null}
@@ -374,7 +370,7 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
         <div className="board-panel-unavailable" role="status">
           <strong>Second board unavailable</strong>
           <span>Partner Unknown · Diagonal Opponent Unknown</span>
-          <small>Load authenticated pgn-info or import a second-board PGN.</small>
+          <small>Import completed PGNs for both boards from Connect games.</small>
         </div>
       )}
     </section>

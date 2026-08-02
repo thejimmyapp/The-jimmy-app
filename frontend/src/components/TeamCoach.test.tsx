@@ -37,6 +37,15 @@ const prepared: CoachPreparedPayload = {
   summary: "Both boards are ready.",
   prompt: "complete two-board prompt",
   context: {},
+  facts: {
+    source: "stored replay",
+    global_ply: 4,
+    boards: { A: { available: true }, B: { available: true } },
+    transfers: [],
+    missing_data: [],
+    urgency: "unknown",
+    catalog: {},
+  },
   board_a: { available: true, best_move: "N@f7", threats: [], mistakes: [] },
   board_b: { available: true, best_move: null, threats: [], mistakes: [] },
   team_plan: [], piece_requests: [], urgency: "unknown", quick_questions: [],
@@ -45,16 +54,16 @@ const prepared: CoachPreparedPayload = {
 
 const renderCoach = () => {
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
-  return render(<QueryClientProvider client={client}><TeamCoach open onClose={() => undefined} boardA={boardA} boardB={boardB} orientationA="white" orientationB="black" analyses={{ A: { status: "completed", bestmove: "N@f7", scoreCp: 180, depth: 10 } }} /></QueryClientProvider>);
+  return render(<QueryClientProvider client={client}><TeamCoach open onClose={() => undefined} boardA={boardA} boardB={boardB} /></QueryClientProvider>);
 };
 
 describe("Team Coach", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    const modelStatus = { enabled: true, state: "ready", detail: "Model ready", model: "Qwen", model_file: "Qwen3.5-4B-Q4_K_M.gguf", model_downloaded: true, runtime_available: true, context_size: 8192, max_tokens: 1200, temperature: 0.15, top_p: 0.85 };
+    const modelStatus = { enabled: true, state: "ready", detail: "Model ready", model: "Qwen", model_file: "Qwen3.5-4B-Q4_K_M.gguf", model_downloaded: true, runtime_available: true, context_size: 4096, max_tokens: 384, temperature: 0.15, top_p: 0.85, reasoning_budget: 0 };
     apiMock.coachStatus.mockResolvedValue(modelStatus);
     apiMock.runCoach.mockResolvedValue({ job_id: "job-1", status: "queued" });
-    apiMock.coachJob.mockResolvedValue({ status: "completed", stage: "Review ready", result: { explanation: "Validated coaching", qwen_error: null, prepared, model: modelStatus } });
+    apiMock.coachJob.mockResolvedValue({ status: "completed", stage: "Review ready", result: { explanation: "Validated coaching", qwen_commentary: "Commentary", validation: { status: "passed", reasons: [], cited_fact_ids: [] }, qwen_error: null, prepared, model: modelStatus } });
     useCoachStore.setState({ game, username: "Jimmy", globalPly: 4, annotations: [] });
     Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
   });
@@ -64,7 +73,7 @@ describe("Team Coach", () => {
     renderCoach();
     fireEvent.click(screen.getByRole("button", { name: "Run coupled AI review" }));
     expect(await screen.findByText("Coupled review ready")).toBeTruthy();
-    expect(apiMock.runCoach.mock.calls[0][0]).toEqual(expect.objectContaining({ game_id: 42, board_a: expect.any(Object), board_b: expect.any(Object) }));
+    expect(apiMock.runCoach.mock.calls[0][0]).toEqual({ game_id: 42, global_ply: 4, question: "What should our team play next?", annotations: [] });
     fireEvent.click(screen.getByRole("button", { name: "Copy validated evidence" }));
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith("complete two-board prompt"));
   });

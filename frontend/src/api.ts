@@ -18,12 +18,12 @@ export const api = {
         body: JSON.stringify({ username }),
       }),
     ),
-  enrichChessCom: (username: string, curlText: string) =>
-    json<{ checked: number; enriched: number; remaining_without_second_board: number; credentials_stored: boolean }>(
-      fetch("/api/chesscom/enrich", {
+  importPgn: (username: string, pgn: string, secondBoardPgn: string) =>
+    json<{ created: boolean; source: "manual"; second_board_supplied: boolean }>(
+      fetch("/api/games/import-pgn", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, curl_text: curlText, limit: 5000 }),
+        body: JSON.stringify({ username, pgn, second_board_pgn: secondBoardPgn }),
       }),
     ),
   games: (username: string) =>
@@ -46,7 +46,7 @@ export const api = {
         body: JSON.stringify({ display_name: displayName }),
       }),
     ),
-  analyze: (request: { gameId: number; globalPly: number; board: "A" | "B"; variantFen: string; boardAFen?: string; boardBFen?: string }) =>
+  analyze: (request: { gameId: number; globalPly: number; board: "A" | "B" }) =>
     json<{ job_id: string; status: string; engine: string }>(
       fetch("/api/analysis", {
         method: "POST",
@@ -56,9 +56,6 @@ export const api = {
           global_ply: request.globalPly,
           board: request.board,
           depth: 10,
-          variant_fen: request.variantFen,
-          board_a_fen: request.boardAFen,
-          board_b_fen: request.boardBFen,
         }),
       }),
     ),

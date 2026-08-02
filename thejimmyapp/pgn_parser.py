@@ -257,7 +257,7 @@ def parse_tcn(tcn: str, raw: dict[str, Any] | None = None) -> ParsedGame:
     return ParsedGame(headers=headers, moves=moves, result=_result_from_raw(raw or {}), parse_warnings=warnings, source="tcn")
 
 
-def parse_partner_tcn(raw_json: str | None) -> ParsedGame | None:
+def parse_partner_game_data(raw_json: str | None) -> ParsedGame | None:
     if not raw_json:
         return None
     try:
@@ -266,6 +266,9 @@ def parse_partner_tcn(raw_json: str | None) -> ParsedGame | None:
         return None
     if not isinstance(raw, dict):
         return None
+    partner_pgn = raw.get("bughousePartnerPgn") or raw.get("bughouse_partner_pgn")
+    if isinstance(partner_pgn, str) and partner_pgn.strip():
+        return parse_pgn(partner_pgn)
     tcn = raw.get("bughousePartnerTcnMoves") or raw.get("bughouse_partner_tcn_moves")
     if not isinstance(tcn, str) or not tcn:
         return None
@@ -274,6 +277,11 @@ def parse_partner_tcn(raw_json: str | None) -> ParsedGame | None:
     if raw.get("bughousePartnerMoveTimestamps"):
         partner_raw["moveTimestamps"] = raw.get("bughousePartnerMoveTimestamps")
     return parse_tcn(tcn, partner_raw)
+
+
+def parse_partner_tcn(raw_json: str | None) -> ParsedGame | None:
+    """Backward-compatible partner parser used by the legacy Streamlit app."""
+    return parse_partner_game_data(raw_json)
 
 
 def extract_critical_moments(parsed: ParsedGame) -> list[CriticalMoment]:

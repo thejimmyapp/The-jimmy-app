@@ -25,7 +25,13 @@ def test_leak_map_job_reports_progress_and_completion(monkeypatch) -> None:
         return result
 
     monkeypatch.setattr(jobs_module, "analyze_recent_games_for_mistakes", fake_analysis)
-    settings = SimpleNamespace(fairy_stockfish_path=Path("fairy-stockfish"), engine_depth=10)
+    settings = SimpleNamespace(
+        fairy_stockfish_path=Path("fairy-stockfish"),
+        engine_depth=10,
+        leak_map_max_active_jobs=1,
+        leak_map_max_job_records=25,
+        compute_job_ttl_seconds=900,
+    )
     games = SimpleNamespace(db=object())
     manager = LeakMapJobs(settings, games)
 

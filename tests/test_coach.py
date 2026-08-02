@@ -3,6 +3,8 @@ from __future__ import annotations
 from backend.coach import prepare_coach_context
 from backend.coupled_analysis import analyze_coupled_position
 from backend.schemas import CoachPrepareRequest
+from pydantic import ValidationError
+import pytest
 
 
 class FakeGames:
@@ -12,6 +14,7 @@ class FakeGames:
         board_a = _position("4k3/8/8/8/8/8/8/4K3[N] w - - 0 1", "White", "N", "-")
         board_b = _position("4k3/8/8/8/8/8/8/4K3[p] b - - 0 1", "Black", "-", "p")
         return {
+            "game": {"username": "Jimmy", "user_color": "white"},
             "players": {
                 "board_a_white": "Jimmy",
                 "board_a_black": "Opponent",
@@ -51,15 +54,14 @@ def test_coach_prompt_couples_both_boards_without_shared_api_key() -> None:
         "game_id": 42,
         "global_ply": 2,
         "question": "What should our team play next?",
-        "username": "Jimmy",
-        "user_color": "white",
-        "orientation_a": "white",
-        "orientation_b": "black",
         "annotations": [{"board": "A", "type": "arrow", "from": "e2", "to": "e4", "color": "cyan"}],
-        "engine_suggestions": [{"board": "A", "bestmove": "N@f7", "score_cp": 180, "depth": 10}],
     })
 
-    result = prepare_coach_context(request, FakeGames())
+    result = prepare_coach_context(
+        request,
+        FakeGames(),
+        [{"board": "A", "bestmove": "N@f7", "score_cp": 180, "depth": 10}],
+    )
 
     assert result["mode"] == "validated_context"
     assert result["board_a"]["best_move"] == "N@f7"
@@ -69,6 +71,18 @@ def test_coach_prompt_couples_both_boards_without_shared_api_key() -> None:
     assert '"board": "B"' in result["prompt"]
     assert "No external AI API key" in result["privacy"]
     assert result["context"]["coupled_analysis"]["source_of_truth"].startswith("deterministic")
+    assert result["facts"]["boards"]["B"]["side_to_move"] == "Black"
+
+
+def test_coach_request_rejects_client_board_and_engine_truth() -> None:
+    with pytest.raises(ValidationError):
+        CoachPrepareRequest.model_validate({
+            "game_id": 42,
+            "global_ply": 2,
+            "question": "What should our team play next?",
+            "board_a": {"variant_fen": "client-controlled"},
+            "engine_suggestions": [{"board": "A", "bestmove": "g1f3"}],
+        })
 
 
 def test_coupled_analyzer_sends_capture_to_partner_instead_of_local_pocket() -> None:

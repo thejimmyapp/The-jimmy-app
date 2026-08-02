@@ -23,13 +23,20 @@ class QwenRuntime:
     def status(self) -> dict[str, object]:
         model_exists = self.settings.qwen_model_path.is_file()
         binary_exists = self.settings.llama_cli_path.is_file()
-        state = self._state
-        if self.settings.qwen_enabled and model_exists and binary_exists and state not in {"running", "downloading"}:
-            state = "ready"
+        if not self.settings.qwen_enabled:
+            state, detail = "disabled", "Qwen is disabled"
+        elif self._state in {"running", "downloading", "failed"}:
+            state, detail = self._state, self._detail
+        elif model_exists and binary_exists:
+            state, detail = "ready", "Model and local runtime are ready"
+        elif not binary_exists:
+            state, detail = "failed", "Local llama.cpp runtime is unavailable"
+        else:
+            state, detail = "not_downloaded", "Model downloads on first use"
         return {
             "enabled": self.settings.qwen_enabled,
             "state": state,
-            "detail": self._detail,
+            "detail": detail,
             "model": self.settings.qwen_model_name,
             "model_file": self.settings.qwen_model_filename,
             "model_downloaded": model_exists,
@@ -49,19 +56,24 @@ class QwenRuntime:
             self._state = "running"
             self._detail = "Qwen is explaining validated engine facts"
             try:
-                return await asyncio.wait_for(
+                answer = await asyncio.wait_for(
                     asyncio.to_thread(self._run_cli, prompt),
                     timeout=self.settings.qwen_timeout_seconds,
                 )
-            finally:
+            except Exception as exc:
+                self._state = "failed"
+                self._detail = f"Local generation failed: {type(exc).__name__}"
+                raise
+            else:
                 self._state = "ready"
-                self._detail = "Model ready; RAM released after the request"
+                self._detail = "Model and local runtime are ready"
+                return answer
 
     async def _ensure_model(self) -> None:
-        if self.settings.qwen_model_path.is_file():
-            return
         if not self.settings.llama_cli_path.is_file():
             raise RuntimeError(f"llama-cli not found: {self.settings.llama_cli_path}")
+        if self.settings.qwen_model_path.is_file():
+            return
         self._state = "downloading"
         self._detail = "Downloading the 2.71 GB Qwen model to persistent storage"
         try:

@@ -10,7 +10,10 @@ export interface ReplayPosition {
   black_pocket: string;
   white_clock: string;
   black_clock: string;
+  elapsed_seconds?: number | null;
   partner_index: number | null;
+  confidence?: "high" | "medium" | "low" | "study";
+  warning?: string;
   from_square: string | null;
   to_square: string | null;
 }
@@ -52,6 +55,22 @@ export interface GamePayload {
     board_role: "high" | "low" | null;
     move_number: number | null;
   };
+  lesson?: ReviewLesson | null;
+}
+
+export interface ReviewLesson {
+  board: "A";
+  local_ply: number;
+  global_ply: number;
+  played_move: string;
+  best_move: string;
+  severity: "inaccuracy" | "mistake" | "blunder";
+  estimated_loss_cp: number;
+  category: string;
+  pattern: string;
+  confidence: "high" | "medium";
+  depth: number | null;
+  partner_context: string | null;
 }
 
 export interface Annotation {
@@ -154,27 +173,11 @@ export interface PuzzlePayload {
   players: { board_a_white: string; board_a_black: string; board_b_white: string; board_b_black: string };
 }
 
-export interface EngineSuggestionContext {
-  board: BoardId;
-  bestmove?: string;
-  score_cp?: number;
-  mate_in?: number;
-  depth?: number;
-  pv?: string[];
-}
-
 export interface CoachPrepareRequest {
   game_id: number;
   global_ply: number;
   question: string;
-  username: string;
-  user_color: "white" | "black";
-  orientation_a: "white" | "black";
-  orientation_b: "white" | "black";
-  board_a: Pick<ReplayPosition, "variant_fen" | "side_to_move" | "white_pocket" | "black_pocket" | "white_clock" | "black_clock" | "from_square" | "to_square">;
-  board_b?: Pick<ReplayPosition, "variant_fen" | "side_to_move" | "white_pocket" | "black_pocket" | "white_clock" | "black_clock" | "from_square" | "to_square">;
   annotations: Array<{ board: BoardId; type: "arrow" | "highlight"; from: string; to?: string; color: string }>;
-  engine_suggestions: EngineSuggestionContext[];
 }
 
 export interface CoachPreparedPayload {
@@ -182,6 +185,15 @@ export interface CoachPreparedPayload {
   summary: string;
   prompt: string;
   context: Record<string, unknown>;
+  facts: {
+    source: string;
+    global_ply: number;
+    boards: Record<BoardId, Record<string, unknown>>;
+    transfers: Array<Record<string, unknown>>;
+    missing_data: string[];
+    urgency: "critical" | "high" | "normal" | "unknown";
+    catalog: Record<string, unknown>;
+  };
   board_a: { available: boolean; best_move?: string | null; side_to_move?: string; threats: string[]; mistakes: string[] };
   board_b: { available: boolean; best_move?: string | null; side_to_move?: string; threats: string[]; mistakes: string[] };
   team_plan: string[];
@@ -203,6 +215,7 @@ export interface QwenStatus {
   max_tokens: number;
   temperature: number;
   top_p: number;
+  reasoning_budget: number;
 }
 
 export interface CoachJob {
@@ -210,7 +223,9 @@ export interface CoachJob {
   stage: string;
   error?: string;
   result?: {
-    explanation: string | null;
+    explanation: string;
+    qwen_commentary: string | null;
+    validation: { status: "passed" | "rejected"; reasons: string[]; cited_fact_ids: string[] };
     qwen_error: string | null;
     prepared: CoachPreparedPayload;
     model: QwenStatus;

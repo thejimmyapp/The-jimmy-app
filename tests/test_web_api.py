@@ -3,10 +3,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from fastapi import status
 from fastapi.testclient import TestClient
+import pytest
 from sqlalchemy.exc import SQLAlchemyError
+from starlette.websockets import WebSocketDisconnect
 
-from backend.main import app, get_session
+from backend.main import app, get_session, settings
 
 
 def receive_event_type(socket, expected_type: str) -> dict:
@@ -34,7 +37,8 @@ def test_coach_status_and_stats_username_validation() -> None:
         status_response = client.get("/api/coach/status")
         assert status_response.status_code == 200
         assert status_response.json()["temperature"] == 0.15
-        assert status_response.json()["context_size"] == 8192
+        assert status_response.json()["context_size"] == 4096
+        assert status_response.json()["max_tokens"] == 384
         assert status_response.json()["reasoning_budget"] == 0
         invalid = client.get("/api/stats/not%20valid")
         assert invalid.status_code == 400
@@ -46,6 +50,85 @@ def test_leak_map_analysis_routes_validate_requests_and_jobs() -> None:
         assert invalid.status_code == 422
         missing = client.get("/api/leak-map/jobs/not-a-real-job")
         assert missing.status_code == 404
+
+
+def test_chesscom_oauth_callback_is_reserved_without_claiming_authorization() -> None:
+    with TestClient(app) as client:
+        response = client.get("/api/oauth/chesscom/callback")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "pending_authorization",
+        "detail": "Chess.com OAuth is not enabled. This callback is reserved for the requested integration.",
+    }
+    assert (
+        settings.chesscom_oauth_callback_url
+        == "https://jimmyapp-production.up.railway.app/api/oauth/chesscom/callback"
+    )
+
+
+@pytest.mark.parametrize(
+    "host",
+    ["thejimmyapp.com", "jimmyapp-production.up.railway.app", "service.railway.internal"],
+)
+def test_production_hosts_are_trusted(host: str) -> None:
+    with TestClient(app) as client:
+        assert client.get("/health", headers={"host": host}).status_code == 200
+
+
+def test_unknown_host_is_rejected() -> None:
+    with TestClient(app) as client:
+        assert client.get("/health", headers={"host": "attacker.example"}).status_code == 400
+
+
+@pytest.mark.parametrize(
+    "origin",
+    ["https://thejimmyapp.com", "https://jimmyapp-production.up.railway.app"],
+)
+def test_production_cors_origins_are_allowed(origin: str) -> None:
+    with TestClient(app) as client:
+        response = client.options(
+            "/health",
+            headers={"origin": origin, "access-control-request-method": "GET"},
+        )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == origin
+
+
+def test_unknown_cors_origin_is_not_allowed() -> None:
+    with TestClient(app) as client:
+        response = client.options(
+            "/health",
+            headers={
+                "origin": "https://attacker.example",
+                "access-control-request-method": "GET",
+            },
+        )
+    assert "access-control-allow-origin" not in response.headers
+
+
+def test_room_websocket_rejects_unknown_browser_origin() -> None:
+    with TestClient(app) as client:
+        room = client.post("/api/rooms", json={"game_id": None}).json()
+        joined = client.post(f"/api/rooms/{room['id']}/join", json={"display_name": "Alex"}).json()
+        with pytest.raises(WebSocketDisconnect) as exc_info:
+            with client.websocket_connect(
+                f"/ws/rooms/{room['id']}?client_id={joined['client_id']}&display_name=Alex",
+                headers={"origin": "https://attacker.example"},
+            ):
+                pass
+    assert exc_info.value.code == status.WS_1008_POLICY_VIOLATION
+
+
+def test_room_websocket_accepts_custom_domain_origin() -> None:
+    with TestClient(app) as client:
+        room = client.post("/api/rooms", json={"game_id": None}).json()
+        joined = client.post(f"/api/rooms/{room['id']}/join", json={"display_name": "Alex"}).json()
+        with client.websocket_connect(
+            f"/ws/rooms/{room['id']}?client_id={joined['client_id']}&display_name=Alex",
+            headers={"origin": "https://thejimmyapp.com"},
+        ) as socket:
+            assert socket.receive_json()["type"] == "room.snapshot"
 
 
 def test_room_websocket_relays_versioned_event() -> None:
@@ -228,12 +311,45 @@ def test_exploration_lists_legal_targets_for_piece_selection() -> None:
     assert payload["legal_destinations"] == ["f3", "h3"]
 
 
-def test_authenticated_connector_does_not_store_credentials() -> None:
-    curl_text = "curl 'https://www.chess.com/callback/game/pgn-info' -H 'content-type: application/json' -b 'session=fake' --data-raw '{\"_token\":\"fake\"}'"
+def test_authenticated_session_connector_is_not_exposed() -> None:
     with TestClient(app) as client:
         response = client.post(
             "/api/chesscom/enrich",
-            json={"username": "fixture-user", "curl_text": curl_text, "limit": 10},
+            json={"username": "fixture-user", "curl_text": "credential material", "limit": 10},
         )
-    assert response.status_code == 200
-    assert response.json()["credentials_stored"] is False
+        openapi = client.get("/openapi.json").json()
+        paths = openapi["paths"]
+        schemas = openapi["components"]["schemas"]
+    assert response.status_code in {404, 405}
+    assert "/api/chesscom/enrich" not in paths
+    assert "ChessComEnrichRequest" not in schemas
+
+
+def test_engine_and_coach_contracts_reject_client_position_authority() -> None:
+    with TestClient(app) as client:
+        openapi = client.get("/openapi.json").json()
+        analysis_fields = openapi["components"]["schemas"]["AnalysisRequest"]["properties"]
+        coach_fields = openapi["components"]["schemas"]["CoachPrepareRequest"]["properties"]
+        analysis = client.post(
+            "/api/analysis",
+            json={
+                "game_id": 1,
+                "global_ply": 0,
+                "board": "A",
+                "variant_fen": "client-controlled-position",
+            },
+        )
+        coach = client.post(
+            "/api/coach/analyze",
+            json={
+                "game_id": 1,
+                "global_ply": 0,
+                "question": "What should our team play?",
+                "board_a": {"variant_fen": "client-controlled-position"},
+            },
+        )
+
+    assert not {"variant_fen", "board_a_fen", "board_b_fen"} & analysis_fields.keys()
+    assert not {"board_a", "board_b", "engine_suggestions"} & coach_fields.keys()
+    assert analysis.status_code == 422
+    assert coach.status_code == 422

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import type { BoardId, ExplorationMoveResult, PuzzleMove, PuzzlePayload, PuzzleResponse, ReplayPosition } from "../types";
 import { BoardPanel } from "./BoardPanel";
+import { LegalLinks } from "./LegalLinks";
 
 interface PuzzlePair {
   boardA: ReplayPosition;
@@ -199,7 +200,7 @@ function PuzzleSession({ puzzle }: { puzzle: PuzzlePayload }) {
       <header className="app-header puzzle-header">
         <div className="brand"><span className="brand-mark">J</span><div><strong>THE JIMMY APP</strong><small>REAL-GAME BUGHOUSE PUZZLE</small></div></div>
         <div className={`mode-badge puzzle-mode ${solved ? "solved" : ""}`}><span />{solved ? (revealed ? "SOLUTION REVEALED" : "PUZZLE SOLVED") : busy ? "LINE IN MOTION" : "RYANTIME TO MOVE · BOARD A"}</div>
-        <a className="puzzle-source" href={puzzle.source.url} target="_blank" rel="noreferrer">Original game <ExternalLink size={14} /></a>
+        <div className="puzzle-header-links"><LegalLinks /><a className="puzzle-source" href={puzzle.source.url} target="_blank" rel="noreferrer">Original game <ExternalLink size={14} /></a></div>
       </header>
       <section className="puzzle-workspace">
         <div className="boards-zone puzzle-boards">
@@ -243,7 +244,7 @@ function PuzzleSession({ puzzle }: { puzzle: PuzzlePayload }) {
           </div>
           <dl className="puzzle-details">
             <div><dt>Source</dt><dd>{puzzle.source.player}, game {puzzle.source.game_id}</dd></div>
-            <div><dt>Context</dt><dd>Both live boards and pockets</dd></div>
+            <div><dt>Context</dt><dd>Both recorded boards and pockets</dd></div>
             <div><dt>Validation</dt><dd>Server-checked, stateless history</dd></div>
           </dl>
           <div className="puzzle-tags">{puzzle.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>

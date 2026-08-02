@@ -5,14 +5,15 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 
 from backend.config import Settings
+from backend.job_control import BoundedJobRegistry
 from thejimmyapp.board_renderer import build_bughouse_pair_positions, build_global_replay_frames, build_replay_positions
 from thejimmyapp.db import Database
 from thejimmyapp.engine import EngineConfig, FairyStockfishEngine
-from thejimmyapp.pgn_parser import parse_game_data, parse_partner_tcn
+from thejimmyapp.game_completion import is_completed_stored_game
+from thejimmyapp.pgn_parser import parse_game_data, parse_partner_game_data
 
 
 class GameService:
@@ -23,12 +24,16 @@ class GameService:
     def list_games(self, username: str, limit: int = 500) -> list[dict[str, object]]:
         return self.db.list_games(username=username, limit=limit)
 
+    def is_completed_game(self, game_id: int) -> bool:
+        game = self.db.get_game(game_id)
+        return bool(game and is_completed_stored_game(game))
+
     def get_game_payload(self, game_id: int) -> dict[str, object] | None:
         game = self.db.get_game(game_id)
-        if not game:
+        if not game or not is_completed_stored_game(game):
             return None
         parsed = parse_game_data(str(game.get("pgn") or ""), str(game.get("raw_json") or ""))
-        partner = parse_partner_tcn(str(game.get("raw_json") or ""))
+        partner = parse_partner_game_data(str(game.get("raw_json") or ""))
         try:
             raw = json.loads(str(game.get("raw_json") or "{}"))
         except json.JSONDecodeError:
@@ -36,8 +41,16 @@ class GameService:
         players = {
             "board_a_white": str(game.get("white_username") or raw.get("bughousePlayer1Name") or "White"),
             "board_a_black": str(game.get("black_username") or raw.get("bughousePlayer2Name") or "Black"),
-            "board_b_white": str(raw.get("bughousePartnerPlayer1Name") or "White"),
-            "board_b_black": str(raw.get("bughousePartnerPlayer2Name") or "Black"),
+            "board_b_white": str(
+                raw.get("bughousePartnerPlayer1Name")
+                or (partner.headers.get("White") if partner else None)
+                or "White"
+            ),
+            "board_b_black": str(
+                raw.get("bughousePartnerPlayer2Name")
+                or (partner.headers.get("Black") if partner else None)
+                or "Black"
+            ),
         }
         if partner:
             main_positions, partner_positions = build_bughouse_pair_positions(parsed.moves, partner.moves)
@@ -46,6 +59,20 @@ class GameService:
             main_positions = build_replay_positions(parsed.moves)
             partner_positions = []
             timeline = []
+        limitations = list(parsed.parse_warnings)
+        if partner:
+            limitations.extend(partner.parse_warnings)
+            if timeline and any(
+                "Cross-board move order is approximate" in frame.board_a.warning
+                for frame in timeline[1:]
+            ):
+                limitations.append(
+                    "Cross-board move order is approximate because complete clock timestamps are unavailable."
+                )
+        else:
+            limitations.append("Second board unavailable")
+        limitations = list(dict.fromkeys(item for item in limitations if item))
+        timeline_payload = [asdict(frame) for frame in timeline]
         return {
             "game": game,
             "players": players,
@@ -53,10 +80,16 @@ class GameService:
             "moves_b": [{**asdict(move), "display_move": move.display_move} for move in partner.moves] if partner else [],
             "positions_a": [asdict(position) for position in main_positions],
             "positions_b": [asdict(position) for position in partner_positions],
-            "timeline": [asdict(frame) for frame in timeline],
+            "timeline": timeline_payload,
             "second_board_available": bool(partner_positions),
-            "limitations": [] if partner_positions else ["Second board unavailable"],
+            "limitations": limitations,
             "outcome": _game_outcome(game, raw, players, parsed.moves, partner.moves if partner else []),
+            "lesson": _review_lesson(
+                self.db.get_primary_mistake_for_game(game_id),
+                timeline_payload,
+                len(main_positions),
+                bool(partner_positions),
+            ),
         }
 
     def snapshot(self, game_id: int, global_ply: int) -> dict[str, object] | None:
@@ -113,8 +146,12 @@ class AnalysisJobs:
     def __init__(self, settings: Settings, games: GameService) -> None:
         self.settings = settings
         self.games = games
-        self.jobs: dict[str, dict[str, object]] = {}
-        self.cache: dict[str, dict[str, object]] = {}
+        self.registry = BoundedJobRegistry(
+            max_active=settings.analysis_max_active_jobs,
+            max_records=settings.analysis_max_job_records,
+            ttl_seconds=settings.compute_job_ttl_seconds,
+        )
+        self.cache: OrderedDict[str, dict[str, object]] = OrderedDict()
         self.semaphore = asyncio.Semaphore(2)
 
     async def submit(
@@ -123,20 +160,16 @@ class AnalysisJobs:
         global_ply: int,
         board: str,
         depth: int,
-        variant_fen: str | None = None,
-        board_a_fen: str | None = None,
-        board_b_fen: str | None = None,
     ) -> str:
-        job_id = str(uuid4())
-        self.jobs[job_id] = {
+        job_id = self.registry.reserve({
             "status": "queued",
             "engine": "Fairy-Stockfish",
             "board": board,
             "global_ply": global_ply,
             "depth": depth,
-        }
+        })
         asyncio.create_task(
-            self._run(job_id, game_id, global_ply, board, depth, variant_fen, board_a_fen, board_b_fen)
+            self._run(job_id, game_id, global_ply, board, depth)
         )
         return job_id
 
@@ -147,25 +180,18 @@ class AnalysisJobs:
         global_ply: int,
         board: str,
         depth: int,
-        variant_fen: str | None,
-        board_a_fen: str | None,
-        board_b_fen: str | None,
     ) -> None:
         async with self.semaphore:
-            metadata = self.jobs[job_id]
-            self.jobs[job_id] = {**metadata, "status": "running"}
-            snapshot = None
-            if variant_fen:
-                snapshot = {
-                    "board_a": {"variant_fen": board_a_fen or (variant_fen if board == "A" else "")},
-                    "board_b": {"variant_fen": board_b_fen or (variant_fen if board == "B" else "")},
-                }
-            else:
-                snapshot = await asyncio.to_thread(self.games.snapshot, game_id, global_ply)
+            metadata = self.registry.get(job_id) or {}
+            self.registry.update(job_id, status="running")
+            snapshot = await asyncio.to_thread(self.games.snapshot, game_id, global_ply)
             position = snapshot.get("board_a" if board == "A" else "board_b") if snapshot else None
-            fen = variant_fen or (str(position.get("variant_fen") or "") if isinstance(position, dict) else "")
+            fen = str(position.get("variant_fen") or "") if isinstance(position, dict) else ""
             if not fen:
-                self.jobs[job_id] = {**metadata, "status": "failed", "error": "Board position unavailable"}
+                self.registry.replace(
+                    job_id,
+                    {**metadata, "status": "failed", "error": "Board position unavailable"},
+                )
                 return
             board_a = snapshot.get("board_a") if snapshot else None
             board_b = snapshot.get("board_b") if snapshot else None
@@ -178,12 +204,14 @@ class AnalysisJobs:
                 ]
             )
             if cache_key in self.cache:
-                self.jobs[job_id] = {
+                cached = self.cache.pop(cache_key)
+                self.cache[cache_key] = cached
+                self.registry.replace(job_id, {
                     **metadata,
                     "status": "completed",
-                    "result": self.cache[cache_key],
+                    "result": cached,
                     "cached": True,
-                }
+                })
                 return
             config = EngineConfig(path=self.settings.fairy_stockfish_path, depth=depth)
             try:
@@ -192,9 +220,23 @@ class AnalysisJobs:
                     timeout=self.settings.engine_timeout_seconds,
                 )
                 self.cache[cache_key] = result
-                self.jobs[job_id] = {**metadata, "status": "completed", "result": result}
+                while len(self.cache) > self.settings.analysis_cache_records:
+                    self.cache.popitem(last=False)
+                self.registry.replace(
+                    job_id,
+                    {**metadata, "status": "completed", "result": result},
+                )
             except Exception as exc:
-                self.jobs[job_id] = {**metadata, "status": "failed", "error": str(exc)}
+                self.registry.replace(
+                    job_id,
+                    {**metadata, "status": "failed", "error": str(exc)},
+                )
+
+    def get(self, job_id: str) -> dict[str, object] | None:
+        return self.registry.get(job_id)
+
+    def queue_position(self, job_id: str) -> int | None:
+        return self.registry.queued_position(job_id)
 
     @staticmethod
     def _analyze(fen: str, config: EngineConfig) -> dict[str, object]:
@@ -269,6 +311,45 @@ def _aggregate_categories(rows: list[dict[str, object]]) -> list[dict[str, objec
 
 
 _LOSS_RESULTS = {"checkmated", "resigned", "timeout", "abandoned", "lose", "kingofthehill", "threecheck"}
+
+
+def _review_lesson(
+    mistake: dict[str, object] | None,
+    timeline: list[dict[str, object]],
+    main_position_count: int,
+    partner_available: bool,
+) -> dict[str, object] | None:
+    """Expose stored engine evidence without generating unsupported coaching prose."""
+    if not mistake:
+        return None
+    local_ply = max(0, int(mistake["ply"]))
+    global_ply = _global_ply_for_main_move(timeline, local_ply)
+    if global_ply is None:
+        global_ply = min(local_ply, max(0, main_position_count - 1))
+    motif = str(mistake.get("tactical_motif") or "").strip()
+    category = str(mistake.get("category") or "tactical miss").strip()
+    partner_context = str(mistake.get("partner_danger") or "").strip()
+    return {
+        "board": "A",
+        "local_ply": local_ply,
+        "global_ply": global_ply,
+        "played_move": str(mistake["move"]),
+        "best_move": str(mistake["bestmove"]),
+        "severity": str(mistake["severity"]),
+        "estimated_loss_cp": int(mistake["estimated_loss_cp"]),
+        "category": category,
+        "pattern": motif if motif and motif.lower() != "unknown" else category,
+        "confidence": str(mistake["confidence"]),
+        "depth": int(mistake["depth"]) if mistake.get("depth") is not None else None,
+        "partner_context": partner_context if partner_available and partner_context else None,
+    }
+
+
+def _global_ply_for_main_move(timeline: list[dict[str, object]], local_ply: int) -> int | None:
+    for frame in timeline:
+        if frame.get("board") == "A" and int(frame.get("local_ply") or 0) == local_ply:
+            return int(frame.get("global_ply") or 0)
+    return None
 
 
 def _game_outcome(

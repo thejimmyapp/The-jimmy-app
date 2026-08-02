@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any
 
 from thejimmyapp.chesscom_api import parse_pgn_headers
-from thejimmyapp.chesscom_pgn_info import has_partner_board_data
 from thejimmyapp.versioning import ANALYSIS_VERSION
 
 
@@ -399,7 +398,7 @@ class Database:
         only_two_board: bool = True,
         selection: str = "recent",
     ) -> list[dict[str, object]]:
-        clauses = ["username = ?"]
+        clauses = ["username = ?", "result IN ('win', 'loss', 'draw')"]
         values: list[object] = [username.lower()]
         if only_two_board:
             clauses.append("raw_json LIKE '%bughousePartnerTcnMoves%'")
@@ -1041,7 +1040,7 @@ class Database:
         result: str | None = None,
         limit: int = 100,
     ) -> list[dict[str, object]]:
-        clauses = ["username = ?"]
+        clauses = ["username = ?", "result IN ('win', 'loss', 'draw')"]
         values: list[object] = [username.lower()]
         if opponent:
             clauses.append("LOWER(COALESCE(opponent, '')) LIKE ?")
@@ -1083,35 +1082,6 @@ class Database:
                 values,
             ).fetchall()
         return [dict(row) for row in rows]
-
-    def list_games_for_pgn_info_enrichment(self, username: str, limit: int = 500) -> list[dict[str, Any]]:
-        with closing(self.connect()) as conn:
-            rows = conn.execute(
-                """
-                SELECT id, username, url, uuid, raw_json
-                FROM games
-                WHERE username = ?
-                    AND uuid IS NOT NULL
-                    AND uuid != ''
-                    AND (
-                        partner IS NULL
-                        OR partner = ''
-                        OR raw_json NOT LIKE '%bughousePartnerTcnMoves%'
-                    )
-                ORDER BY end_time DESC
-                LIMIT ?
-                """,
-                (username.lower(), limit),
-            ).fetchall()
-        games: list[dict[str, Any]] = []
-        for row in rows:
-            raw = _json_object(str(row["raw_json"] or ""))
-            if not raw:
-                continue
-            raw.setdefault("url", row["url"])
-            raw.setdefault("uuid", row["uuid"])
-            games.append(raw)
-        return games
 
     def get_game(self, game_id: int) -> dict[str, object] | None:
         with closing(self.connect()) as conn:
@@ -1400,6 +1370,40 @@ class Database:
 
     def get_mistake_rows(self, username: str, limit: int = 100) -> list[dict[str, object]]:
         return self.search_mistakes(username=username, limit=limit)
+
+    def get_primary_mistake_for_game(self, game_id: int) -> dict[str, object] | None:
+        """Return the strongest current, review-safe engine finding for a game."""
+        with closing(self.connect()) as conn:
+            row = conn.execute(
+                """
+                SELECT
+                    id,
+                    game_id,
+                    ply,
+                    move,
+                    category,
+                    tactical_motif,
+                    severity,
+                    estimated_loss_cp,
+                    bestmove,
+                    confidence,
+                    depth,
+                    partner_danger
+                FROM current_mistakes
+                WHERE game_id = ?
+                  AND confidence IN ('high', 'medium')
+                  AND bestmove IS NOT NULL
+                  AND TRIM(bestmove) != ''
+                ORDER BY
+                    CASE confidence WHEN 'high' THEN 0 ELSE 1 END,
+                    estimated_loss_cp DESC,
+                    COALESCE(depth, 0) DESC,
+                    id ASC
+                LIMIT 1
+                """,
+                (game_id,),
+            ).fetchone()
+        return dict(row) if row else None
 
     def search_mistakes(
         self,
@@ -2104,6 +2108,15 @@ class Database:
         }
 
 
+def has_partner_board_data(game: dict[str, Any]) -> bool:
+    return bool(
+        game.get("bughousePartnerTcnMoves")
+        or game.get("bughouse_partner_tcn_moves")
+        or game.get("bughousePartnerPgn")
+        or game.get("bughouse_partner_pgn")
+    )
+
+
 def _player(value: object) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
@@ -2122,10 +2135,11 @@ def _detect_partner(headers: dict[str, str], username: str, raw: dict[str, Any] 
     player2 = _optional_str(raw.get("bughousePlayer2Name"))
     partner1 = _optional_str(raw.get("bughousePartnerPlayer1Name"))
     partner2 = _optional_str(raw.get("bughousePartnerPlayer2Name"))
-    if player1 and player1.lower() == username and partner1:
-        return partner1
-    if player2 and player2.lower() == username and partner2:
+    # Bughouse partners play opposite colors across the two boards.
+    if player1 and player1.lower() == username and partner2:
         return partner2
+    if player2 and player2.lower() == username and partner1:
+        return partner1
 
     candidates = [
         headers.get("WhitePartner"),

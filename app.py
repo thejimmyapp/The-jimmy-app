@@ -14,9 +14,8 @@ from thejimmyapp.analyzer import analyze_critical_moments
 from thejimmyapp.board_renderer import render_dual_position_html, render_game_replay_html, render_pattern_puzzle_html
 from thejimmyapp.bughouse_reconstructor import reconstruct_main_board
 from thejimmyapp.chesscom_api import ChessComApiError, ChessComClient, normalize_username
-from thejimmyapp.chesscom_pgn_info import PgnInfoClient, PgnInfoError, has_partner_board_data, merge_pgn_info
 from thejimmyapp.chesstempo_motifs import all_motifs, family_names
-from thejimmyapp.db import Database
+from thejimmyapp.db import Database, has_partner_board_data
 from thejimmyapp.engine import EngineConfig, EngineError
 from thejimmyapp.opening_lab import analyze_opening_batch
 from thejimmyapp.full_bughouse_discovery import BughouseDiscoveryReport, discover_full_bughouse_data
@@ -30,7 +29,6 @@ from thejimmyapp.tactical_motifs import classify_tactical_motif
 APP_DIR = Path(__file__).resolve().parent
 DB_PATH = APP_DIR / "data" / "bughouse.db"
 LOG_PATH = APP_DIR / "logs" / "app.log"
-DEFAULT_PGN_INFO_PATH = APP_DIR / "secrets" / "chesscom_pgn_info_curl.txt"
 DEFAULT_ENGINE_PATH = APP_DIR / "engines" / "fairy-stockfish.exe"
 DEFAULT_ENGINE_DEPTH = 10
 
@@ -1050,7 +1048,7 @@ def render_game_viewer(db: Database, game_rows: list[dict[str, object]], engine_
             if snapshot.fen:
                 st.text_input("Board-only FEN", snapshot.fen)
             if partner_parsed and partner_parsed.moves:
-                st.success(f"Partner board loaded: {len(partner_parsed.moves)} half-moves from Chess.com pgn-info.")
+                st.success(f"Partner board loaded: {len(partner_parsed.moves)} half-moves from stored complete-game data.")
             else:
                 st.info(
                     "For Chess.com TCN games, drops are reconstructed by inferring missing pocket pieces when partner-board "
@@ -1066,16 +1064,9 @@ def render_game_viewer(db: Database, game_rows: list[dict[str, object]], engine_
             st.code(raw_json or "No PGN or raw JSON stored for this game.", language="json")
 
 
-def fetch_games(username: str, pgn_info_curl_path: Path | None = None) -> None:
+def fetch_games(username: str) -> None:
     client = ChessComClient()
     db = get_database()
-    pgn_info_client: PgnInfoClient | None = None
-    enrichment_errors: list[str] = []
-    if pgn_info_curl_path and pgn_info_curl_path.exists():
-        try:
-            pgn_info_client = PgnInfoClient.from_curl_file(pgn_info_curl_path)
-        except PgnInfoError as exc:
-            enrichment_errors.append(str(exc))
 
     with st.spinner("Fetching monthly archives from Chess.com..."):
         archives = client.get_archives(username)
@@ -1089,20 +1080,10 @@ def fetch_games(username: str, pgn_info_curl_path: Path | None = None) -> None:
     for idx, archive_url in enumerate(archives, start=1):
         try:
             month_games = client.get_archive_games(archive_url)
-            pgn_info_by_id = {}
-            bughouse_games = [game for game in month_games if client.is_bughouse_game(game)]
-            if pgn_info_client and bughouse_games:
-                try:
-                    pgn_info_by_id = pgn_info_client.fetch_for_games(bughouse_games)
-                except PgnInfoError as exc:
-                    enrichment_errors.append(f"{archive_url}: {exc}")
             for game in month_games:
                 if not client.is_bughouse_game(game):
                     skipped += 1
                     continue
-                game_id = _chesscom_game_id(game)
-                if game_id:
-                    game = merge_pgn_info(game, pgn_info_by_id.get(game_id))
                 inserted = db.upsert_game(username, game)
                 if inserted:
                     imported += 1
@@ -1120,51 +1101,6 @@ def fetch_games(username: str, pgn_info_curl_path: Path | None = None) -> None:
     )
     if failed_archives:
         st.warning(f"{len(failed_archives)} archive(s) failed. See logs/app.log for details.")
-    if enrichment_errors:
-        st.warning(f"pgn-info enrichment had {len(enrichment_errors)} issue(s). See logs/app.log for details.")
-        for item in enrichment_errors:
-            logging.warning("pgn-info enrichment issue: %s", item)
-    elif pgn_info_client:
-        st.info("Authenticated pgn-info enrichment was enabled for this import.")
-
-
-def enrich_existing_games(username: str, pgn_info_curl_path: Path, limit: int = 500) -> None:
-    db = get_database()
-    try:
-        pgn_info_client = PgnInfoClient.from_curl_file(pgn_info_curl_path)
-    except PgnInfoError as exc:
-        st.error(str(exc))
-        return
-
-    games = db.list_games_for_pgn_info_enrichment(username, limit=limit)
-    if not games:
-        st.info("No imported games need pgn-info enrichment.")
-        return
-
-    enriched = 0
-    failed = 0
-    batch_size = 50
-    progress = st.progress(0)
-    for offset in range(0, len(games), batch_size):
-        batch = games[offset : offset + batch_size]
-        try:
-            pgn_info_by_id = pgn_info_client.fetch_for_games(batch)
-            for game in batch:
-                game_id = _chesscom_game_id(game)
-                merged = merge_pgn_info(game, pgn_info_by_id.get(game_id or ""))
-                if has_partner_board_data(merged):
-                    db.upsert_game(username, merged)
-                    enriched += 1
-        except PgnInfoError as exc:
-            failed += len(batch)
-            logging.warning("pgn-info enrichment batch failed: %s", exc)
-        progress.progress(min(1.0, (offset + len(batch)) / len(games)))
-        time.sleep(0.15)
-
-    if enriched:
-        st.success(f"Enriched {enriched} imported game(s) with partner-board data.")
-    if failed:
-        st.warning(f"{failed} game(s) could not be enriched. See logs/app.log for details.")
 
 
 def enrich_phase2_dashboard_stats(db: Database, username: str, stats: dict[str, object]) -> dict[str, object]:
@@ -1274,16 +1210,15 @@ def render_loading_tip(step_index: int) -> None:
     st.info(f"Coach tip: {tip}")
 
 
-def run_guided_setup(db: Database, username: str, pgn_info_path: Path, engine_path: Path, engine_depth: int) -> None:
+def run_guided_setup(db: Database, username: str, engine_path: Path, engine_depth: int) -> None:
     normalized = username.lower()
     setup_key = f"setup_finished_{normalized}"
     stats = db.get_dashboard_stats(username)
     total_games = int(stats.get("total_games") or 0)
-    pending_enrichment = db.count_games_to_enrich(username)
 
     if st.session_state.get(setup_key):
         return
-    if total_games > 0 and pending_enrichment == 0:
+    if total_games > 0:
         st.session_state[setup_key] = True
         return
 
@@ -1295,26 +1230,7 @@ def run_guided_setup(db: Database, username: str, pgn_info_path: Path, engine_pa
         render_loading_tip(0)
         progress.progress(0.12, text="Loading your Chess.com Bughouse games...")
         if total_games == 0:
-            fetch_games(username, pgn_info_path if pgn_info_path.exists() else None)
-
-        pending_enrichment = db.count_games_to_enrich(username)
-        if pending_enrichment and pgn_info_path.exists():
-            render_loading_tip(1)
-            progress.progress(0.42, text="Enriching games with partner-board data...")
-            safety_batches = 0
-            while db.count_games_to_enrich(username) > 0 and safety_batches < 20:
-                before_pending = db.count_games_to_enrich(username)
-                enrich_existing_games(username, pgn_info_path, limit=5000)
-                after_pending = db.count_games_to_enrich(username)
-                safety_batches += 1
-                if after_pending >= before_pending:
-                    st.info("No additional partner-board data was found in this batch. The app will continue with the data already available.")
-                    break
-        elif pending_enrichment:
-            st.warning(
-                "Partner-board enrichment is not available yet because the Chess.com pgn-info cURL file was not found. "
-                "You can add it later in Advanced settings."
-            )
+            fetch_games(username)
 
         progress.progress(0.72, text="Building your first coaching signals...")
         if engine_path.exists():
@@ -1729,7 +1645,7 @@ def _render_workspace_free_study(username: str) -> None:
         components.html(board_html, height=730, scrolling=False)
 
 
-def render_advanced_sidebar(db: Database, username: str) -> tuple[Path, int, Path]:
+def render_advanced_sidebar(db: Database, username: str) -> tuple[Path, int]:
     with st.sidebar:
         st.header("Player")
         st.write(f"Studying: `{username}`")
@@ -1742,32 +1658,21 @@ def render_advanced_sidebar(db: Database, username: str) -> tuple[Path, int, Pat
         engine_depth = st.slider("Engine strength", min_value=4, max_value=18, value=DEFAULT_ENGINE_DEPTH)
 
         with st.expander("Advanced paths and maintenance"):
-            pgn_info_path_text = st.text_input(
-                "Chess.com pgn-info cURL file",
-                str(DEFAULT_PGN_INFO_PATH),
-                help="Optional but recommended: enables partner-board enrichment from your authenticated Chess.com session.",
-            )
             engine_path_text = st.text_input("Fairy-Stockfish path", str(DEFAULT_ENGINE_PATH))
             st.write(f"Database: `{DB_PATH}`")
             st.write(f"Logs: `{LOG_PATH}`")
-        pgn_info_path = Path(pgn_info_path_text)
         engine_path = Path(engine_path_text)
 
         with st.expander("Refresh game data"):
             if st.button("Fetch latest games"):
                 try:
-                    fetch_games(username, pgn_info_path if pgn_info_path.exists() else None)
+                    fetch_games(username)
                 except ChessComApiError as exc:
                     logging.exception("Chess.com import failed")
                     st.error(str(exc))
                 except Exception as exc:
                     logging.exception("Unexpected import failure")
                     st.error(f"Unexpected import failure: {exc}")
-            pending = db.count_games_to_enrich(username)
-            st.caption(f"Games still needing partner-board enrichment: {pending}")
-            if st.button("Enrich partner boards", disabled=not pgn_info_path.exists()):
-                enrich_existing_games(username, pgn_info_path, limit=5000)
-
         with st.expander("Run more coach analysis"):
             analysis_coverage = db.get_analysis_coverage(username, int(engine_depth))
             st.caption(
@@ -1826,7 +1731,7 @@ def render_advanced_sidebar(db: Database, username: str) -> tuple[Path, int, Pat
                         )
                     st.success(f"Analyzed {batch.analyzed_moves} opening decision(s).")
 
-    return engine_path, int(engine_depth), pgn_info_path
+    return engine_path, int(engine_depth)
 
 
 def main() -> None:
@@ -1841,8 +1746,8 @@ def main() -> None:
         render_username_landing()
         return
 
-    engine_path, engine_depth, pgn_info_path = render_advanced_sidebar(db, username)
-    run_guided_setup(db, username, pgn_info_path, engine_path, engine_depth)
+    engine_path, engine_depth = render_advanced_sidebar(db, username)
+    run_guided_setup(db, username, engine_path, engine_depth)
 
     st.title("The Jimmy App")
     st.caption("Collaborative Bughouse Coach · Review both boards, train recurring mistakes, and explore your openings from one workspace.")
@@ -1896,7 +1801,7 @@ def render_full_data_status(db: Database, game: dict[str, object]) -> None:
 
     raw = _raw_game_dict(game)
     if has_partner_board_data(raw) and (
-        report is None or report.conclusion != "authenticated_pgn_info_partner_board_found"
+        report is None or report.conclusion != "stored_partner_board_found"
     ):
         report = BughouseDiscoveryReport(
             game_id=game_id,
@@ -1904,7 +1809,7 @@ def render_full_data_status(db: Database, game: dict[str, object]) -> None:
             known_players=[],
             candidates=[],
             sources=[],
-            conclusion="authenticated_pgn_info_partner_board_found",
+            conclusion="stored_partner_board_found",
             partner_found=str(game.get("partner") or ""),
             second_board_url=None,
         )
