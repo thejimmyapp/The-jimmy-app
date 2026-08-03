@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, BarChart3, Bot, Check, Copy, FileInput, LogOut, Palette, Radio, Redo2, RotateCcw, Settings, ShieldCheck, Swords, Undo2, UserRoundPlus, Users, X } from "lucide-react";
-import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
-import { api } from "./api";
+import { CSSProperties, FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { api, ApiError } from "./api";
+import { bmachoUrlForGameId, bmachoUrlFromChessComUrl } from "./chesscomGameUrl";
 import { BoardPanel } from "./components/BoardPanel";
 import { LegalLinks } from "./components/LegalLinks";
 import { ReviewLesson } from "./components/ReviewLesson";
+import { ReviewStart } from "./components/ReviewStart";
 import { SidePanel } from "./components/SidePanel";
 import { StatsDashboard } from "./components/StatsDashboard";
 import { TeamCoach } from "./components/TeamCoach";
@@ -61,7 +63,7 @@ const initialPieceSize = (): PieceSizeId => {
 export default function App() {
   const store = useCoachStore();
   const queryClient = useQueryClient();
-  const { roomId, username, setRoom } = store;
+  const { roomId, username, setGame, setRoom } = store;
   const joinedRoomRef = useRef<string | null>(null);
   const [boardTheme, setBoardTheme] = useState<BoardThemeId>(initialBoardTheme);
   const [pieceStyle, setPieceStyle] = useState<PieceStyleId>(initialPieceStyle);
@@ -69,27 +71,62 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
   const [view, setView] = useState<"review" | "stats">("review");
-  const [connectOpen, setConnectOpen] = useState(!store.username && !store.roomId);
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [usernameDraft, setUsernameDraft] = useState(store.username);
   const [manualImportOpen, setManualImportOpen] = useState(false);
   const [boardAPgn, setBoardAPgn] = useState("");
   const [boardBPgn, setBoardBPgn] = useState("");
   const [shareCopied, setShareCopied] = useState(false);
+  const [reviewGameId, setReviewGameId] = useState<number | null>(() => {
+    if (store.roomId) return null;
+    const value = new URLSearchParams(location.search).get("game");
+    if (!value || !/^[1-9][0-9]*$/.test(value)) return null;
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) ? parsed : null;
+  });
+  const openGame = useCallback((game: Parameters<typeof setGame>[0]) => {
+    setGame(game);
+    setArchiveOpen(false);
+    setConnectOpen(false);
+    setView("review");
+    const gameId = game?.game.id;
+    if (!gameId || useCoachStore.getState().roomId) return;
+    const browserUrl = new URL(location.href);
+    browserUrl.searchParams.set("game", String(gameId));
+    history.replaceState(null, "", `${browserUrl.pathname}${browserUrl.search}${browserUrl.hash}`);
+    setReviewGameId(gameId);
+  }, [setGame]);
   const gamesQuery = useQuery({ queryKey: ["games", store.username], queryFn: () => api.games(store.username), enabled: Boolean(store.username) });
   const roomQuery = useQuery({ queryKey: ["room", store.roomId], queryFn: () => api.room(store.roomId as string), enabled: Boolean(store.roomId) });
+  const restoredGameQuery = useQuery({ queryKey: ["game", reviewGameId], queryFn: () => api.game(reviewGameId as number), enabled: Boolean(reviewGameId && !store.roomId && !store.game) });
   useEffect(() => { if (gamesQuery.data) useCoachStore.getState().setGames(gamesQuery.data.games); }, [gamesQuery.data]);
   useEffect(() => { if (roomQuery.data) void applyRoomSnapshot(roomQuery.data.snapshot, roomQuery.data.game_id); }, [roomQuery.data]);
-  const gameMutation = useMutation({ mutationFn: api.game, onSuccess: store.setGame });
+  useEffect(() => { if (restoredGameQuery.data) openGame(restoredGameQuery.data); }, [openGame, restoredGameQuery.data]);
+  const gameMutation = useMutation({ mutationFn: api.game, onSuccess: openGame });
+  const resolveMutation = useMutation({
+    mutationFn: ({ url, username }: { url: string; username: string }) => api.resolveGame(url, username || undefined),
+    onSuccess: (resolved, variables) => {
+      if (variables.username) store.setUsername(variables.username);
+      openGame(resolved.game);
+    },
+  });
   const connectMutation = useMutation({
     mutationFn: api.connectChessCom,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["games"] }),
+    onSuccess: () => {
+      setConnectOpen(false);
+      setArchiveOpen(true);
+      return queryClient.invalidateQueries({ queryKey: ["games"] });
+    },
   });
   const importMutation = useMutation({
     mutationFn: ({ username, boardA, boardB }: { username: string; boardA: string; boardB: string }) => api.importPgn(username, boardA, boardB),
-    onSuccess: () => {
+    onSuccess: async (imported) => {
       setBoardAPgn("");
       setBoardBPgn("");
-      return queryClient.invalidateQueries({ queryKey: ["games"] });
+      const importedGame = await api.game(imported.game_id);
+      openGame(importedGame);
+      await queryClient.invalidateQueries({ queryKey: ["games"] });
     },
   });
   const roomMutation = useMutation({ mutationFn: () => api.createRoom(store.game?.game.id), onSuccess: async (room) => {
@@ -114,6 +151,7 @@ export default function App() {
   const players = store.game?.players;
   const secondBoardAvailable = Boolean(store.game?.second_board_available);
   const selectGame = (game: GameSummary) => { gameMutation.mutate(game.id); sendRoomEvent("game.select", { game_id: game.id }); };
+  const openImport = () => { setManualImportOpen(true); setConnectOpen(true); };
   const connect = (event: FormEvent) => { event.preventDefault(); const clean = usernameDraft.trim(); if (!clean) return; store.setUsername(clean); connectMutation.mutate(clean); };
   const importCompleteGame = (event: FormEvent) => {
     event.preventDefault();
@@ -142,8 +180,14 @@ export default function App() {
     setShareCopied(true);
     window.setTimeout(() => setShareCopied(false), 1800);
   };
+  const resolutionError = resolveMutation.error instanceof Error ? resolveMutation.error.message : undefined;
+  const resolutionFallbackUrl = resolveMutation.error instanceof ApiError && resolveMutation.error.externalGameId
+    ? bmachoUrlForGameId(resolveMutation.error.externalGameId)
+    : null;
+  const currentGameFallbackUrl = bmachoUrlFromChessComUrl(store.game?.game.url);
+  const showReviewStart = !store.game && !store.roomId && !archiveOpen;
   return (
-    <main className={`app-shell ${view === "stats" ? "stats-view" : ""}`} data-board-theme={boardTheme} data-piece-style={pieceStyle} data-piece-size={pieceSize}>
+    <main className={`app-shell ${view === "stats" ? "stats-view" : ""} ${showReviewStart ? "review-entry-shell" : ""}`} data-board-theme={boardTheme} data-piece-style={pieceStyle} data-piece-size={pieceSize}>
       <div className="small-screen-message">The Jimmy App is optimized for desktop screens of 1366×768 or larger.</div>
       <header className="app-header">
         <div className="brand"><span className="brand-mark">J</span><div><strong>THE JIMMY APP</strong><small>COLLABORATIVE BUGHOUSE COACH</small></div></div>
@@ -165,9 +209,20 @@ export default function App() {
           <button className="connect-button" onClick={() => setConnectOpen(true)}><Radio size={15} /> {store.username || "Connect Chess.com"}</button>
         </div>
       </header>
-      {view === "review" ? <><section className="workspace">
-        <SidePanel onSelectGame={selectGame} loadingGame={gameMutation.isPending} />
-        <div className={`boards-zone ${store.game ? "has-game" : ""}`}>
+      {view === "review" ? <><section className={`workspace ${showReviewStart ? "review-entry-workspace" : ""}`}>
+        {!showReviewStart && <SidePanel onSelectGame={selectGame} loadingGame={gameMutation.isPending} />}
+        <div className={`boards-zone ${store.game ? "has-game" : ""} ${showReviewStart ? "review-entry-zone" : ""}`}>
+          {showReviewStart && (
+            <ReviewStart
+              defaultUsername={store.username}
+              pending={resolveMutation.isPending || restoredGameQuery.isFetching}
+              errorMessage={resolutionError ?? (restoredGameQuery.error instanceof Error ? restoredGameQuery.error.message : undefined)}
+              fallbackUrl={resolutionFallbackUrl}
+              onReview={(url, requestedUsername) => resolveMutation.mutate({ url, username: requestedUsername })}
+              onBrowseGames={() => setArchiveOpen(true)}
+              onImportBothBoards={openImport}
+            />
+          )}
           {store.game && (
             <div className="review-context">
               {store.game.outcome && (
@@ -195,14 +250,14 @@ export default function App() {
               )}
             </div>
           )}
-          <div className="boards-grid">
+          {!showReviewStart && <div className="boards-grid">
             <BoardPanel boardId="A" position={boardA} orientation={userIsWhite ? "white" : "black"} pieceStyle={pieceStyle} title="BOARD A · YOUR BOARD" playerTop={userIsWhite ? players?.board_a_black ?? "Opponent" : players?.board_a_white ?? "Opponent"} playerBottom={userIsWhite ? players?.board_a_white ?? store.username : players?.board_a_black ?? store.username} />
-            <BoardPanel boardId="B" position={boardB} orientation={userIsWhite ? "black" : "white"} pieceStyle={pieceStyle} title="BOARD B · PARTNER BOARD" playerTop={secondBoardAvailable ? (userIsWhite ? players?.board_b_white ?? "Diagonal Opponent Unknown" : players?.board_b_black ?? "Diagonal Opponent Unknown") : "Diagonal Opponent Unknown"} playerBottom={secondBoardAvailable ? (userIsWhite ? players?.board_b_black ?? "Partner Unknown" : players?.board_b_white ?? "Partner Unknown") : "Partner Unknown"} unavailable={Boolean(store.game) && !secondBoardAvailable} />
-          </div>
-          {!store.game && <div className="empty-workspace"><strong>Select a Bughouse game</strong><span>Choose a game from the Games panel.</span></div>}
+            <BoardPanel boardId="B" position={boardB} orientation={userIsWhite ? "black" : "white"} pieceStyle={pieceStyle} title="BOARD B · PARTNER BOARD" playerTop={secondBoardAvailable ? (userIsWhite ? players?.board_b_white ?? "Diagonal Opponent Unknown" : players?.board_b_black ?? "Diagonal Opponent Unknown") : "Diagonal Opponent Unknown"} playerBottom={secondBoardAvailable ? (userIsWhite ? players?.board_b_black ?? "Partner Unknown" : players?.board_b_white ?? "Partner Unknown") : "Partner Unknown"} unavailable={Boolean(store.game) && !secondBoardAvailable} onImportBothBoards={openImport} externalFallbackUrl={currentGameFallbackUrl} />
+          </div>}
+          {!store.game && !showReviewStart && <div className="empty-workspace"><strong>Select a Bughouse game</strong><span>Choose a game from the Games panel.</span></div>}
         </div>
       </section>
-      <Timeline />
+      {store.game && <Timeline />}
       <TeamCoach open={coachOpen} onClose={() => setCoachOpen(false)} boardA={boardA} boardB={boardB} /></> : <StatsDashboard username={store.username} />}
       {connectOpen && (
         <div className="modal-backdrop" role="presentation">

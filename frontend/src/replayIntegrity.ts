@@ -6,7 +6,7 @@ export function replayNotices(
   boardB: ReplayPosition | null,
 ): string[] {
   if (!game) return [];
-  const notices = [...game.limitations];
+  const notices = game.limitations.filter((notice) => notice !== "Second board unavailable");
   const warnings = new Map<string, string[]>();
   for (const [board, position] of [["A", boardA], ["B", boardB]] as const) {
     const warning = position?.warning?.trim();

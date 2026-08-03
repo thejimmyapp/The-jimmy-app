@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BrainCircuit } from "lucide-react";
+import { BrainCircuit, ExternalLink, FileInput } from "lucide-react";
 import { api } from "../api";
 import { isMeaningfulChessVector, parseEngineBestmove } from "../boardInteractions";
 import { sendRoomEvent } from "../socket";
@@ -39,6 +39,8 @@ interface Props {
   playerTop: string;
   playerBottom: string;
   unavailable?: boolean;
+  onImportBothBoards?: () => void;
+  externalFallbackUrl?: string | null;
   locked?: boolean;
   onMoveIntent?: (intent: {
     board: BoardId;
@@ -61,7 +63,7 @@ export type BoardAnalysisState = {
   error?: string;
 };
 
-export function BoardPanel({ boardId, position, pairedPosition, orientation, pieceStyle, title, playerTop, playerBottom, unavailable = false, locked = false, onMoveIntent, onAnalysisChange }: Props) {
+export function BoardPanel({ boardId, position, pairedPosition, orientation, pieceStyle, title, playerTop, playerBottom, unavailable = false, onImportBothBoards, externalFallbackUrl, locked = false, onMoveIntent, onAnalysisChange }: Props) {
   const boardRef = useRef<HTMLDivElement>(null);
   const lastWheelAt = useRef(0);
   const [arrowStart, setArrowStart] = useState<string | null>(null);
@@ -70,6 +72,7 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
   const [legalTargets, setLegalTargets] = useState<string[]>([]);
   const [interactionStatus, setInteractionStatus] = useState("");
   const [analysis, setAnalysis] = useState<BoardAnalysisState>({ status: "idle" });
+  const [oneBoardAccepted, setOneBoardAccepted] = useState(false);
   const { game, globalPly, mode, explorationPositions, explorationFuture, annotations, addAnnotation, removeAnnotation, applyExploration, undoExploration, redoExploration, seek } = useCoachStore();
   const visible = useMemo(
     () => annotations.filter((item) => item.board === boardId && item.ply === globalPly),
@@ -86,6 +89,10 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
     setAnalysis({ status: "idle" });
     onAnalysisChange?.(boardId, { status: "idle" });
   }, [boardId, onAnalysisChange, position?.variant_fen]);
+
+  useEffect(() => {
+    setOneBoardAccepted(false);
+  }, [game?.game.id]);
 
   const removeDrawing = (annotation: Annotation) => {
     removeAnnotation(annotation.id);
@@ -301,7 +308,7 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
   };
 
   return (
-    <section className={`board-panel ${mode === "exploration" ? "is-exploring" : ""} ${unavailable ? "is-unavailable" : ""}`} aria-disabled={unavailable || undefined}>
+    <section className={`board-panel ${mode === "exploration" ? "is-exploring" : ""} ${unavailable ? "is-unavailable" : ""}`}>
       <div className="board-heading"><strong>{title}</strong><span>{position?.side_to_move ?? "Unavailable"} to move</span></div>
       <PlayerBar name={playerTop} clock={orientation === "white" ? position?.black_clock : position?.white_clock} />
       <div className="board-stage">
@@ -367,10 +374,21 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
         {analysis.status === "failed" ? <span className="analysis-error" title={analysis.error}>{analysis.error}</span> : <span className="interaction-status">{interactionStatus}</span>}
       </div>
       {unavailable && (
-        <div className="board-panel-unavailable" role="status">
-          <strong>Second board unavailable</strong>
-          <span>Partner Unknown · Diagonal Opponent Unknown</span>
-          <small>Import completed PGNs for both boards from Connect games.</small>
+        <div className={`board-panel-unavailable ${oneBoardAccepted ? "one-board-accepted" : ""}`} role="status">
+          <strong>Board B is unavailable</strong>
+          <span>Partner board was not included in the available Chess.com data.</span>
+          {oneBoardAccepted ? (
+            <>
+              <small>Continuing with Board A only.</small>
+              <button type="button" onClick={() => setOneBoardAccepted(false)}>Show recovery actions</button>
+            </>
+          ) : (
+            <div className="incomplete-board-actions">
+              <button type="button" onClick={() => setOneBoardAccepted(true)}>Continue one-board review</button>
+              {onImportBothBoards && <button type="button" onClick={onImportBothBoards}><FileInput size={13} /> Import both board PGNs</button>}
+              {externalFallbackUrl && <a href={externalFallbackUrl} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Open this game in bMacho <small>(external third-party tool)</small></a>}
+            </div>
+          )}
         </div>
       )}
     </section>

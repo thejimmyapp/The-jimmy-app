@@ -11,6 +11,13 @@ class ChessComConnectRequest(BaseModel):
     username: str = Field(min_length=2, max_length=25, pattern=r"^[A-Za-z0-9_-]+$")
 
 
+class ChessComGameResolveRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    url: str = Field(min_length=1, max_length=500)
+    username: str | None = Field(default=None, min_length=2, max_length=25, pattern=r"^[A-Za-z0-9_-]+$")
+
+
 class PgnImportRequest(BaseModel):
     username: str = Field(min_length=2, max_length=25, pattern=r"^[A-Za-z0-9_-]+$")
     pgn: str = Field(min_length=8, max_length=2_000_000)
