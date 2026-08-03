@@ -78,9 +78,25 @@ def test_cli_uses_schema_threads_and_one_shot_performance_flags(tmp_path, monkey
     assert "--no-warmup" in command
     schema = json.loads(command[command.index("--json-schema") + 1])
     assert schema["additionalProperties"] is False
-    fact_id_schema = schema["properties"]["summary"]["properties"]["fact_ids"]["items"]
+    summary_properties = schema["properties"]["summary"]["properties"]
+    fact_id_schema = summary_properties["fact_ids"]["items"]
     assert fact_id_schema["enum"] == ["board_a.best_move"]
+    assert summary_properties["fact_ids"]["maxItems"] == 1
+    assert summary_properties["explanation"]["maxLength"] == 80
     status = qwen.status()
     assert status["last_prompt_chars"] == len("compact prompt")
     assert status["last_output_chars"] == len(answer)
     assert status["last_generation_seconds"] is not None
+
+
+def test_worst_case_schema_payload_fits_the_output_budget() -> None:
+    section = {
+        "fact_ids": ["transfer_10.partner_impact"],
+        "explanation": "x" * 80,
+    }
+    payload = {
+        name: section
+        for name in ("summary", "board_a", "board_b", "team_plan")
+    }
+
+    assert len(json.dumps(payload, separators=(",", ":"))) < 700

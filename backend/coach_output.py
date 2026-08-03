@@ -6,6 +6,10 @@ from typing import Any
 
 
 SECTIONS = ("summary", "board_a", "board_b", "team_plan")
+MAX_FACT_IDS_PER_SECTION = 1
+MAX_SECTION_CHARS = 80
+MAX_SECTION_WORDS = 10
+MAX_COMMENTARY_WORDS = len(SECTIONS) * MAX_SECTION_WORDS
 RAW_FACT_PATTERNS = (
     (re.compile(r"(?i)\b(?:[a-h][1-8][a-h][1-8][qrbn]?|[pnbrqk]@[a-h][1-8])\b"), "raw move"),
     (re.compile(r"(?<![A-Za-z0-9])(?:O-O(?:-O)?|[KQRBN]?[a-h](?:x[a-h])?[1-8](?:=[QRBN])?[+#]?)(?![A-Za-z0-9])"), "chess notation"),
@@ -111,6 +115,7 @@ def _validate_payload(
 ) -> tuple[str, list[str]]:
     catalog = facts.get("catalog") if isinstance(facts.get("catalog"), dict) else {}
     commentary: list[str] = []
+    commentary_word_count = 0
     cited: list[str] = []
     for section in SECTIONS:
         value = payload.get(section)
@@ -120,15 +125,22 @@ def _validate_payload(
         explanation = value.get("explanation")
         if not isinstance(fact_ids, list) or not all(isinstance(item, str) for item in fact_ids):
             raise ValueError(f"Qwen section {section} has invalid fact_ids")
+        if len(fact_ids) > MAX_FACT_IDS_PER_SECTION:
+            raise ValueError(f"Qwen section {section} cited too many fact_ids")
         unknown = [item for item in fact_ids if item not in catalog]
         if unknown:
             raise ValueError(f"Qwen cited unknown fact id {unknown[0]}")
-        if not isinstance(explanation, str) or len(explanation) > 1000:
+        if not isinstance(explanation, str) or len(explanation) > MAX_SECTION_CHARS:
             raise ValueError(f"Qwen section {section} has invalid explanation text")
         for pattern, label in RAW_FACT_PATTERNS:
             if pattern.search(explanation):
                 raise ValueError(f"Qwen attempted to restate a {label}")
         clean = " ".join(explanation.split()).strip()
+        if len(clean.split()) > MAX_SECTION_WORDS:
+            raise ValueError(
+                f"Qwen section {section} exceeded the {MAX_SECTION_WORDS}-word boundary"
+            )
+        commentary_word_count += len(clean.split())
         if clean:
             commentary.append(f"{section.replace('_', ' ').title()}: {clean}")
         cited.extend(fact_ids)
@@ -147,6 +159,8 @@ def _validate_payload(
         combined_lower,
     ):
         raise ValueError("Qwen inferred tactics for unavailable Board B")
-    if len(combined.split()) > 180:
-        raise ValueError("Qwen explanation exceeded the 180-word boundary")
+    if commentary_word_count > MAX_COMMENTARY_WORDS:
+        raise ValueError(
+            f"Qwen explanation exceeded the {MAX_COMMENTARY_WORDS}-word boundary"
+        )
     return combined or "No additional explanation was supplied.", list(dict.fromkeys(cited))

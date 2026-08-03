@@ -121,3 +121,41 @@ def test_qwen_boundary_rejects_unknown_fact_ids() -> None:
 
     assert result["validation"]["status"] == "rejected"
     assert "unknown fact id" in result["validation"]["reasons"][0]
+
+
+@pytest.mark.parametrize(
+    ("section", "reason"),
+    [
+        (
+            {
+                "fact_ids": ["board_a.best_move", "position.global_ply"],
+                "explanation": "Keep this concise.",
+            },
+            "too many fact_ids",
+        ),
+        (
+            {
+                "fact_ids": ["board_a.best_move"],
+                "explanation": "one two three four five six seven eight nine ten eleven",
+            },
+            "10-word boundary",
+        ),
+        (
+            {
+                "fact_ids": ["board_a.best_move"],
+                "explanation": "x" * 81,
+            },
+            "invalid explanation text",
+        ),
+    ],
+)
+def test_qwen_boundary_mirrors_schema_size_limits(
+    section: dict[str, object],
+    reason: str,
+) -> None:
+    raw = json.dumps({key: section for key in ("summary", "board_a", "board_b", "team_plan")})
+
+    result = validate_and_render_coach_output({"facts": _facts()}, raw)
+
+    assert result["validation"]["status"] == "rejected"
+    assert reason in result["validation"]["reasons"][0]

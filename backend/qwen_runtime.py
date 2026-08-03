@@ -12,6 +12,7 @@ import time
 import httpx
 
 from backend.config import Settings
+from backend.coach_output import MAX_FACT_IDS_PER_SECTION, MAX_SECTION_CHARS
 
 
 class QwenRuntime:
@@ -196,9 +197,9 @@ class QwenRuntime:
                 "fact_ids": {
                     "type": "array",
                     "items": fact_id_items,
-                    "maxItems": 6 if allowed else 0,
+                    "maxItems": MAX_FACT_IDS_PER_SECTION if allowed else 0,
                 },
-                "explanation": {"type": "string", "maxLength": 240},
+                "explanation": {"type": "string", "maxLength": MAX_SECTION_CHARS},
             },
             "required": ["fact_ids", "explanation"],
             "additionalProperties": False,
