@@ -31,7 +31,7 @@ def main() -> None:
     build_pdf(
         source=REPORTS / "INSTALLATION_AND_ENRICHMENT_GUIDE.md",
         output=REPORTS / "The_Jimmy_App_Installation_and_Enrichment_Guide.pdf",
-        subtitle="Installation, Chess.com import, pgn-info enrichment, and troubleshooting",
+        subtitle="Installation, completed-game import, paired PGNs, and troubleshooting",
     )
 
 

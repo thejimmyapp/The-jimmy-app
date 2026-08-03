@@ -100,6 +100,28 @@ class BughouseTimelineTests(unittest.TestCase):
         self.assertEqual(frames[-1].board_a.ply, 2)
         self.assertEqual(frames[-1].board_b.ply, 2)
 
+    def test_global_timeline_marks_missing_cross_board_clocks_as_approximate(self) -> None:
+        main = [move(1, "e2e4", "white")]
+        partner = [move(1, "d2d4", "white")]
+
+        frames = build_global_replay_frames(main, partner)
+
+        self.assertIn("Cross-board move order is approximate", frames[-1].board_a.warning)
+        self.assertIn("Cross-board move order is approximate", frames[-1].board_b.warning)
+        self.assertEqual(frames[-1].board_a.confidence, "low")
+
+    def test_global_timeline_stops_a_board_after_an_illegal_source_move(self) -> None:
+        main = [
+            move(1, "P@a1", "white", drop="P"),
+            move(2, "e2e4", "black"),
+        ]
+
+        frames = build_global_replay_frames(main, [])
+
+        self.assertEqual(frames[-1].board_a.ply, 0)
+        self.assertEqual(frames[-1].board_a.white_pocket, "-")
+        self.assertIn("Stopped before 1. P@a1", frames[-1].board_a.warning)
+
     def test_captured_promoted_piece_transfers_as_pawn(self) -> None:
         main_board = chess.variant.CrazyhouseBoard("4k3/4Q~3/8/8/8/8/8/4K3[] b - - 0 1")
         partner_board = chess.variant.CrazyhouseBoard()
@@ -117,6 +139,7 @@ class BughouseTimelineTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             _apply_bughouse_move(board, partner, illegal, transfer_to_partner=True)
+        self.assertEqual(board.pockets[chess.WHITE].count(chess.PAWN), 0)
 
 
 class ParserRegressionTests(unittest.TestCase):

@@ -4,17 +4,11 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ChessComConnectRequest(BaseModel):
     username: str = Field(min_length=2, max_length=25, pattern=r"^[A-Za-z0-9_-]+$")
-
-
-class ChessComEnrichRequest(BaseModel):
-    username: str = Field(min_length=2, max_length=25, pattern=r"^[A-Za-z0-9_-]+$")
-    curl_text: str = Field(min_length=40, max_length=100_000)
-    limit: int = Field(default=5000, ge=1, le=20_000)
 
 
 class PgnImportRequest(BaseModel):
@@ -24,24 +18,12 @@ class PgnImportRequest(BaseModel):
 
 
 class AnalysisRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     game_id: int = Field(gt=0)
     global_ply: int = Field(ge=0)
     board: Literal["A", "B"] = "A"
     depth: int = Field(default=10, ge=4, le=24)
-    variant_fen: str | None = Field(default=None, min_length=10, max_length=220)
-    board_a_fen: str | None = Field(default=None, min_length=10, max_length=220)
-    board_b_fen: str | None = Field(default=None, min_length=10, max_length=220)
-
-
-class CoachBoardInput(BaseModel):
-    variant_fen: str = Field(min_length=10, max_length=220)
-    side_to_move: str = Field(min_length=1, max_length=10)
-    white_pocket: str = Field(default="-", max_length=32)
-    black_pocket: str = Field(default="-", max_length=32)
-    white_clock: str = Field(default="-", max_length=16)
-    black_clock: str = Field(default="-", max_length=16)
-    from_square: str | None = Field(default=None, pattern=r"^[a-h][1-8]$")
-    to_square: str | None = Field(default=None, pattern=r"^[a-h][1-8]$")
 
 
 class CoachAnnotationInput(BaseModel):
@@ -52,27 +34,13 @@ class CoachAnnotationInput(BaseModel):
     color: str = Field(default="cyan", max_length=20)
 
 
-class CoachEngineSuggestion(BaseModel):
-    board: Literal["A", "B"]
-    bestmove: str | None = Field(default=None, max_length=24)
-    score_cp: int | None = None
-    mate_in: int | None = None
-    depth: int | None = Field(default=None, ge=1, le=99)
-    pv: list[str] = Field(default_factory=list, max_length=12)
-
-
 class CoachPrepareRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     game_id: int = Field(gt=0)
     global_ply: int = Field(ge=0)
     question: str = Field(min_length=3, max_length=1000)
-    username: str = Field(default="Player", min_length=1, max_length=40)
-    user_color: Literal["white", "black"] = "white"
-    orientation_a: Literal["white", "black"] = "white"
-    orientation_b: Literal["white", "black"] = "black"
-    board_a: CoachBoardInput | None = None
-    board_b: CoachBoardInput | None = None
     annotations: list[CoachAnnotationInput] = Field(default_factory=list, max_length=80)
-    engine_suggestions: list[CoachEngineSuggestion] = Field(default_factory=list, max_length=2)
 
 
 class LeakMapAnalysisRequest(BaseModel):

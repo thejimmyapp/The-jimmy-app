@@ -5,7 +5,7 @@ The production target is the FastAPI/React application. The Streamlit app remain
 | Capability | Local | Web | Source of truth | Conflict risk | Merge strategy |
 |---|---:|---:|---|---|---|
 | Chess.com public import | Yes | Yes | Web backend | Low | Keep FastAPI route and reuse `thejimmyapp` parsers. |
-| Authenticated two-board enrichment | Yes | Yes | Combination | High | Keep the web one-time connector and never persist credentials. |
+| Credential-free two-board import | Yes | Yes | FastAPI paired-PGN route | High | Keep completed paired-PGN import; do not accept copied sessions or reusable credentials. |
 | Coupled Bughouse reconstruction | Yes | Yes | `thejimmyapp` | High | Reuse the tested transfer and promoted-pawn rules. |
 | Two simultaneous boards | Yes | Yes | React | Medium | Preserve the React dual-board workspace on desktop. |
 | Pockets and clocks | Yes | Yes | `thejimmyapp` + React | High | Render reconstructed snapshots without duplicating pockets. |
@@ -16,17 +16,18 @@ The production target is the FastAPI/React application. The Streamlit app remain
 | Coaching statistics | Yes | Yes | `GameService.player_stats` + React | Medium | Web dashboard includes form, colors, ratings, partners, opponents, coverage and recurring leaks. |
 | Opening Explorer | Yes | No | Local modules | Medium | Add a dedicated web route and view in a later slice. |
 | Pattern Academy | Yes | Partial | Combination | Medium | Keep the web puzzle player and expand from local motifs. |
-| Coupled local AI coach | No | Yes | Fairy + coupled analyzer + Qwen | High | Qwen explains only validated engine/transfer facts and fails back to evidence when unavailable. |
+| Coupled local AI coach | No | Yes | Fairy + coupled analyzer + Qwen | High | Load stored replay positions server-side, render facts deterministically, and show Qwen commentary only after structural validation. |
 | Railway deployment | No | Yes | Web | High | Keep Docker, Alembic, static serving and Railway health checks. |
 
 ## Migration order
 
 1. Preserve the FastAPI/React deployment and collaboration architecture.
 2. Centralize the two-board coaching context in the backend.
-3. Add a zero-cost Team Coach workflow using a user-owned AI account.
-4. Harden health reporting and engine failure states.
-5. Verify the dual-board layout across desktop, tablet and mobile.
-6. Migrate Statistics, Opening Explorer and advanced training as independent product views.
+3. Keep the local Qwen Team Coach as an optional explanation layer after deterministic analysis.
+4. Bound public compute queues and expire completed job records.
+5. Harden health reporting and engine failure states.
+6. Verify the dual-board layout across desktop, tablet and mobile.
+7. Migrate Opening Explorer and advanced training as independent product views.
 
 ## Deliberately retained legacy code
 

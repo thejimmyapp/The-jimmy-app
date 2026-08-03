@@ -51,17 +51,24 @@ def test_outcome_calls_board_high_only_when_both_board_ratings_support_it() -> N
     assert outcome["summary"] == "LoserA was checkmated on the high board on move 27."
 
 
-def test_analysis_job_uses_the_exact_displayed_position() -> None:
+def test_analysis_job_uses_only_the_stored_completed_game_position() -> None:
     analyzed: list[str] = []
-    settings = SimpleNamespace(fairy_stockfish_path=Path("unused"), engine_timeout_seconds=1.0)
-    games = SimpleNamespace(snapshot=lambda *_: (_ for _ in ()).throw(AssertionError("snapshot fallback should not run")))
+    settings = SimpleNamespace(
+        fairy_stockfish_path=Path("unused"),
+        engine_timeout_seconds=1.0,
+        analysis_max_active_jobs=4,
+        analysis_max_job_records=100,
+        analysis_cache_records=200,
+        compute_job_ttl_seconds=900,
+    )
+    fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR[] b KQkq - 0 1"
+    games = SimpleNamespace(snapshot=lambda *_: {"board_a": {"variant_fen": fen}, "board_b": None})
     jobs = AnalysisJobs(settings, games)
-    jobs.jobs["job"] = {"status": "queued", "engine": "Fairy-Stockfish", "board": "A", "global_ply": 8, "depth": 10}
+    job_id = jobs.registry.reserve({"status": "queued", "engine": "Fairy-Stockfish", "board": "A", "global_ply": 8, "depth": 10})
     jobs._analyze = lambda fen, _config: analyzed.append(fen) or {"bestmove": "e2e4", "depth": 10}  # type: ignore[method-assign]
 
-    fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR[] b KQkq - 0 1"
-    asyncio.run(jobs._run("job", 1, 8, "A", 10, fen, fen, None))
+    asyncio.run(jobs._run(job_id, 1, 8, "A", 10))
 
     assert analyzed == [fen]
-    assert jobs.jobs["job"]["status"] == "completed"
-    assert jobs.jobs["job"]["result"] == {"bestmove": "e2e4", "depth": 10}
+    assert jobs.get(job_id)["status"] == "completed"
+    assert jobs.get(job_id)["result"] == {"bestmove": "e2e4", "depth": 10}
