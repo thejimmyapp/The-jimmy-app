@@ -3,6 +3,12 @@ from __future__ import annotations
 import json
 from typing import Any, Iterable
 
+from backend.coach_output import (
+    MAX_COMMENTARY_WORDS,
+    MAX_FACT_IDS_PER_SECTION,
+    MAX_SECTION_CHARS,
+    MAX_SECTION_WORDS,
+)
 from backend.coupled_analysis import analyze_coupled_position
 from backend.schemas import CoachPrepareRequest
 from backend.services import GameService
@@ -234,7 +240,7 @@ Hard constraints:
 
 Return one strict JSON object and no Markdown. Use exactly these keys:
 {{"summary": {{"fact_ids": [], "explanation": ""}}, "board_a": {{"fact_ids": [], "explanation": ""}}, "board_b": {{"fact_ids": [], "explanation": ""}}, "team_plan": {{"fact_ids": [], "explanation": ""}}}}
-Every fact_ids entry must be an exact key from fact_catalog. Explanations may discuss why cited facts matter, but must not restate raw moves, clocks, evaluations, mate counts, sides to move, transfers, or urgency labels. The application renders those values deterministically. Keep the combined explanation under 100 words.
+Every fact_ids entry must be an exact key from fact_catalog. Cite at most {MAX_FACT_IDS_PER_SECTION} fact per section. Explanations may discuss why cited facts matter, but must not restate raw moves, clocks, evaluations, mate counts, sides to move, transfers, or urgency labels. The application renders those values deterministically. Use one sentence of at most {MAX_SECTION_WORDS} words and {MAX_SECTION_CHARS} characters per section; keep the combined explanation within {MAX_COMMENTARY_WORDS} words.
 
 VALIDATED INPUT
 {serialized}
