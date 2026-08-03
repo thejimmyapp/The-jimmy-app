@@ -55,6 +55,8 @@ class Database:
 
                 CREATE INDEX IF NOT EXISTS idx_games_username_end_time
                     ON games(username, end_time DESC);
+                CREATE INDEX IF NOT EXISTS idx_games_url
+                    ON games(url);
                 CREATE INDEX IF NOT EXISTS idx_games_username_result
                     ON games(username, result);
 
@@ -1116,6 +1118,25 @@ class Database:
                 (game_id,),
             ).fetchone()
         return dict(row) if row else None
+
+    def find_games_by_urls(self, urls: tuple[str, ...]) -> list[dict[str, object]]:
+        if not urls:
+            return []
+        placeholders = ", ".join("?" for _ in urls)
+        with closing(self.connect()) as conn:
+            rows = conn.execute(
+                f"SELECT id FROM games WHERE url IN ({placeholders})",
+                urls,
+            ).fetchall()
+        return [game for row in rows if (game := self.get_game(int(row["id"]))) is not None]
+
+    def get_game_by_username_url(self, username: str, url: str) -> dict[str, object] | None:
+        with closing(self.connect()) as conn:
+            row = conn.execute(
+                "SELECT id FROM games WHERE username = ? AND url = ?",
+                (username.lower(), url),
+            ).fetchone()
+        return self.get_game(int(row["id"])) if row else None
 
     def list_game_pgns(self, username: str, limit: int = 1000) -> list[str]:
         with closing(self.connect()) as conn:

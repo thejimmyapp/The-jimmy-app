@@ -29,6 +29,7 @@ from backend.qwen_runtime import QwenRuntime
 from backend.schemas import (
     AnalysisRequest,
     ChessComConnectRequest,
+    ChessComGameResolveRequest,
     CoachPrepareRequest,
     ExplorationMoveRequest,
     ExplorationSanMoveRequest,
@@ -40,6 +41,7 @@ from backend.schemas import (
     RoomJoinRequest,
     SocketEvent,
 )
+from backend.game_resolution import canonical_chesscom_game_urls, normalize_chesscom_game_url
 from thejimmyapp.chesscom_api import parse_pgn_headers
 from thejimmyapp.game_completion import is_completed_pgn, pgn_result, player_results
 from backend.services import AnalysisJobs, GameService
@@ -125,6 +127,65 @@ def list_bughouse_games(username: str, limit: int = Query(default=500, ge=1, le=
     return {"username": username, "games": games.list_games(username, limit)}
 
 
+@app.post("/api/games/resolve")
+async def resolve_chesscom_game(request: ChessComGameResolveRequest) -> dict[str, object]:
+    try:
+        external_game_id = normalize_chesscom_game_url(request.url)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "unsupported_game_url", "message": str(exc)},
+        ) from exc
+
+    canonical_urls = canonical_chesscom_game_urls(external_game_id)
+    payload = games.resolve_stored_game(canonical_urls, request.username)
+    source = "stored"
+    if payload is None and request.username:
+        service = ChessComService(settings)
+        try:
+            imported = await service.find_exact_game(request.username, external_game_id)
+        except RuntimeError as exc:
+            raise HTTPException(
+                status_code=429,
+                detail={"code": "chesscom_rate_limited", "message": str(exc)},
+            ) from exc
+        except ValueError:
+            imported = None
+        except Exception as exc:
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "code": "chesscom_archive_unavailable",
+                    "message": "Chess.com public archives are temporarily unavailable",
+                },
+            ) from exc
+        if imported is not None:
+            games.db.upsert_game(request.username, imported)
+            payload = games.resolve_stored_game(canonical_urls, request.username)
+            source = "chesscom_public_archive"
+
+    if payload is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "game_not_found",
+                "message": "That exact completed Bughouse game was not found in the available data.",
+                "external_game_id": external_game_id,
+            },
+        )
+
+    game = payload.get("game")
+    if not isinstance(game, dict) or not isinstance(game.get("id"), int):
+        raise HTTPException(status_code=500, detail="Resolved game is unavailable")
+    return {
+        "status": "resolved",
+        "source": source,
+        "external_game_id": external_game_id,
+        "game_id": game["id"],
+        "game": payload,
+    }
+
+
 @app.get("/api/games/{game_id}")
 def get_game(game_id: int) -> dict[str, object]:
     if games.db.get_game(game_id) and not games.is_completed_game(game_id):
@@ -157,8 +218,9 @@ def import_pgn(request: PgnImportRequest) -> dict[str, object]:
     if request.username.lower() not in {white_name.lower(), black_name.lower()}:
         raise HTTPException(status_code=422, detail="The importing username must be a player on Board A")
     game_key = uuid4()
+    manual_url = f"manual://{game_key}"
     raw_game = {
-        "url": f"manual://{game_key}",
+        "url": manual_url,
         "uuid": str(game_key),
         "pgn": request.pgn,
         "rules": "bughouse",
@@ -174,7 +236,15 @@ def import_pgn(request: PgnImportRequest) -> dict[str, object]:
         raw_game["bughousePartnerPlayer1Name"] = partner_headers.get("White") or "White"
         raw_game["bughousePartnerPlayer2Name"] = partner_headers.get("Black") or "Black"
     created = games.db.upsert_game(request.username, raw_game)
-    return {"created": created, "source": "manual", "second_board_supplied": bool(request.second_board_pgn)}
+    stored = games.db.get_game_by_username_url(request.username, manual_url)
+    if not stored:
+        raise HTTPException(status_code=500, detail="Imported game could not be opened")
+    return {
+        "created": created,
+        "source": "manual",
+        "second_board_supplied": bool(request.second_board_pgn),
+        "game_id": stored["id"],
+    }
 
 
 @app.get("/api/games/{game_id}/snapshot/{global_ply}")

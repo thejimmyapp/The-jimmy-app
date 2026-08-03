@@ -34,4 +34,8 @@ describe("replay integrity notices", () => {
       "Board A at this move: Stopped before 4. N@f7: move is not legal",
     ]);
   });
+
+  it("leaves the incomplete-board explanation to the actionable Board B state", () => {
+    expect(replayNotices({ ...game, limitations: ["Second board unavailable"] }, position(), null)).toEqual([]);
+  });
 });

@@ -1,10 +1,28 @@
 import type { BoardId, CoachJob, CoachPreparedPayload, CoachPrepareRequest, ExplorationMoveResult, GamePayload, GameSummary, LeakMapJob, PlayerStats, PuzzleMove, PuzzlePayload, PuzzleResponse, QwenStatus, RoomPayload } from "./types";
 
+type ApiErrorDetail = { code?: string; message?: string; external_game_id?: string };
+
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code?: string;
+  readonly externalGameId?: string;
+
+  constructor(status: number, message: string, detail?: ApiErrorDetail) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = detail?.code;
+    this.externalGameId = detail?.external_game_id;
+  }
+}
+
 const json = async <T>(responsePromise: Promise<Response>): Promise<T> => {
   const response = await responsePromise;
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(body.detail ?? `Request failed (${response.status})`);
+    const body = (await response.json().catch(() => ({}))) as { detail?: string | ApiErrorDetail };
+    const detail = typeof body.detail === "object" && body.detail ? body.detail : undefined;
+    const message = typeof body.detail === "string" ? body.detail : detail?.message ?? `Request failed (${response.status})`;
+    throw new ApiError(response.status, message, detail);
   }
   return response.json() as Promise<T>;
 };
@@ -19,11 +37,19 @@ export const api = {
       }),
     ),
   importPgn: (username: string, pgn: string, secondBoardPgn: string) =>
-    json<{ created: boolean; source: "manual"; second_board_supplied: boolean }>(
+    json<{ created: boolean; source: "manual"; second_board_supplied: boolean; game_id: number }>(
       fetch("/api/games/import-pgn", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, pgn, second_board_pgn: secondBoardPgn }),
+      }),
+    ),
+  resolveGame: (url: string, username?: string) =>
+    json<{ status: "resolved"; source: "stored" | "chesscom_public_archive"; external_game_id: string; game_id: number; game: GamePayload }>(
+      fetch("/api/games/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, username: username || null }),
       }),
     ),
   games: (username: string) =>

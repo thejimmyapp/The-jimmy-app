@@ -28,6 +28,31 @@ class GameService:
         game = self.db.get_game(game_id)
         return bool(game and is_completed_stored_game(game))
 
+    def resolve_stored_game(self, urls: tuple[str, ...], username: str | None = None) -> dict[str, object] | None:
+        completed = [game for game in self.db.find_games_by_urls(urls) if is_completed_stored_game(game)]
+        if not completed:
+            return None
+
+        normalized_username = username.lower() if username else None
+        candidates = [
+            (game, payload)
+            for game in completed
+            if (payload := self.get_game_payload(int(game["id"]))) is not None
+        ]
+        if not candidates:
+            return None
+
+        def priority(candidate: tuple[dict[str, object], dict[str, object]]) -> tuple[bool, bool, int, int]:
+            game, payload = candidate
+            return (
+                bool(payload.get("second_board_available")),
+                bool(normalized_username and game.get("username") == normalized_username),
+                int(game.get("end_time") or 0),
+                int(game.get("id") or 0),
+            )
+
+        return max(candidates, key=priority)[1]
+
     def get_game_payload(self, game_id: int) -> dict[str, object] | None:
         game = self.db.get_game(game_id)
         if not game or not is_completed_stored_game(game):
