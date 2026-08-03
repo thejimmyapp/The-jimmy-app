@@ -50,7 +50,12 @@ class CoachJobs:
                 )
                 self._update(job_id, "running", "Qwen is writing the coaching explanation")
                 try:
-                    raw_output = await self.qwen.explain(str(prepared["prompt"]))
+                    facts = prepared.get("facts") if isinstance(prepared.get("facts"), dict) else {}
+                    catalog = facts.get("catalog") if isinstance(facts.get("catalog"), dict) else {}
+                    raw_output = await self.qwen.explain(
+                        str(prepared["prompt"]),
+                        fact_ids=tuple(str(item) for item in catalog),
+                    )
                     rendered = validate_and_render_coach_output(prepared, raw_output)
                     explanation = str(rendered["answer"])
                     qwen_commentary = rendered["qwen_commentary"]
@@ -84,11 +89,11 @@ class CoachJobs:
         snapshot = await asyncio.to_thread(self.games.snapshot, request.game_id, request.global_ply)
         if not snapshot:
             raise RuntimeError("Stored replay position is unavailable")
-        suggestions: list[dict[str, object]] = []
-        for board_id, key in (("A", "board_a"), ("B", "board_b")):
+
+        async def analyze_board(board_id: str, key: str) -> dict[str, object] | None:
             board = snapshot.get(key)
             if not isinstance(board, dict) or not board.get("variant_fen"):
-                continue
+                return None
             config = EngineConfig(
                 path=self.settings.fairy_stockfish_path,
                 depth=self.settings.engine_depth,
@@ -98,14 +103,20 @@ class CoachJobs:
                 asyncio.to_thread(self._analyze, str(board["variant_fen"]), config),
                 timeout=self.settings.engine_timeout_seconds + 2,
             )
-            suggestions.append({
+            return {
                 "board": board_id,
                 "bestmove": result.get("bestmove"),
                 "score_cp": result.get("score_cp"),
                 "mate_in": result.get("mate_in"),
                 "depth": result.get("depth"),
                 "pv": list(result.get("pv") or [])[:12],
-            })
+            }
+
+        results = await asyncio.gather(
+            analyze_board("A", "board_a"),
+            analyze_board("B", "board_b"),
+        )
+        suggestions = [result for result in results if result is not None]
         if not suggestions:
             raise RuntimeError("No board position is available for Fairy-Stockfish")
         return suggestions

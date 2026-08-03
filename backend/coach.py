@@ -214,7 +214,13 @@ def _known_value(value: object) -> object | None:
 
 
 def _build_prompt(context: dict[str, Any]) -> str:
-    serialized = json.dumps(context, ensure_ascii=True, indent=2, separators=(",", ": "))
+    facts = context.get("facts") if isinstance(context.get("facts"), dict) else {}
+    prompt_context = {
+        "question": context.get("question"),
+        "fact_catalog": facts.get("catalog") if isinstance(facts.get("catalog"), dict) else {},
+        "missing_data": facts.get("missing_data") if isinstance(facts.get("missing_data"), list) else [],
+    }
+    serialized = json.dumps(prompt_context, ensure_ascii=True, separators=(",", ":"))
     return f"""You are the explanation layer of a Bughouse coaching pipeline. You do not calculate chess moves. Answer the user's question using only the validated facts below.
 
 Hard constraints:
@@ -222,13 +228,14 @@ Hard constraints:
 - Never propose a move that is absent from the fact catalog.
 - Never invent a transfer, pocket piece, clock, mate, evaluation or missing board.
 - Never infer side to move from board orientation.
+- A captured piece transfers to the capturing player's partner board; the deterministic application renders verified transfers.
 - Explain how verified captures change the other board and prioritize partner danger.
 - If evidence is incomplete, say exactly what is missing.
 
 Return one strict JSON object and no Markdown. Use exactly these keys:
 {{"summary": {{"fact_ids": [], "explanation": ""}}, "board_a": {{"fact_ids": [], "explanation": ""}}, "board_b": {{"fact_ids": [], "explanation": ""}}, "team_plan": {{"fact_ids": [], "explanation": ""}}}}
-Every fact_ids entry must be an exact key from context.facts.catalog. Explanations may discuss why cited facts matter, but must not restate raw moves, clocks, evaluations, mate counts, sides to move, transfers, or urgency labels. The application renders those values deterministically. Keep the combined explanation under 180 words.
+Every fact_ids entry must be an exact key from fact_catalog. Explanations may discuss why cited facts matter, but must not restate raw moves, clocks, evaluations, mate counts, sides to move, transfers, or urgency labels. The application renders those values deterministically. Keep the combined explanation under 100 words.
 
-POSITION CONTEXT
+VALIDATED INPUT
 {serialized}
 """

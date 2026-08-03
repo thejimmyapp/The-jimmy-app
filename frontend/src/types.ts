@@ -216,6 +216,12 @@ export interface QwenStatus {
   temperature: number;
   top_p: number;
   reasoning_budget: number;
+  threads?: number;
+  batch_threads?: number;
+  timeout_seconds?: number;
+  last_generation_seconds?: number | null;
+  last_prompt_chars?: number;
+  last_output_chars?: number;
 }
 
 export interface CoachJob {

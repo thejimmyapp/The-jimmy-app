@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
+import threading
 from types import SimpleNamespace
 
 from backend.coach_jobs import CoachJobs
@@ -49,7 +50,8 @@ class FakeGames:
 
 
 class FakeQwen:
-    async def explain(self, _prompt: str) -> str:
+    async def explain(self, _prompt: str, *, fact_ids: tuple[str, ...] = ()) -> str:
+        assert "board_a.best_move" in fact_ids
         section = {
             "fact_ids": ["board_a.best_move"],
             "explanation": "The cited engine candidate should anchor the plan.",
@@ -71,9 +73,11 @@ def test_coach_job_analyzes_only_server_loaded_snapshots() -> None:
     )
     manager = CoachJobs(settings, FakeGames(), FakeQwen())
     analyzed: list[str] = []
+    both_boards_started = threading.Barrier(2)
 
     def fake_analyze(fen: str, _config) -> dict[str, object]:
         analyzed.append(fen)
+        both_boards_started.wait(timeout=1)
         return {
             "bestmove": "g1f3" if fen == START_A else "g8f6",
             "score_cp": 0,
@@ -99,7 +103,7 @@ def test_coach_job_analyzes_only_server_loaded_snapshots() -> None:
 
     job = asyncio.run(run_job())
 
-    assert analyzed == [START_A, START_B]
+    assert set(analyzed) == {START_A, START_B}
     assert job["status"] == "completed"
     assert job["result"]["prepared"]["facts"]["global_ply"] == 4
     assert job["result"]["validation"]["status"] == "passed"

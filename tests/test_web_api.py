@@ -37,8 +37,10 @@ def test_coach_status_and_stats_username_validation() -> None:
         status_response = client.get("/api/coach/status")
         assert status_response.status_code == 200
         assert status_response.json()["temperature"] == 0.15
-        assert status_response.json()["context_size"] == 4096
-        assert status_response.json()["max_tokens"] == 384
+        assert status_response.json()["context_size"] == 2048
+        assert status_response.json()["max_tokens"] == 256
+        assert status_response.json()["threads"] == 4
+        assert status_response.json()["timeout_seconds"] == 90
         assert status_response.json()["reasoning_budget"] == 0
         invalid = client.get("/api/stats/not%20valid")
         assert invalid.status_code == 400

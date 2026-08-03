@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import re
 import shutil
@@ -19,6 +20,9 @@ class QwenRuntime:
         self._lock = asyncio.Lock()
         self._state = "disabled" if not settings.qwen_enabled else "not_downloaded"
         self._detail = "Qwen is disabled" if not settings.qwen_enabled else "Model downloads on first use"
+        self._last_generation_seconds: float | None = None
+        self._last_prompt_chars = 0
+        self._last_output_chars = 0
 
     def status(self) -> dict[str, object]:
         model_exists = self.settings.qwen_model_path.is_file()
@@ -46,9 +50,15 @@ class QwenRuntime:
             "temperature": self.settings.qwen_temperature,
             "top_p": self.settings.qwen_top_p,
             "reasoning_budget": self.settings.qwen_reasoning_budget,
+            "threads": self.settings.qwen_threads,
+            "batch_threads": self.settings.qwen_batch_threads,
+            "timeout_seconds": self.settings.qwen_timeout_seconds,
+            "last_generation_seconds": self._last_generation_seconds,
+            "last_prompt_chars": self._last_prompt_chars,
+            "last_output_chars": self._last_output_chars,
         }
 
-    async def explain(self, prompt: str) -> str:
+    async def explain(self, prompt: str, *, fact_ids: tuple[str, ...] = ()) -> str:
         if not self.settings.qwen_enabled:
             raise RuntimeError("Local Qwen coaching is disabled")
         async with self._lock:
@@ -57,7 +67,7 @@ class QwenRuntime:
             self._detail = "Qwen is explaining validated engine facts"
             try:
                 answer = await asyncio.wait_for(
-                    asyncio.to_thread(self._run_cli, prompt),
+                    asyncio.to_thread(self._run_cli, prompt, fact_ids),
                     timeout=self.settings.qwen_timeout_seconds,
                 )
             except Exception as exc:
@@ -107,8 +117,9 @@ class QwenRuntime:
             raise RuntimeError("Downloaded Qwen file is unexpectedly small")
         os.replace(temporary, target)
 
-    def _run_cli(self, prompt: str) -> str:
+    def _run_cli(self, prompt: str, fact_ids: tuple[str, ...] = ()) -> str:
         prompt_file = None
+        self._last_prompt_chars = len(prompt)
         try:
             with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".txt", delete=False) as handle:
                 handle.write(prompt)
@@ -131,8 +142,13 @@ class QwenRuntime:
                 "off",
                 "--threads",
                 str(self.settings.qwen_threads),
+                "--threads-batch",
+                str(self.settings.qwen_batch_threads),
+                "--json-schema",
+                json.dumps(self._output_schema(fact_ids), separators=(",", ":")),
                 "--conversation",
                 "--single-turn",
+                "--no-warmup",
                 "--log-disable",
                 "--no-show-timings",
                 "--no-display-prompt",
@@ -141,15 +157,18 @@ class QwenRuntime:
                 prompt_file,
             ]
             started = time.monotonic()
-            completed = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=self.settings.qwen_timeout_seconds - 2,
-                check=False,
-            )
+            try:
+                completed = subprocess.run(
+                    command,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=self.settings.qwen_timeout_seconds - 2,
+                    check=False,
+                )
+            finally:
+                self._last_generation_seconds = round(time.monotonic() - started, 2)
         finally:
             if prompt_file:
                 try:
@@ -162,7 +181,34 @@ class QwenRuntime:
         answer = self._extract_answer(completed.stdout)
         if not answer:
             raise RuntimeError("Qwen returned an empty coaching explanation")
-        return answer + f"\n\n[Generated locally in {time.monotonic() - started:.1f}s]"
+        self._last_output_chars = len(answer)
+        return answer
+
+    @staticmethod
+    def _output_schema(fact_ids: tuple[str, ...]) -> dict[str, object]:
+        allowed = sorted(set(fact_ids))
+        fact_id_items: dict[str, object] = {"type": "string"}
+        if allowed:
+            fact_id_items["enum"] = allowed
+        section = {
+            "type": "object",
+            "properties": {
+                "fact_ids": {
+                    "type": "array",
+                    "items": fact_id_items,
+                    "maxItems": 6 if allowed else 0,
+                },
+                "explanation": {"type": "string", "maxLength": 240},
+            },
+            "required": ["fact_ids", "explanation"],
+            "additionalProperties": False,
+        }
+        return {
+            "type": "object",
+            "properties": {name: section for name in ("summary", "board_a", "board_b", "team_plan")},
+            "required": ["summary", "board_a", "board_b", "team_plan"],
+            "additionalProperties": False,
+        }
 
     @staticmethod
     def _extract_answer(output: str) -> str:

@@ -68,7 +68,9 @@ def test_coach_prompt_couples_both_boards_without_shared_api_key() -> None:
     assert result["board_b"]["available"] is True
     assert "captured piece transfers" in result["prompt"]
     assert "N@f7" in result["prompt"]
-    assert '"board": "B"' in result["prompt"]
+    assert "board_b.side_to_move" in result["prompt"]
+    assert "variant_fen" not in result["prompt"]
+    assert len(result["prompt"]) < 3_500
     assert "No external AI API key" in result["privacy"]
     assert result["context"]["coupled_analysis"]["source_of_truth"].startswith("deterministic")
     assert result["facts"]["boards"]["B"]["side_to_move"] == "Black"
