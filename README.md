@@ -66,9 +66,26 @@ The public app does not contain a shared hosted-AI API key. Its coaching pipelin
 
 The GGUF model is not committed to Git and is not embedded in the Docker image. On first use, Railway downloads `Qwen3.5-4B-Q4_K_M.gguf` to the attached persistent volume. `llama-cli` runs once per review and exits after the response so its RAM is released. If the model, binary, storage or memory is unavailable, the app returns the validated Fairy/coupled evidence without inventing a LLM answer.
 
-The default runtime uses a `4096` context, `384` maximum output tokens, `0.15` temperature and `0.85` top-p. It runs one templated conversation turn with reasoning disabled and a reasoning budget of `0`: Fairy-Stockfish and the coupled validator perform the tactical work, while Qwen writes optional concise commentary. Public Coach and leak-map work is process-locally bounded by active-job and retained-record caps; completed job records expire after 15 minutes by default.
+The default runtime uses a compact fact-only prompt, a `2048` context, `256` maximum output tokens, four generation/batch threads, `0.15` temperature and `0.85` top-p. It runs one schema-constrained conversation turn with reasoning and one-shot warmup disabled, capped at 90 seconds: Fairy-Stockfish and the coupled validator perform the tactical work, while Qwen writes optional concise commentary. Both boards are analyzed concurrently. Public Coach and leak-map work is process-locally bounded by active-job and retained-record caps; completed job records expire after 15 minutes by default.
 
 Recommended Railway settings are a Hobby volume of at least 5 GB mounted at `/app/data`, enough RAM for the 2.71 GB quantized model plus context, and a spending limit. CPU inference can take significantly longer than Fairy-Stockfish analysis.
+
+### Verification
+
+Pull requests and `main` run backend tests/correctness checks, frontend tests,
+lint, the Vite build, and the production Docker build through
+`.github/workflows/ci.yml`. The **Production smoke** workflow can run the same
+read-only post-deploy checks from GitHub's Actions tab.
+
+After a deployment, run the read-only production smoke check:
+
+```bash
+python scripts/production_smoke.py --game-id 160643
+```
+
+Override `--base-url` to inspect another environment. The command never imports,
+deletes, or analyzes a game; the optional game ID only verifies an existing
+stored replay and its initial snapshot.
 
 ### Player Statistics
 

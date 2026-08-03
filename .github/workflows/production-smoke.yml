@@ -1,0 +1,41 @@
+name: Production smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Deployment URL to inspect
+        required: true
+        default: https://jimmyapp-production.up.railway.app
+        type: string
+      game_id:
+        description: Optional existing completed-game ID
+        required: false
+        default: "160643"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Read-only production checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install smoke dependency
+        run: python -m pip install "httpx>=0.28,<1"
+      - name: Check deployment
+        env:
+          BASE_URL: ${{ inputs.base_url }}
+          GAME_ID: ${{ inputs.game_id }}
+        run: |
+          args=(--base-url "$BASE_URL")
+          if [[ -n "$GAME_ID" ]]; then
+            args+=(--game-id "$GAME_ID")
+          fi
+          python scripts/production_smoke.py "${args[@]}"

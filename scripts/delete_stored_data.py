@@ -9,8 +9,8 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from backend.config import get_settings
-from thejimmyapp.data_deletion import DeletionRequest, process_deletion
+from backend.config import get_settings  # noqa: E402
+from thejimmyapp.data_deletion import DeletionRequest, process_deletion  # noqa: E402
 
 
 def main() -> int:

@@ -74,13 +74,14 @@ class Settings(BaseSettings):
         default_factory=lambda: _runtime_data_dir() / "models" / "Qwen3.5-4B-Q4_K_M.gguf"
     )
     llama_cli_path: Path = ROOT_DIR / "llama" / "llama-cli"
-    qwen_context_size: int = Field(default=4096, ge=2048, le=32768)
-    qwen_max_tokens: int = Field(default=384, ge=128, le=4096)
+    qwen_context_size: int = Field(default=2048, ge=1024, le=32768)
+    qwen_max_tokens: int = Field(default=256, ge=128, le=4096)
     qwen_temperature: float = Field(default=0.15, ge=0, le=1)
     qwen_top_p: float = Field(default=0.85, gt=0, le=1)
     qwen_reasoning_budget: int = Field(default=0, ge=-1, le=512)
-    qwen_threads: int = Field(default=2, ge=1, le=16)
-    qwen_timeout_seconds: float = Field(default=180, ge=30, le=900)
+    qwen_threads: int = Field(default=4, ge=1, le=16)
+    qwen_batch_threads: int = Field(default=4, ge=1, le=16)
+    qwen_timeout_seconds: float = Field(default=90, ge=30, le=900)
     qwen_min_free_bytes: int = 3_200_000_000
 
     @property
