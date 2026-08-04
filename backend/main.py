@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 import logging
 import re
@@ -29,6 +30,7 @@ from backend.qwen_runtime import QwenRuntime
 from backend.schemas import (
     AnalysisRequest,
     ChessComConnectRequest,
+    ChessComEnrichRequest,
     ChessComGameResolveRequest,
     CoachPrepareRequest,
     ExplorationMoveRequest,
@@ -43,6 +45,7 @@ from backend.schemas import (
 )
 from backend.game_resolution import canonical_chesscom_game_urls, normalize_chesscom_game_url
 from thejimmyapp.chesscom_api import parse_pgn_headers
+from thejimmyapp.chesscom_pgn_info import PgnInfoClient, merge_pgn_info, parse_curl_auth
 from thejimmyapp.game_completion import is_completed_pgn, pgn_result, player_results
 from backend.services import AnalysisJobs, GameService
 
@@ -120,6 +123,45 @@ async def connect_chesscom(request: ChessComConnectRequest) -> dict[str, object]
         "bughouse_games_found": len(imported),
         "new_games_stored": stored,
     }
+
+
+@app.post("/api/chesscom/enrich")
+async def enrich_chesscom(request: ChessComEnrichRequest) -> dict[str, object]:
+    try:
+        return await asyncio.to_thread(_enrich_from_curl, request.username, request.curl_text, request.limit)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def _enrich_from_curl(username: str, curl_text: str, limit: int) -> dict[str, object]:
+    client = PgnInfoClient(auth=parse_curl_auth(curl_text))
+    candidates = games.db.list_games_for_pgn_info_enrichment(username, limit=limit)
+    enriched_count = 0
+    checked_count = 0
+    for start in range(0, len(candidates), 100):
+        batch = candidates[start : start + 100]
+        payloads = client.fetch_for_games(batch)
+        checked_count += len(batch)
+        for raw_game in batch:
+            game_id = _raw_chesscom_game_id(raw_game)
+            enriched = payloads.get(game_id) if game_id else None
+            if enriched:
+                games.db.upsert_game(username, merge_pgn_info(raw_game, enriched))
+                enriched_count += 1
+    return {
+        "checked": checked_count,
+        "enriched": enriched_count,
+        "remaining_without_second_board": max(0, len(candidates) - enriched_count),
+        "credentials_stored": False,
+    }
+
+
+def _raw_chesscom_game_id(game: dict[str, object]) -> str | None:
+    for key in ("game_id", "gameId", "id"):
+        if game.get(key) is not None:
+            return str(game[key])
+    match = re.search(r"/(?:live|daily)/(\d+)", str(game.get("url") or ""))
+    return match.group(1) if match else None
 
 
 @app.get("/api/chesscom/{username}/bughouse-games")

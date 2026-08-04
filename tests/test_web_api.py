@@ -313,18 +313,31 @@ def test_exploration_lists_legal_targets_for_piece_selection() -> None:
     assert payload["legal_destinations"] == ["f3", "h3"]
 
 
-def test_authenticated_session_connector_is_not_exposed() -> None:
+def test_authenticated_session_connector_enriches_without_storing_credentials() -> None:
+    curl_text = (
+        "curl 'https://www.chess.com/callback/game/pgn-info' "
+        "-H 'content-type: application/json' "
+        "-b 'session=fake' "
+        "--data-raw '{\"_token\":\"fake\"}'"
+    )
     with TestClient(app) as client:
         response = client.post(
             "/api/chesscom/enrich",
-            json={"username": "fixture-user", "curl_text": "credential material", "limit": 10},
+            json={"username": "fixture-user", "curl_text": curl_text, "limit": 10},
         )
         openapi = client.get("/openapi.json").json()
         paths = openapi["paths"]
         schemas = openapi["components"]["schemas"]
-    assert response.status_code in {404, 405}
-    assert "/api/chesscom/enrich" not in paths
-    assert "ChessComEnrichRequest" not in schemas
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "checked": 0,
+        "enriched": 0,
+        "remaining_without_second_board": 0,
+        "credentials_stored": False,
+    }
+    assert "/api/chesscom/enrich" in paths
+    assert "ChessComEnrichRequest" in schemas
 
 
 def test_engine_and_coach_contracts_reject_client_position_authority() -> None:

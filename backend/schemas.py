@@ -11,6 +11,14 @@ class ChessComConnectRequest(BaseModel):
     username: str = Field(min_length=2, max_length=25, pattern=r"^[A-Za-z0-9_-]+$")
 
 
+class ChessComEnrichRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    username: str = Field(min_length=2, max_length=25, pattern=r"^[A-Za-z0-9_-]+$")
+    curl_text: str = Field(min_length=40, max_length=100_000)
+    limit: int = Field(default=5000, ge=1, le=20_000)
+
+
 class ChessComGameResolveRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

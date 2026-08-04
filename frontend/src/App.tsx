@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, BarChart3, Bot, Check, Copy, FileInput, LogOut, Palette, Radio, Redo2, RotateCcw, Settings, ShieldCheck, Swords, Undo2, UserRoundPlus, Users, X } from "lucide-react";
+import { AlertTriangle, BarChart3, Bot, Check, Copy, ExternalLink, FileInput, LogOut, Palette, Radio, Redo2, RotateCcw, Settings, ShieldCheck, Swords, Undo2, UserRoundPlus, Users, X } from "lucide-react";
 import { CSSProperties, FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "./api";
+import { buildChessComConnectorPrompt } from "./chesscomConnectorPrompt";
 import { bmachoUrlForGameId, bmachoUrlFromChessComUrl } from "./chesscomGameUrl";
 import { BoardPanel } from "./components/BoardPanel";
 import { LegalLinks } from "./components/LegalLinks";
@@ -75,8 +76,11 @@ export default function App() {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [usernameDraft, setUsernameDraft] = useState(store.username);
   const [manualImportOpen, setManualImportOpen] = useState(false);
+  const [authenticatedOpen, setAuthenticatedOpen] = useState(false);
   const [boardAPgn, setBoardAPgn] = useState("");
   const [boardBPgn, setBoardBPgn] = useState("");
+  const [curlText, setCurlText] = useState("");
+  const [setupPromptCopied, setSetupPromptCopied] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [reviewGameId, setReviewGameId] = useState<number | null>(() => {
     if (store.roomId) return null;
@@ -129,6 +133,14 @@ export default function App() {
       await queryClient.invalidateQueries({ queryKey: ["games"] });
     },
   });
+  const enrichMutation = useMutation({
+    mutationFn: () => api.enrichChessCom(usernameDraft.trim(), curlText),
+    onSuccess: async () => {
+      setCurlText("");
+      await queryClient.invalidateQueries({ queryKey: ["games"] });
+      setArchiveOpen(true);
+    },
+  });
   const roomMutation = useMutation({ mutationFn: () => api.createRoom(store.game?.game.id), onSuccess: async (room) => {
     joinedRoomRef.current = room.id;
     setShareCopied(false);
@@ -179,6 +191,12 @@ export default function App() {
     await navigator.clipboard.writeText(inviteUrl);
     setShareCopied(true);
     window.setTimeout(() => setShareCopied(false), 1800);
+  };
+  const connectorPrompt = buildChessComConnectorPrompt(location.origin);
+  const copyConnectorPrompt = async () => {
+    await navigator.clipboard.writeText(connectorPrompt);
+    setSetupPromptCopied(true);
+    window.setTimeout(() => setSetupPromptCopied(false), 1800);
   };
   const resolutionError = resolveMutation.error instanceof Error ? resolveMutation.error.message : undefined;
   const resolutionFallbackUrl = resolveMutation.error instanceof ApiError && resolveMutation.error.externalGameId
@@ -261,11 +279,11 @@ export default function App() {
       <TeamCoach open={coachOpen} onClose={() => setCoachOpen(false)} boardA={boardA} boardB={boardB} /></> : <StatsDashboard username={store.username} />}
       {connectOpen && (
         <div className="modal-backdrop" role="presentation">
-          <form className="connect-modal" onSubmit={connect}>
+          <form className={`connect-modal ${manualImportOpen || authenticatedOpen ? "connector-mode" : ""}`} onSubmit={connect}>
             <button type="button" className="modal-close" onClick={() => setConnectOpen(false)} aria-label="Close"><X /></button>
             <span className="modal-kicker">CHESS.COM CONNECTION</span>
             <h1>Connect your games</h1>
-            <p>Load public games by username, or paste both board PGNs for a complete credential-free replay.</p>
+            <p>Load public games by username, paste both board PGNs, or use advanced pgn-info enrichment for partner-board data.</p>
             <label>Chess.com username<input autoFocus value={usernameDraft} onChange={(event) => setUsernameDraft(event.target.value)} pattern="[A-Za-z0-9_-]+" minLength={2} maxLength={25} /></label>
             {connectMutation.error && <div className="form-error">{connectMutation.error.message}</div>}
             <button className="primary" disabled={connectMutation.isPending}>{connectMutation.isPending ? "Loading public archives…" : "Load public games"}</button>
@@ -282,6 +300,41 @@ export default function App() {
                 {importMutation.data && <div className="connector-success">Complete two-board game imported. No Chess.com credentials were used or stored.</div>}
                 <button type="button" className="primary" disabled={boardAPgn.trim().length < 8 || boardBPgn.trim().length < 8 || !usernameDraft.trim() || importMutation.isPending} onClick={importCompleteGame}>
                   {importMutation.isPending ? "Importing both boards…" : "Import complete game"}
+                </button>
+              </section>
+            )}
+            <button type="button" className="authenticated-toggle" onClick={() => setAuthenticatedOpen(!authenticatedOpen)}>
+              <Bot size={15} /> {authenticatedOpen ? "Hide advanced pgn-info" : "Advanced pgn-info enrichment"}
+            </button>
+            {authenticatedOpen && (
+              <section className="authenticated-panel">
+                <div className="connector-heading">
+                  <span className="connector-icon"><Bot size={18} /></span>
+                  <div>
+                    <strong>Recover partner boards from Chess.com pgn-info</strong>
+                    <p>Use only your own logged-in browser session. The cURL is used once and never stored.</p>
+                  </div>
+                </div>
+                <ol className="connector-checklist">
+                  <li><span>1</span><div><strong>Load public games first</strong><small>Use the username button above so the app knows which games to enrich.</small></div></li>
+                  <li><span>2</span><div><strong>Open Chess.com archive</strong><small>Stay logged into your own Chess.com account.</small></div></li>
+                  <li><span>3</span><div><strong>Copy one pgn-info request</strong><small>Paste it below. The app discards credentials after this request.</small></div></li>
+                </ol>
+                <a className="archive-link" href="https://www.chess.com/games/archive" target="_blank" rel="noreferrer"><ExternalLink size={13} /> Open Chess.com archive</a>
+                <div className="prompt-box">
+                  <div><strong>Codex helper prompt</strong><small>Generic for any Chess.com account</small></div>
+                  <button type="button" onClick={() => void copyConnectorPrompt()}>{setupPromptCopied ? <Check size={14} /> : <Copy size={14} />}{setupPromptCopied ? "Copied" : "Copy prompt"}</button>
+                  <textarea readOnly value={connectorPrompt} aria-label="Codex setup prompt" />
+                </div>
+                <div className="connector-privacy"><ShieldCheck size={15} /><span>Do not share this cURL in chat. Paste it only here; it is not saved by the app.</span></div>
+                <details className="manual-connector">
+                  <summary>Paste pgn-info cURL</summary>
+                  <textarea value={curlText} onChange={(event) => setCurlText(event.target.value)} placeholder="Paste the pgn-info cURL request" spellCheck={false} />
+                </details>
+                {enrichMutation.error && <div className="form-error">{enrichMutation.error.message}</div>}
+                {enrichMutation.data && <div className="connector-success">Checked {enrichMutation.data.checked} games. Enriched {enrichMutation.data.enriched}. Credentials stored: no.</div>}
+                <button type="button" className="primary" disabled={curlText.length < 40 || !usernameDraft.trim() || enrichMutation.isPending} onClick={() => enrichMutation.mutate()}>
+                  {enrichMutation.isPending ? "Loading partner boards..." : "Enrich existing games"}
                 </button>
               </section>
             )}

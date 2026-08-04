@@ -11,6 +11,7 @@ const apiMock = vi.hoisted(() => ({
   game: vi.fn(),
   resolveGame: vi.fn(),
   connectChessCom: vi.fn(),
+  enrichChessCom: vi.fn(),
   importPgn: vi.fn(),
   createRoom: vi.fn(),
   room: vi.fn(),
@@ -102,6 +103,7 @@ describe("URL-first exact review", () => {
     apiMock.joinRoom.mockResolvedValue({ client_id: "client-1", display_name: "Guest" });
     apiMock.coachStatus.mockResolvedValue({ enabled: false, state: "disabled" });
     apiMock.importPgn.mockResolvedValue({ created: true, source: "manual", second_board_supplied: true, game_id: 42 });
+    apiMock.enrichChessCom.mockResolvedValue({ checked: 0, enriched: 0, remaining_without_second_board: 0, credentials_stored: false });
   });
 
   it("makes the exact Chess.com URL the primary empty-state action and opens it directly", async () => {
@@ -158,6 +160,24 @@ describe("URL-first exact review", () => {
     expect(await screen.findByText("BOARD B · PARTNER BOARD")).toBeTruthy();
     expect(new URLSearchParams(location.search).get("game")).toBe("42");
     await waitFor(() => expect(apiMock.games.mock.calls.length).toBeGreaterThan(1));
+  });
+
+  it("keeps pgn-info enrichment as an advanced optional connector", async () => {
+    renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "Import both board PGNs" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Chess.com username" }), { target: { value: "FixtureUser" } });
+    fireEvent.click(screen.getByRole("button", { name: "Advanced pgn-info enrichment" }));
+
+    expect(screen.getByText("Recover partner boards from Chess.com pgn-info")).toBeTruthy();
+    expect(screen.getByRole("textbox", { name: "Codex setup prompt" })).toBeTruthy();
+    fireEvent.click(screen.getByText("Paste pgn-info cURL"));
+    fireEvent.change(screen.getByPlaceholderText("Paste the pgn-info cURL request"), {
+      target: { value: "curl 'https://www.chess.com/callback/game/pgn-info' -b 'session=fake' --data-raw '{\"_token\":\"fake\"}'" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Enrich existing games" }));
+
+    await waitFor(() => expect(apiMock.enrichChessCom).toHaveBeenCalledWith("FixtureUser", expect.stringContaining("pgn-info")));
+    expect(await screen.findByText("Checked 0 games. Enriched 0. Credentials stored: no.")).toBeTruthy();
   });
 
   it("keeps an exact not-found result in the entry state with a whitelisted fallback", async () => {

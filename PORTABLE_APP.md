@@ -40,9 +40,11 @@ The app can open without it, but engine analysis and coaching batches will not w
 Basic public imports work with a Chess.com username.
 
 For a full synchronized Bughouse replay, use the paired-PGN import and provide
-completed PGNs for both boards. The application does not accept Chess.com
-passwords, cookies, CSRF tokens, copied authenticated requests, or reusable
-session credentials.
+completed PGNs for both boards, or use Advanced pgn-info enrichment with a
+one-time cURL copied from your own logged-in Chess.com browser session.
+
+The application does not accept Chess.com passwords and does not store copied
+cURL requests, cookies, CSRF tokens, or reusable session credentials.
 
 ## What Is Stored Locally
 
@@ -109,4 +111,4 @@ Common issues:
 - Python was installed without PATH support.
 - Internet is unavailable for dependency installation.
 - Fairy-Stockfish is missing.
-- The Chess.com cURL file is missing or expired.
+- The copied Chess.com pgn-info cURL is missing, expired, or was not copied from your own logged-in browser session.

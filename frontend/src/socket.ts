@@ -79,7 +79,11 @@ export const connectRoomSocket = (roomId: string, clientId: string, displayName 
     if (event.type === "presence.update") store.setParticipants((event.payload?.participants ?? []) as RoomParticipant[]);
     if (event.type === "annotation.create") store.addAnnotation(event.payload as unknown as Annotation);
     if (event.type === "annotation.delete") store.removeAnnotation(String(event.payload?.id ?? ""));
-    if (event.type === "chat.message") store.addMessage(event.payload as unknown as ChatItem);
+    if (event.type === "chat.message") {
+      const chatItem = event.payload as unknown as ChatItem;
+      store.addMessage(chatItem);
+      window.dispatchEvent(new CustomEvent("thejimmyapp:chat-message", { detail: chatItem }));
+    }
     if (event.type === "variation.create" || event.type === "variation.update") {
       const boardA = event.payload?.board_a;
       const boardB = event.payload?.board_b;

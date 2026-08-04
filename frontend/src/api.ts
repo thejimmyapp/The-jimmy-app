@@ -36,6 +36,14 @@ export const api = {
         body: JSON.stringify({ username }),
       }),
     ),
+  enrichChessCom: (username: string, curlText: string) =>
+    json<{ checked: number; enriched: number; remaining_without_second_board: number; credentials_stored: boolean }>(
+      fetch("/api/chesscom/enrich", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, curl_text: curlText, limit: 5000 }),
+      }),
+    ),
   importPgn: (username: string, pgn: string, secondBoardPgn: string) =>
     json<{ created: boolean; source: "manual"; second_board_supplied: boolean; game_id: number }>(
       fetch("/api/games/import-pgn", {

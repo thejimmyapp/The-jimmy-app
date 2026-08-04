@@ -105,14 +105,14 @@ The web `Statistics` view summarizes the complete imported history with win rate
 
 The public Chess.com API does not consistently expose the partner board.
 
-The web app therefore makes credential-free paired PGN paste the supported complete-game path:
+The web app supports two complete-game recovery paths:
 
 1. Open **Connect games**.
-2. Choose **Import two-board PGNs**.
-3. Paste Board A and Board B from the same game.
-4. The app reconstructs one synchronized replay and uses PGN clock comments when present.
+2. Choose **Import two-board PGNs** to paste Board A and Board B from the same game.
+3. Or choose **Advanced pgn-info enrichment** and paste your own one-time Chess.com `pgn-info` cURL request to enrich already imported games.
+4. The app reconstructs synchronized replays and uses PGN clock comments or Chess.com move timestamps when present.
 
-The application does not accept Chess.com passwords, cookies, CSRF tokens, copied authenticated requests, or reusable session credentials. A fully one-click public flow still requires an official Chess.com API that exposes complete partner-board data.
+The application never asks for a Chess.com password and does not store copied cURL requests, cookies, CSRF tokens, or reusable session credentials. A fully one-click public flow still requires an official Chess.com API that exposes complete partner-board data.
 
 Local Streamlit app for importing completed Chess.com Bughouse games and building a practical coaching dashboard with stats, training drills, opening review, and Fairy-Stockfish analysis.
 
@@ -128,7 +128,7 @@ This repository is safe to share only if these files stay out of Git:
 - `.venv/`
 - videos, ZIP exports, and generated reports
 
-Basic public game import works without credentials, but many Bughouse games will not have partner-board replay data. Use paired completed PGNs when both boards are available.
+Basic public game import works without credentials, but many Bughouse games will not have partner-board replay data. Use paired completed PGNs when both boards are available, or the advanced one-time `pgn-info` enrichment when you can safely copy the request from your own logged-in browser.
 
 ## Product Features
 

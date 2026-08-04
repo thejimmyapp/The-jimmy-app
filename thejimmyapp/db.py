@@ -948,6 +948,35 @@ class Database:
             ).fetchone()
         return int(row["count"] if row else 0)
 
+    def list_games_for_pgn_info_enrichment(self, username: str, limit: int = 500) -> list[dict[str, Any]]:
+        with closing(self.connect()) as conn:
+            rows = conn.execute(
+                """
+                SELECT id, username, url, uuid, raw_json
+                FROM games
+                WHERE username = ?
+                    AND uuid IS NOT NULL
+                    AND uuid != ''
+                    AND (
+                        partner IS NULL
+                        OR partner = ''
+                        OR raw_json NOT LIKE '%bughousePartnerTcnMoves%'
+                    )
+                ORDER BY end_time DESC
+                LIMIT ?
+                """,
+                (username.lower(), limit),
+            ).fetchall()
+        games: list[dict[str, Any]] = []
+        for row in rows:
+            raw = _json_object(str(row["raw_json"] or ""))
+            if not raw:
+                continue
+            raw.setdefault("url", row["url"])
+            raw.setdefault("uuid", row["uuid"])
+            games.append(raw)
+        return games
+
     def get_color_stats(self, username: str) -> list[dict[str, object]]:
         with closing(self.connect()) as conn:
             rows = conn.execute(

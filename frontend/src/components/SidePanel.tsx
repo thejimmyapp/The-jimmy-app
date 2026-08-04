@@ -1,5 +1,5 @@
-import { Search, Send } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { Bell, Search, Send } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { sendRoomEvent } from "../socket";
 import { useCoachStore } from "../store";
 import type { GameSummary } from "../types";
@@ -16,6 +16,8 @@ export function SidePanel({ onSelectGame, loadingGame }: Props) {
   const [result, setResult] = useState("all");
   const [minRating, setMinRating] = useState(0);
   const [sort, setSort] = useState("newest");
+  const [unreadChat, setUnreadChat] = useState(0);
+  const [lastNotice, setLastNotice] = useState("");
   const { games, game, messages, addMessage, displayName, globalPly, participants, roomId } = useCoachStore();
   const filteredGames = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -35,11 +37,40 @@ export function SidePanel({ onSelectGame, loadingGame }: Props) {
     setDraft("");
   };
 
+  useEffect(() => {
+    if (tab === "chat") {
+      setUnreadChat(0);
+      setLastNotice("");
+    }
+  }, [tab]);
+
+  useEffect(() => {
+    const onIncomingChat = (event: Event) => {
+      const item = (event as CustomEvent).detail as { author?: string; content?: string } | undefined;
+      if (tab !== "chat") {
+        setUnreadChat((current) => current + 1);
+        setLastNotice(`${item?.author ?? "Partner"}: ${item?.content ?? "New message"}`);
+      }
+      if (document.visibilityState === "hidden" && "Notification" in window && Notification.permission === "granted") {
+        new Notification("New Jimmy App chat message", {
+          body: `${item?.author ?? "Partner"}: ${item?.content ?? ""}`.slice(0, 140),
+        });
+      }
+    };
+    window.addEventListener("thejimmyapp:chat-message", onIncomingChat);
+    return () => window.removeEventListener("thejimmyapp:chat-message", onIncomingChat);
+  }, [tab]);
+
+  const enableBrowserNotifications = async () => {
+    if (!("Notification" in window) || Notification.permission !== "default") return;
+    await Notification.requestPermission();
+  };
+
   return (
     <aside className="side-panel">
       <div className="side-tabs">
         <button className={tab === "games" ? "active" : ""} onClick={() => setTab("games")}>Games</button>
-        <button className={tab === "chat" ? "active" : ""} onClick={() => setTab("chat")}>Chat</button>
+        <button className={tab === "chat" ? "active" : ""} onClick={() => setTab("chat")}>Chat{unreadChat > 0 && <span className="chat-unread">{unreadChat}</span>}</button>
         <button className={tab === "notes" ? "active" : ""} onClick={() => setTab("notes")}>Notes</button>
       </div>
       {tab === "games" ? (
@@ -72,7 +103,11 @@ export function SidePanel({ onSelectGame, loadingGame }: Props) {
             ) : (
               <span>Solo review · <strong>Move {globalPly}</strong></span>
             )}
+            {tab === "chat" && "Notification" in window && Notification.permission === "default" && (
+              <button type="button" className="notification-enable" onClick={() => void enableBrowserNotifications()}><Bell size={12} /> Enable alerts</button>
+            )}
           </div>
+          {lastNotice && tab !== "chat" && <div className="chat-toast" role="status"><Bell size={13} /> {lastNotice}</div>}
           <div className="message-list">
             {tab === "chat" ? messages.map((item) => <article key={item.id}><header><strong>{item.author}</strong><button title="Go to referenced move">A · {item.ply}</button></header><p>{item.content}</p></article>) : <div className="empty-panel">Notes attached to this room and move appear here.</div>}
           </div>
