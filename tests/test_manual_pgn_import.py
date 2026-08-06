@@ -121,6 +121,7 @@ def test_review_payload_surfaces_one_current_evidence_backed_lesson(tmp_path: Pa
 
     assert payload is not None
     assert payload["lesson"] == {
+        "id": str(service.db.get_primary_mistake_for_game(game_id)["id"]),
         "board": "A",
         "local_ply": 1,
         "global_ply": next(

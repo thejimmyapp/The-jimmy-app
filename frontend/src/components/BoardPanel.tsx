@@ -49,6 +49,8 @@ interface Props {
     dropPiece?: "P" | "N" | "B" | "R" | "Q";
   }) => Promise<ExplorationMoveResult>;
   onAnalysisChange?: (board: BoardId, analysis: BoardAnalysisState) => void;
+  layout?: "standard" | "primary" | "compact";
+  beforeAnalyze?: () => Promise<boolean>;
 }
 
 export type BoardAnalysisState = {
@@ -63,7 +65,7 @@ export type BoardAnalysisState = {
   error?: string;
 };
 
-export function BoardPanel({ boardId, position, pairedPosition, orientation, pieceStyle, title, playerTop, playerBottom, unavailable = false, onImportBothBoards, externalFallbackUrl, locked = false, onMoveIntent, onAnalysisChange }: Props) {
+export function BoardPanel({ boardId, position, pairedPosition, orientation, pieceStyle, title, playerTop, playerBottom, unavailable = false, onImportBothBoards, externalFallbackUrl, locked = false, onMoveIntent, onAnalysisChange, layout = "standard", beforeAnalyze }: Props) {
   const boardRef = useRef<HTMLDivElement>(null);
   const lastWheelAt = useRef(0);
   const [arrowStart, setArrowStart] = useState<string | null>(null);
@@ -274,6 +276,7 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
 
   const analyze = async () => {
     if (!game || !position || unavailable || mode === "exploration") return;
+    if (beforeAnalyze && !(await beforeAnalyze())) return;
     setAnalysis({ status: "queued", queuePosition: 1 });
     try {
       const submitted = await api.analyze({
@@ -308,11 +311,15 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
   };
 
   return (
-    <section className={`board-panel ${mode === "exploration" ? "is-exploring" : ""} ${unavailable ? "is-unavailable" : ""}`}>
+    <section className={`board-panel board-layout-${layout} ${mode === "exploration" ? "is-exploring" : ""} ${unavailable ? "is-unavailable" : ""}`}>
       <div className="board-heading"><strong>{title}</strong><span>{position?.side_to_move ?? "Unavailable"} to move</span></div>
       <PlayerBar name={playerTop} clock={orientation === "white" ? position?.black_clock : position?.white_clock} />
-      <div className="board-stage">
-        <PocketRail color={topPocketColor} value={pocketValue(topPocketColor)} draggable={!locked && position?.side_to_move === topPocketColor} pieceStyle={pieceStyle} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />
+      <div className={`board-stage ${layout === "standard" ? "horizontal-pockets" : "vertical-pockets"}`}>
+        {layout !== "standard" && <div className="pocket-stack">
+          <PocketRail color={topPocketColor} value={pocketValue(topPocketColor)} draggable={!locked && position?.side_to_move === topPocketColor} pieceStyle={pieceStyle} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />
+          <PocketRail color={bottomPocketColor} value={pocketValue(bottomPocketColor)} draggable={!locked && position?.side_to_move === bottomPocketColor} pieceStyle={pieceStyle} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />
+        </div>}
+        {layout === "standard" && <PocketRail color={topPocketColor} value={pocketValue(topPocketColor)} draggable={!locked && position?.side_to_move === topPocketColor} pieceStyle={pieceStyle} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />}
         <div
           className="board"
           ref={boardRef}
@@ -363,7 +370,7 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
             {visible.filter((item) => item.type === "arrow" && item.to).map((item) => <Arrow key={item.id} annotation={item} orientation={orientation} markerId={`arrowhead-${boardId}`} onRemove={() => removeDrawing(item)} />)}
           </svg>
         </div>
-        <PocketRail color={bottomPocketColor} value={pocketValue(bottomPocketColor)} draggable={!locked && position?.side_to_move === bottomPocketColor} pieceStyle={pieceStyle} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />
+        {layout === "standard" && <PocketRail color={bottomPocketColor} value={pocketValue(bottomPocketColor)} draggable={!locked && position?.side_to_move === bottomPocketColor} pieceStyle={pieceStyle} selectedPiece={selectedDrop} onSelectPiece={selectPocketPiece} onDragPiece={beginPocketDrag} />}
       </div>
       <PlayerBar name={playerBottom} clock={orientation === "white" ? position?.white_clock : position?.black_clock} bottom />
       <div className={`board-footer analysis-${analysis.status}`}>

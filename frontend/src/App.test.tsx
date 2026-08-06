@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { ApiError } from "./api";
@@ -31,11 +32,11 @@ vi.mock("./socket", () => ({
   sendRoomEvent: vi.fn(),
 }));
 vi.mock("./components/BoardPanel", () => ({
-  BoardPanel: ({ title, unavailable }: { title: string; unavailable?: boolean }) => (
-    <div><span>{title}</span>{unavailable && <span>Partner board was not included in the available Chess.com data.</span>}</div>
+  BoardPanel: ({ title, unavailable, beforeAnalyze }: { title: string; unavailable?: boolean; beforeAnalyze?: () => Promise<boolean> }) => (
+    <div><span>{title}</span>{unavailable && <span>Partner board was not included in the available Chess.com data.</span>}{beforeAnalyze && <button onClick={() => void beforeAnalyze()}>Run mocked analysis</button>}</div>
   ),
 }));
-vi.mock("./components/SidePanel", () => ({ SidePanel: () => <div>Games panel</div> }));
+vi.mock("./components/SidePanel", () => ({ SidePanel: ({ partnerContent }: { partnerContent: ReactNode }) => <div>Games panel{partnerContent}</div> }));
 vi.mock("./components/Timeline", () => ({ Timeline: () => <div>Timeline</div> }));
 
 const completeGame: GamePayload = {
@@ -79,6 +80,8 @@ const renderApp = () => {
   return render(<QueryClientProvider client={queryClient}><App /></QueryClientProvider>);
 };
 
+const openAnalyzeNode = () => fireEvent.click(screen.getAllByRole("button", { name: "Analyze a game" })[0]);
+
 afterEach(() => {
   cleanup();
   useCoachStore.setState({ username: "", game: null, games: [], roomId: null });
@@ -109,6 +112,7 @@ describe("URL-first exact review", () => {
   it("makes the exact Chess.com URL the primary empty-state action and opens it directly", async () => {
     renderApp();
 
+    openAnalyzeNode();
     expect(screen.getByRole("heading", { name: "Review the game you just played." })).toBeTruthy();
     expect(screen.queryByText("Games panel")).toBeNull();
     fireEvent.change(screen.getByRole("textbox", { name: "Paste Chess.com game URL" }), {
@@ -137,6 +141,31 @@ describe("URL-first exact review", () => {
     expect(new URLSearchParams(location.search).get("game")).toBe("42");
   });
 
+  it("unlocks the learning-library map stop after the first successfully opened exact game", async () => {
+    renderApp();
+    openAnalyzeNode();
+    fireEvent.change(screen.getByRole("textbox", { name: "Paste Chess.com game URL" }), { target: { value: "https://www.chess.com/game/live/123456789" } });
+    fireEvent.click(screen.getByRole("button", { name: "Review this game" }));
+    expect(await screen.findByText("BOARD A · YOUR BOARD")).toBeTruthy();
+    fireEvent.click(screen.getByTitle("Return to onboarding map"));
+    const libraryButtons = screen.getAllByRole("button", { name: "Learning library" }) as HTMLButtonElement[];
+    expect(libraryButtons.every((button) => !button.disabled)).toBe(true);
+  });
+
+  it("requires and persists the versioned acknowledgement only when analysis is requested", async () => {
+    history.replaceState(null, "", "/?game=42");
+    renderApp();
+    expect(await screen.findByText("BOARD A · YOUR BOARD")).toBeTruthy();
+    expect(screen.queryByRole("dialog", { name: /analysis acknowledgement/i })).toBeNull();
+    fireEvent.click(screen.getAllByRole("button", { name: "Run mocked analysis" })[0]);
+    const continueButton = screen.getByRole("button", { name: "Continue to analysis" }) as HTMLButtonElement;
+    expect(continueButton.disabled).toBe(true);
+    fireEvent.click(screen.getByLabelText(/single-board engine suggestion/i));
+    fireEvent.click(screen.getByLabelText(/missing Chess.com data/i));
+    fireEvent.click(continueButton);
+    expect(localStorage.getItem("thejimmyapp.analysisAcknowledgement.v1")).toBe("analysis-limits-2026-08-06");
+  });
+
   it("gives room links precedence over a standalone game query", async () => {
     history.replaceState(null, "", "/?room=room-1&game=42");
     useCoachStore.setState({ roomId: "room-1", game: null });
@@ -149,6 +178,7 @@ describe("URL-first exact review", () => {
 
   it("opens a successful two-PGN import instead of returning the user to the archive", async () => {
     renderApp();
+    openAnalyzeNode();
     fireEvent.click(screen.getByRole("button", { name: "Import both board PGNs" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Chess.com username" }), { target: { value: "FixtureUser" } });
     fireEvent.change(screen.getByRole("textbox", { name: "Board A PGN" }), { target: { value: '[Variant "Bughouse"]\n[Result "1-0"]\n\n1. e4 1-0' } });
@@ -164,6 +194,7 @@ describe("URL-first exact review", () => {
 
   it("keeps pgn-info enrichment as an advanced optional connector", async () => {
     renderApp();
+    openAnalyzeNode();
     fireEvent.click(screen.getByRole("button", { name: "Import both board PGNs" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Chess.com username" }), { target: { value: "FixtureUser" } });
     fireEvent.click(screen.getByRole("button", { name: "Advanced pgn-info enrichment" }));
@@ -186,6 +217,7 @@ describe("URL-first exact review", () => {
       external_game_id: "123456789",
     }));
     renderApp();
+    openAnalyzeNode();
     fireEvent.change(screen.getByRole("textbox", { name: "Paste Chess.com game URL" }), {
       target: { value: "https://www.chess.com/live/game/123456789" },
     });

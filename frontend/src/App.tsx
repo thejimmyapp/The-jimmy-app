@@ -1,17 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, BarChart3, Bot, Check, Copy, ExternalLink, FileInput, LogOut, Palette, Radio, Redo2, RotateCcw, Settings, ShieldCheck, Swords, Undo2, UserRoundPlus, Users, X } from "lucide-react";
+import { AlertTriangle, BarChart3, Bot, Check, Copy, ExternalLink, FileInput, Home, LogOut, Palette, Radio, Redo2, RotateCcw, Settings, ShieldCheck, Swords, Undo2, UserRoundPlus, Users, X } from "lucide-react";
 import { CSSProperties, FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "./api";
 import { buildChessComConnectorPrompt } from "./chesscomConnectorPrompt";
 import { bmachoUrlForGameId, bmachoUrlFromChessComUrl } from "./chesscomGameUrl";
 import { BoardPanel } from "./components/BoardPanel";
+import { AnalysisAcknowledgement, AnalysisLimitations } from "./components/AnalysisAcknowledgement";
 import { LegalLinks } from "./components/LegalLinks";
+import { OnboardingMap } from "./components/OnboardingMap";
 import { ReviewLesson } from "./components/ReviewLesson";
 import { ReviewStart } from "./components/ReviewStart";
 import { SidePanel } from "./components/SidePanel";
 import { StatsDashboard } from "./components/StatsDashboard";
 import { TeamCoach } from "./components/TeamCoach";
-import { Timeline } from "./components/Timeline";
+import { acceptAnalysisAcknowledgement, clearGuestProgress, emptyGuestProgress, hasAnalysisAcknowledgement, lessonStorageId, loadGuestProgress, qualifyingGameCount, savedLessonFrom, storeGuestProgress, type GuestProgress, type MapNodeId, type SavedLesson } from "./guestProgress";
 import { applyRoomSnapshot, connectRoomSocket, sendRoomEvent } from "./socket";
 import { currentPosition, useCoachStore } from "./store";
 import { replayNotices } from "./replayIntegrity";
@@ -82,6 +84,9 @@ export default function App() {
   const [curlText, setCurlText] = useState("");
   const [setupPromptCopied, setSetupPromptCopied] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [guestProgress, setGuestProgress] = useState<GuestProgress>(loadGuestProgress);
+  const [acknowledgementOpen, setAcknowledgementOpen] = useState(false);
+  const analysisResolverRef = useRef<((accepted: boolean) => void) | null>(null);
   const [reviewGameId, setReviewGameId] = useState<number | null>(() => {
     if (store.roomId) return null;
     const value = new URLSearchParams(location.search).get("game");
@@ -89,6 +94,13 @@ export default function App() {
     const parsed = Number(value);
     return Number.isSafeInteger(parsed) ? parsed : null;
   });
+  const updateGuestProgress = useCallback((update: (current: GuestProgress) => GuestProgress) => {
+    setGuestProgress((current) => {
+      const next = update(current);
+      storeGuestProgress(next);
+      return next;
+    });
+  }, []);
   const openGame = useCallback((game: Parameters<typeof setGame>[0]) => {
     setGame(game);
     setArchiveOpen(false);
@@ -100,7 +112,8 @@ export default function App() {
     browserUrl.searchParams.set("game", String(gameId));
     history.replaceState(null, "", `${browserUrl.pathname}${browserUrl.search}${browserUrl.hash}`);
     setReviewGameId(gameId);
-  }, [setGame]);
+    updateGuestProgress((current) => ({ ...current, firstGameOpened: true, mapNode: current.mapNode === "start" ? "analyze" : current.mapNode }));
+  }, [setGame, updateGuestProgress]);
   const gamesQuery = useQuery({ queryKey: ["games", store.username], queryFn: () => api.games(store.username), enabled: Boolean(store.username) });
   const roomQuery = useQuery({ queryKey: ["room", store.roomId], queryFn: () => api.room(store.roomId as string), enabled: Boolean(store.roomId) });
   const restoredGameQuery = useQuery({ queryKey: ["game", reviewGameId], queryFn: () => api.game(reviewGameId as number), enabled: Boolean(reviewGameId && !store.roomId && !store.game) });
@@ -203,11 +216,88 @@ export default function App() {
     ? bmachoUrlForGameId(resolveMutation.error.externalGameId)
     : null;
   const currentGameFallbackUrl = bmachoUrlFromChessComUrl(store.game?.game.url);
-  const showReviewStart = !store.game && !store.roomId && !archiveOpen;
+  const showOnboardingMap = !store.game && !store.roomId && !archiveOpen && view === "review";
+  const qualifyingGames = qualifyingGameCount(guestProgress.savedLessons);
+  const currentLesson = store.game?.lesson;
+  const currentLessonId = store.game && currentLesson ? lessonStorageId(store.game.game.id, currentLesson) : null;
+  const lessonSaved = Boolean(currentLessonId && guestProgress.savedLessons.some((item) => item.id === currentLessonId));
+
+  const changeMapNode = useCallback((mapNode: MapNodeId) => {
+    updateGuestProgress((current) => ({ ...current, mapNode }));
+  }, [updateGuestProgress]);
+
+  const toggleCurrentLesson = () => {
+    if (!store.game || !store.game.lesson) return;
+    const saved = savedLessonFrom(store.game.game.id, store.game.lesson);
+    if (!saved) return;
+    updateGuestProgress((current) => current.savedLessons.some((item) => item.id === saved.id)
+      ? { ...current, savedLessons: current.savedLessons.filter((item) => item.id !== saved.id) }
+      : { ...current, savedLessons: [...current.savedLessons, saved] });
+  };
+
+  const removeSavedLesson = (id: string) => updateGuestProgress((current) => ({ ...current, savedLessons: current.savedLessons.filter((item) => item.id !== id) }));
+
+  const openSavedLesson = async (lesson: SavedLesson) => {
+    try {
+      const game = await api.game(lesson.gameId);
+      openGame(game);
+      const max = Math.max(0, game.timeline.length ? game.timeline.length - 1 : game.positions_a.length - 1);
+      const target = Math.max(0, Math.min(max, lesson.globalPly));
+      useCoachStore.getState().seek(target);
+      sendRoomEvent("timeline.seek", { global_ply: target });
+      return Boolean(game.lesson && lessonStorageId(game.game.id, game.lesson) === lesson.id);
+    } catch {
+      return false;
+    }
+  };
+
+  const goToMap = () => {
+    useCoachStore.setState({ game: null, roomId: null, participants: [], globalPly: 0 });
+    setArchiveOpen(false);
+    setView("review");
+    setReviewGameId(null);
+    const browserUrl = new URL(location.href);
+    browserUrl.searchParams.delete("game");
+    browserUrl.searchParams.delete("room");
+    history.replaceState(null, "", `${browserUrl.pathname}${browserUrl.search}${browserUrl.hash}`);
+  };
+
+  const resetGuestProgress = () => {
+    clearGuestProgress();
+    setGuestProgress(emptyGuestProgress());
+  };
+
+  const beforeAnalyze = useCallback((): Promise<boolean> => {
+    if (hasAnalysisAcknowledgement()) return Promise.resolve(true);
+    setAcknowledgementOpen(true);
+    return new Promise((resolve) => { analysisResolverRef.current = resolve; });
+  }, []);
+
+  const closeAcknowledgement = useCallback(() => {
+    setAcknowledgementOpen(false);
+    analysisResolverRef.current?.(false);
+    analysisResolverRef.current = null;
+  }, []);
+
+  const continueAcknowledgement = () => {
+    acceptAnalysisAcknowledgement();
+    setAcknowledgementOpen(false);
+    analysisResolverRef.current?.(true);
+    analysisResolverRef.current = null;
+  };
+
+  const reviewInfo = store.game ? <>
+    {store.game.outcome && <div className={`review-summary ${store.game.game.result}`} role="status"><span>GAME RESULT</span><strong>{store.game.outcome.summary}</strong><small>{store.game.outcome.detail}</small></div>}
+    {store.game.lesson && <ReviewLesson lesson={store.game.lesson} saved={lessonSaved} onToggleSave={toggleCurrentLesson} onReview={(globalPly) => { store.seek(globalPly); sendRoomEvent("timeline.seek", { global_ply: globalPly }); }} />}
+    {integrityNotices.length > 0 && <div className="replay-integrity" role="status"><AlertTriangle size={15} /><strong>REPLAY LIMITS</strong><span>{integrityNotices.join(" ")}</span></div>}
+    <AnalysisLimitations compact />
+    <section className="game-metadata"><span>GAME METADATA</span><dl><div><dt>Game</dt><dd>{store.game.game.id}</dd></div><div><dt>Played</dt><dd>{String(store.game.game.played_at ?? "Unknown").slice(0, 10)}</dd></div><div><dt>Result</dt><dd>{String(store.game.game.result ?? "Unknown")}</dd></div><div><dt>Two-board replay</dt><dd>{store.game.second_board_available ? "Available" : "Unavailable"}</dd></div></dl></section>
+    <p className="zoom-note">Board sizing is designed to work best at 175% browser zoom, matching the Chess.com Bughouse play page.</p>
+  </> : <div className="empty-panel">Select a game to see review information.</div>;
   return (
-    <main className={`app-shell ${view === "stats" ? "stats-view" : ""} ${showReviewStart ? "review-entry-shell" : ""}`} data-board-theme={boardTheme} data-piece-style={pieceStyle} data-piece-size={pieceSize}>
-      <div className="small-screen-message">The Jimmy App is optimized for desktop screens of 1366×768 or larger.</div>
-      <header className="app-header">
+    <main className={`app-shell ${view === "stats" ? "stats-view" : ""} ${showOnboardingMap ? "review-entry-shell" : ""}`} data-board-theme={boardTheme} data-piece-style={pieceStyle} data-piece-size={pieceSize}>
+      <div className="small-screen-message" role="status"><strong>Widen the window to at least 992px to use The Jimmy App.</strong><span>Board sizing is designed to work best at 175% browser zoom, matching the Chess.com Bughouse play page.</span></div>
+      {!showOnboardingMap && <header className="app-header">
         <div className="brand"><span className="brand-mark">J</span><div><strong>THE JIMMY APP</strong><small>COLLABORATIVE BUGHOUSE COACH</small></div></div>
         <nav className="primary-nav" aria-label="Main views">
           <button className={view === "review" ? "active" : ""} onClick={() => setView("review")}><Swords size={14} />Review</button>
@@ -215,6 +305,7 @@ export default function App() {
         </nav>
         <div className="header-actions">
           <LegalLinks />
+          <button className="icon-button map-button" title="Return to onboarding map" onClick={goToMap}><Home size={15} /> Map</button>
           {store.mode === "exploration" && <button className="icon-button" title="Undo exploration move" onClick={store.undoExploration}><Undo2 size={16} /></button>}
           {store.explorationFuture.length > 0 && <button className="icon-button" title="Redo exploration move" onClick={store.redoExploration}><Redo2 size={16} /></button>}
           {store.mode === "exploration" && <button className="return-game" onClick={() => { store.returnToGame(); sendRoomEvent("variation.return_to_game", {}); }}><RotateCcw size={16} /> Return to move {store.explorationStartPly}</button>}
@@ -226,57 +317,14 @@ export default function App() {
           <button className="icon-button" title="Board settings" onClick={() => setSettingsOpen(true)}><Settings size={16} /></button>
           <button className="connect-button" onClick={() => setConnectOpen(true)}><Radio size={15} /> {store.username || "Connect Chess.com"}</button>
         </div>
-      </header>
-      {view === "review" ? <><section className={`workspace ${showReviewStart ? "review-entry-workspace" : ""}`}>
-        {!showReviewStart && <SidePanel onSelectGame={selectGame} loadingGame={gameMutation.isPending} />}
-        <div className={`boards-zone ${store.game ? "has-game" : ""} ${showReviewStart ? "review-entry-zone" : ""}`}>
-          {showReviewStart && (
-            <ReviewStart
-              defaultUsername={store.username}
-              pending={resolveMutation.isPending || restoredGameQuery.isFetching}
-              errorMessage={resolutionError ?? (restoredGameQuery.error instanceof Error ? restoredGameQuery.error.message : undefined)}
-              fallbackUrl={resolutionFallbackUrl}
-              onReview={(url, requestedUsername) => resolveMutation.mutate({ url, username: requestedUsername })}
-              onBrowseGames={() => setArchiveOpen(true)}
-              onImportBothBoards={openImport}
-            />
-          )}
-          {store.game && (
-            <div className="review-context">
-              {store.game.outcome && (
-                <div className={`review-summary ${store.game.game.result}`} role="status">
-                  <span>GAME RESULT</span>
-                  <strong>{store.game.outcome.summary}</strong>
-                  <small>{store.game.outcome.detail}</small>
-                </div>
-              )}
-              {store.game.lesson && (
-                <ReviewLesson
-                  lesson={store.game.lesson}
-                  onReview={(globalPly) => {
-                    store.seek(globalPly);
-                    sendRoomEvent("timeline.seek", { global_ply: globalPly });
-                  }}
-                />
-              )}
-              {integrityNotices.length > 0 && (
-                <div className="replay-integrity" role="status">
-                  <AlertTriangle size={15} />
-                  <strong>REPLAY LIMITS</strong>
-                  <span>{integrityNotices.join(" ")}</span>
-                </div>
-              )}
-            </div>
-          )}
-          {!showReviewStart && <div className="boards-grid">
-            <BoardPanel boardId="A" position={boardA} orientation={userIsWhite ? "white" : "black"} pieceStyle={pieceStyle} title="BOARD A · YOUR BOARD" playerTop={userIsWhite ? players?.board_a_black ?? "Opponent" : players?.board_a_white ?? "Opponent"} playerBottom={userIsWhite ? players?.board_a_white ?? store.username : players?.board_a_black ?? store.username} />
-            <BoardPanel boardId="B" position={boardB} orientation={userIsWhite ? "black" : "white"} pieceStyle={pieceStyle} title="BOARD B · PARTNER BOARD" playerTop={secondBoardAvailable ? (userIsWhite ? players?.board_b_white ?? "Diagonal Opponent Unknown" : players?.board_b_black ?? "Diagonal Opponent Unknown") : "Diagonal Opponent Unknown"} playerBottom={secondBoardAvailable ? (userIsWhite ? players?.board_b_black ?? "Partner Unknown" : players?.board_b_white ?? "Partner Unknown") : "Partner Unknown"} unavailable={Boolean(store.game) && !secondBoardAvailable} onImportBothBoards={openImport} externalFallbackUrl={currentGameFallbackUrl} />
-          </div>}
-          {!store.game && !showReviewStart && <div className="empty-workspace"><strong>Select a Bughouse game</strong><span>Choose a game from the Games panel.</span></div>}
+      </header>}
+      {showOnboardingMap ? <OnboardingMap progress={guestProgress} onNodeChange={changeMapNode} onReset={resetGuestProgress} onImportBothBoards={openImport} onAdvancedRecovery={() => { setAuthenticatedOpen(true); setConnectOpen(true); }} reviewForm={<ReviewStart defaultUsername={store.username} pending={resolveMutation.isPending || restoredGameQuery.isFetching} errorMessage={resolutionError ?? (restoredGameQuery.error instanceof Error ? restoredGameQuery.error.message : undefined)} fallbackUrl={resolutionFallbackUrl} onReview={(url, requestedUsername) => resolveMutation.mutate({ url, username: requestedUsername })} onBrowseGames={() => setArchiveOpen(true)} onImportBothBoards={openImport} />} /> : view === "review" ? <><section className="workspace">
+        <div className={`boards-zone ${store.game ? "has-game" : ""}`}>
+          {store.game ? <div className="boards-grid"><BoardPanel boardId="A" position={boardA} orientation={userIsWhite ? "white" : "black"} pieceStyle={pieceStyle} layout="primary" beforeAnalyze={beforeAnalyze} title="BOARD A · YOUR BOARD" playerTop={userIsWhite ? players?.board_a_black ?? "Opponent" : players?.board_a_white ?? "Opponent"} playerBottom={userIsWhite ? players?.board_a_white ?? store.username : players?.board_a_black ?? store.username} /></div> : <div className="empty-workspace"><strong>Select a Bughouse game</strong><span>Choose a game from the Games tab.</span></div>}
         </div>
-      </section>
-      {store.game && <Timeline />}
-      <TeamCoach open={coachOpen} onClose={() => setCoachOpen(false)} boardA={boardA} boardB={boardB} /></> : <StatsDashboard username={store.username} />}
+        <SidePanel initialTab={store.game ? "review" : "games"} onSelectGame={selectGame} loadingGame={gameMutation.isPending} onMap={goToMap} savedLessons={guestProgress.savedLessons} qualifyingGames={qualifyingGames} onOpenSavedLesson={openSavedLesson} onRemoveSavedLesson={removeSavedLesson} infoContent={reviewInfo} partnerContent={store.game ? <BoardPanel boardId="B" position={boardB} orientation={userIsWhite ? "black" : "white"} pieceStyle={pieceStyle} layout="compact" beforeAnalyze={beforeAnalyze} title="BOARD B · PARTNER BOARD" playerTop={secondBoardAvailable ? (userIsWhite ? players?.board_b_white ?? "Diagonal Opponent Unknown" : players?.board_b_black ?? "Diagonal Opponent Unknown") : "Diagonal Opponent Unknown"} playerBottom={secondBoardAvailable ? (userIsWhite ? players?.board_b_black ?? "Partner Unknown" : players?.board_b_white ?? "Partner Unknown") : "Partner Unknown"} unavailable={!secondBoardAvailable} onImportBothBoards={openImport} externalFallbackUrl={currentGameFallbackUrl} /> : <div className="empty-panel">Select a game to load Board B.</div>} />
+      </section><TeamCoach open={coachOpen} onClose={() => setCoachOpen(false)} boardA={boardA} boardB={boardB} /></> : <StatsDashboard username={store.username} />}
+      <AnalysisAcknowledgement open={acknowledgementOpen} onClose={closeAcknowledgement} onContinue={continueAcknowledgement} />
       {connectOpen && (
         <div className="modal-backdrop" role="presentation">
           <form className={`connect-modal ${manualImportOpen || authenticatedOpen ? "connector-mode" : ""}`} onSubmit={connect}>

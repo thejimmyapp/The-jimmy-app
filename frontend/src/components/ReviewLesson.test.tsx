@@ -8,6 +8,7 @@ describe("ReviewLesson", () => {
     render(
       <ReviewLesson
         lesson={{
+          id: "mistake-1",
           board: "A",
           local_ply: 7,
           global_ply: 11,
@@ -28,9 +29,16 @@ describe("ReviewLesson", () => {
     expect(screen.getByText("Nxf7 · consider N@h6")).toBeTruthy();
     expect(screen.getByText(/estimated 184 cp swing/i)).toBeTruthy();
     expect(screen.getByText(/partner was facing a mate threat/i)).toBeTruthy();
-    expect(screen.getByRole("button").getAttribute("title")).toContain("high confidence · depth 14");
+    expect(screen.getByText("ONE MOMENT TO REVISIT").closest("section")?.getAttribute("title")).toContain("high confidence · depth 14");
 
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getByRole("button", { name: /ONE MOMENT TO REVISIT/ }));
     expect(onReview).toHaveBeenCalledWith(11);
+  });
+
+  it("saves and unsaves only eligible evidence-backed lessons", () => {
+    const onToggleSave = vi.fn();
+    render(<ReviewLesson lesson={{ id: "mistake-2", board: "A", local_ply: 2, global_ply: 4, played_move: "Qh5", best_move: "N@e4", severity: "blunder", estimated_loss_cp: 300, category: "king safety", pattern: "mate threat", confidence: "medium", depth: 12, partner_context: null }} onReview={vi.fn()} onToggleSave={onToggleSave} />);
+    fireEvent.click(screen.getByRole("button", { name: "Save to Library" }));
+    expect(onToggleSave).toHaveBeenCalledOnce();
   });
 });

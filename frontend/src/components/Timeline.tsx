@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { sendRoomEvent } from "../socket";
 import { useCoachStore } from "../store";
 
-export function Timeline() {
+export function Timeline({ variant = "full" }: { variant?: "full" | "panel" }) {
   const { game, globalPly, seek, mode } = useCoachStore();
   const [playing, setPlaying] = useState(false);
   const max = Math.max(0, game?.timeline.length ? game.timeline.length - 1 : (game?.positions_a.length ?? 1) - 1);
@@ -34,7 +34,7 @@ export function Timeline() {
     return () => window.removeEventListener("keydown", handleArrowNavigation);
   }, [game, globalPly, mode, move]);
   return (
-    <footer className="timeline">
+    <section className={`timeline ${variant === "panel" ? "timeline-panel" : ""}`} aria-label="Synchronized move history">
       <div className="timeline-left">
         <div className="timeline-actions">
           <button onClick={() => move(0)} aria-label="Start"><SkipBack size={17} /></button>
@@ -50,6 +50,6 @@ export function Timeline() {
         <div className="track-label">B</div><div className="move-track">{game?.timeline.filter((item) => item.board === "B").map((item) => <button className={item.global_ply === globalPly ? "active" : ""} key={item.global_ply} onClick={() => move(item.global_ply)}>{item.move}</button>)}</div>
       </div>
       <div className="timeline-position"><strong>{mode === "review" ? "GAME" : "VAR"}</strong><span>{globalPly}/{max}</span></div>
-    </footer>
+    </section>
   );
 }
