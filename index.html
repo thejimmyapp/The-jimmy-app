@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <meta http-equiv="refresh" content="0; url=https://jimmyapp-production.up.railway.app/">
+    <link rel="canonical" href="https://jimmyapp-production.up.railway.app/">
+    <title>Redirecting to The Jimmy App</title>
+    <script>
+      (() => {
+        const destination = new URL("https://jimmyapp-production.up.railway.app/");
+        const source = new URL(window.location.href);
+        destination.pathname = `/${source.pathname.replace(/^\/+/, "")}`;
+        destination.search = source.search;
+        destination.hash = source.hash;
+        window.location.replace(destination.href);
+      })();
+    </script>
+  </head>
+  <body>
+    <p>
+      The Jimmy App has temporarily moved.
+      <a href="https://jimmyapp-production.up.railway.app/">Continue to the app</a>.
+    </p>
+  </body>
+</html>
