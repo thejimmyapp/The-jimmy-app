@@ -355,6 +355,7 @@ def _review_lesson(
     category = str(mistake.get("category") or "tactical miss").strip()
     partner_context = str(mistake.get("partner_danger") or "").strip()
     return {
+        "id": str(mistake["id"]),
         "board": "A",
         "local_ply": local_ply,
         "global_ply": global_ply,

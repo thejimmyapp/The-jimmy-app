@@ -59,6 +59,7 @@ export interface GamePayload {
 }
 
 export interface ReviewLesson {
+  id: string;
   board: "A";
   local_ply: number;
   global_ply: number;

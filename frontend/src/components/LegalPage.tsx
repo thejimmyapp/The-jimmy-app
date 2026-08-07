@@ -17,7 +17,7 @@ export function LegalPage({ page }: { page: "privacy" | "terms" }) {
 function PrivacyPolicy() {
   return (
     <article className="legal-document">
-      <p className="legal-eyebrow">Effective July 27, 2026</p>
+      <p className="legal-eyebrow">Effective August 6, 2026</p>
       <h1>Privacy Policy</h1>
       <p>The Jimmy App is a collaborative, post-game Bughouse review and educational application. This policy describes the current public application. It does not describe a future Chess.com OAuth integration that has not yet been implemented.</p>
 
@@ -28,7 +28,7 @@ function PrivacyPolicy() {
         <li><strong>Manual imports.</strong> If you paste paired PGNs, we store those completed game records and the username you associate with them.</li>
         <li><strong>Review and collaboration data.</strong> Review-room identifiers, display names, chat messages, and shared notes are stored when those features are used. Board annotations and transient room presence may be held in server memory.</li>
         <li><strong>Derived analysis.</strong> Fairy-Stockfish results and replay-derived positions may be cached or stored to provide post-game analysis, puzzles, and coaching features.</li>
-        <li><strong>Browser storage.</strong> The site stores the selected username and board-display preferences in your browser’s local storage. The application does not use that storage as a Chess.com login.</li>
+        <li><strong>Browser storage.</strong> The site stores the selected username, board-display preferences, versioned onboarding progress, analysis acknowledgement, map position, and compact saved learning-moment references in your browser’s local storage. Saved moments contain a game and mistake reference, move location, evidence summary, and saved date—not full PGNs, raw game payloads, cookies, or credentials. The application does not use browser storage as a Chess.com login.</li>
         <li><strong>Service logs.</strong> Our hosting provider and web server may process IP addresses and basic request metadata in operational and security logs. The application does not intentionally write IP addresses into its game or collaboration database.</li>
       </ul>
 
@@ -39,7 +39,7 @@ function PrivacyPolicy() {
       <p>We use this information to retrieve a requested player’s completed public games, reconstruct synchronized Bughouse boards, provide post-game review and engine-assisted education, support shared review rooms, troubleshoot the service, and protect its reliability. Chess.com game records are not used to train a machine-learning model.</p>
 
       <h2>Storage, retention, and deletion</h2>
-      <p>Game records and collaboration content are stored in application databases operated with our hosting infrastructure. Browser preferences remain in your browser until you clear them. The service does not currently offer user accounts or an automated deletion dashboard, and it does not currently apply a guaranteed automatic deletion period. Records are retained until they are deleted in response to a verified request, removed during service maintenance, or no longer needed to operate the prototype.</p>
+      <p>Game records and collaboration content are stored in application databases operated with our hosting infrastructure. Browser preferences, guest progress, and saved learning moments remain in your browser until you use the map’s “Clear guest progress” action or clear the site’s browser storage. That local reset does not delete imported games or shared rooms. The service does not currently offer user accounts or an automated deletion dashboard, and it does not currently apply a guaranteed automatic deletion period. Records are retained until they are deleted in response to a verified request, removed during service maintenance, or no longer needed to operate the prototype.</p>
       <p>To request deletion, email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> and identify the Chess.com username, manual import, or review room involved. We may ask for enough information to locate the record and avoid deleting another person’s data.</p>
 
       <h2>Service providers and external services</h2>

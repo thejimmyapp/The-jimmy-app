@@ -8,6 +8,8 @@ describe("public legal pages", () => {
     expect(screen.getByRole("heading", { name: "Privacy Policy" })).toBeTruthy();
     expect(screen.getByText(/does not request or accept Chess.com passwords/i)).toBeTruthy();
     expect(screen.getByText(/does not currently apply a guaranteed automatic deletion period/i)).toBeTruthy();
+    expect(screen.getByText(/versioned onboarding progress/i)).toBeTruthy();
+    expect(screen.getByText(/Clear guest progress/i)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Terms" }).getAttribute("href")).toBe("/terms");
   });
 
