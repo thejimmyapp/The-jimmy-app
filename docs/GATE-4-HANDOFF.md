@@ -42,13 +42,9 @@ Matchup list cold-load time: fixed by Task 52 (`claude/task-52-guest-list-warm`,
 merged `a843dd6`, pytest 191). Production after deploy: 5 games in ~114 ms,
 `cached=true`, `pool_size=23`, background build 25 s at startup.
 
-## 3. Custom domain — RESOLVED via www (2026-09-07)
+## 3. Custom domain — RESOLVED (www on Railway, apex via Cloudflare, 2026-09-07)
 
-[https://www.thejimmyapp.com](https://www.thejimmyapp.com) is live on the
-Ryan-owned service (custom domain `93ccc8f8`, certificate valid, verified by the
-gate on 2026-09-07: guest cookie, matchups, moment save). Apex
-`thejimmyapp.com`: http forwards to www via Namecheap; https on the bare apex
-stays dead until Jimmy deletes the domain from his project (asked 2026-09-07).
+[https://www.thejimmyapp.com](https://www.thejimmyapp.com) is live on the Ryan-owned service (custom domain 93ccc8f8, certificate valid). Apex thejimmyapp.com resolved 2026-09-07 via Ryan's Cloudflare account (authoritative DNS moved from Namecheap; zone a79406defec75fbddf81be167d36ef68): proxied placeholder + redirect rule [https://thejimmyapp.com/*](https://thejimmyapp.com/*) -> [https://www.thejimmyapp.com/${1}](https://www.thejimmyapp.com/${1}) (301, query preserved), Always Use HTTPS, Universal certificate active; www stays DNS-only so Railway terminates TLS. Gate-verified: [https://thejimmyapp.com/?x](https://thejimmyapp.com/?x) -> [https://www.thejimmyapp.com/?x](https://www.thejimmyapp.com/?x); [http://thejimmyapp.com/health](http://thejimmyapp.com/health) -> www /health JSON. Mail records (MX, SPF, DKIM, DMARC, Google verifications) migrated intact. Jimmy's stale Railway binding no longer blocks anything.
 
 Railway variables now list www in `TRUSTED_HOSTS`, `CORS_ORIGINS`,
 `WEBSOCKET_ORIGINS`; `VITE_PUBLIC_BASE_URL` and
