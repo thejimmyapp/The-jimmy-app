@@ -92,6 +92,8 @@ starts on Start, quest top bar with countdown + 0/3 checklist, then the matchup
 list. Chunks LAND-00…06; Lane 3 builds, Lane 4 owns Log in after the
 credential-intake ruling, Lane 2 merges serially.
 
+GUEST-STORM (2026-09-07, Lane 2 railway logs + gate code read): guest counter 53→509 overnight was not a crawler. App.tsx:309-312 starts the 5-minute timer on landing render, App.tsx:368-393 calls POST /api/guests/reset on expiry, backend/main.py:336-340 mints a new guest row unconditionally, and the client returns to the entry phase, which restarts the timer: one guest per ~5 min per idle landing tab. Resolved by LAND-02 (timer starts on Start); guarded by acceptance A7. Server-side backstop (no new row when saved_moment_count == 0) is an open owner call, default no.
+
 **A6 — Return path.** A new user can now land, load a game in under a second,
 save three moments, grade them, and reach the claim form with a mouse. What is
 missing is the way back (credential intake, held P0) and a definition of what an
