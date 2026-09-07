@@ -65,11 +65,7 @@ deployment -> Backup/domain -> Private UI library
 
 - [x] Restore the public website on fresh Ryan-owned infrastructure.
   - Resolved 2026-09-02..05: live at `https://thejimmyapp-production.up.railway.app`.
-- [x] Public hostname: [https://www.thejimmyapp.com](https://www.thejimmyapp.com)
-  is live on the Ryan-owned service (custom domain 93ccc8f8, certificate valid,
-  verified by the gate on 2026-09-07: guest cookie, matchups, moment save). Apex
-  thejimmyapp.com: http forwards to www via Namecheap; https on the bare apex
-  stays dead until Jimmy deletes the domain from his project (asked 2026-09-07).
+- [x] Public hostname: [https://www.thejimmyapp.com](https://www.thejimmyapp.com) is live on the Ryan-owned service (custom domain 93ccc8f8, certificate valid). Apex thejimmyapp.com resolved 2026-09-07 via Ryan's Cloudflare account (authoritative DNS moved from Namecheap; zone a79406defec75fbddf81be167d36ef68): proxied placeholder + redirect rule [https://thejimmyapp.com/*](https://thejimmyapp.com/*) -> [https://www.thejimmyapp.com/${1}](https://www.thejimmyapp.com/${1}) (301, query preserved), Always Use HTTPS, Universal certificate active; www stays DNS-only so Railway terminates TLS. Gate-verified: [https://thejimmyapp.com/?x](https://thejimmyapp.com/?x) -> [https://www.thejimmyapp.com/?x](https://www.thejimmyapp.com/?x); [http://thejimmyapp.com/health](http://thejimmyapp.com/health) -> www /health JSON. Mail records (MX, SPF, DKIM, DMARC, Google verifications) migrated intact. Jimmy's stale Railway binding no longer blocks anything.
 
 ## 🧯 Failed attempts
 
@@ -96,6 +92,8 @@ list. Chunks LAND-00…06; Lane 3 builds, Lane 4 owns Log in after the
 credential-intake ruling, Lane 2 merges serially.
 
 GUEST-STORM (2026-09-07, Lane 2 railway logs + gate code read): guest counter 53→509 overnight was not a crawler. App.tsx:309-312 starts the 5-minute timer on landing render, App.tsx:368-393 calls POST /api/guests/reset on expiry, backend/main.py:336-340 mints a new guest row unconditionally, and the client returns to the entry phase, which restarts the timer: one guest per ~5 min per idle landing tab. Resolved by LAND-02 (timer starts on Start); guarded by acceptance A7. Server-side backstop (no new row when saved_moment_count == 0) is an open owner call, default no.
+
+LAND-02 production acceptance (2026-09-07, gate walk as guest #529 on www after merge a3422f6): A1, A2, A3, A4, A7, A8 pass — carousel replaces the entry card, Log in / Sign up disabled with SIGN_IN_NOTICE, Start only on slide 4/4 and mouse-reachable, questDeadline null until Start then now+5 min, expiry fired exactly one POST /api/guests/reset and twelve idle minutes on the carousel fired none, rail + dock inert in both phases. Remaining for A7 closure: A5, A6 (LAND-03) and A9 (LAND-04).
 
 **A6 — Return path.** A new user can now land, load a game in under a second,
 save three moments, grade them, and reach the claim form with a mouse. What is
