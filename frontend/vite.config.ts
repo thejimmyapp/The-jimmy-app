@@ -26,28 +26,32 @@ const blocksRoute = (): Plugin => {
   };
 };
 
-export default defineConfig({
-  plugins: [blocksRoute(), react()],
-  server: {
-    port: 5173,
-    proxy: {
-      "/api": "http://127.0.0.1:8000",
-      "/health": "http://127.0.0.1:8000",
-      "/puzzle-move": "http://127.0.0.1:8000",
-      "/puzzle-next-move": "http://127.0.0.1:8000",
-      "/puzzle-solution": "http://127.0.0.1:8000",
-      "/ws": { target: "ws://127.0.0.1:8000", ws: true },
-    },
-  },
-  build: {
-    rollupOptions: {
-      input: {
-        app: new URL("./index.html", import.meta.url).pathname,
-        blocks: new URL("./src/blocks.tsx", import.meta.url).pathname,
-      },
-      output: {
-        entryFileNames: (chunk) => chunk.name === "blocks" ? "assets/blocks.js" : "assets/[name]-[hash].js",
+export default defineConfig(({ mode }) => {
+  const blocksMode = mode === "blocks";
+
+  return {
+    plugins: [...(blocksMode ? [blocksRoute()] : []), react()],
+    server: {
+      port: 5173,
+      proxy: {
+        "/api": "http://127.0.0.1:8000",
+        "/health": "http://127.0.0.1:8000",
+        "/puzzle-move": "http://127.0.0.1:8000",
+        "/puzzle-next-move": "http://127.0.0.1:8000",
+        "/puzzle-solution": "http://127.0.0.1:8000",
+        "/ws": { target: "ws://127.0.0.1:8000", ws: true },
       },
     },
-  },
+    build: blocksMode ? {
+      rollupOptions: {
+        input: {
+          app: new URL("./index.html", import.meta.url).pathname,
+          blocks: new URL("./src/blocks.tsx", import.meta.url).pathname,
+        },
+        output: {
+          entryFileNames: (chunk) => chunk.name === "blocks" ? "assets/blocks.js" : "assets/[name]-[hash].js",
+        },
+      },
+    } : undefined,
+  };
 });

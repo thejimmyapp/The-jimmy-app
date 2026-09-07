@@ -392,13 +392,13 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
             imageSrc="/placeholders/specimen-12-eval-row.jpg"
             alt="Specimen of a future engine evaluation row"
             label="FUTURE EVALUATION ROW"
-            caption="PLACEHOLDER · future engine analysis · see /blocks"
+            caption="PLACEHOLDER · future engine analysis · see the UI library"
           />
           <FutureComponentPlaceholder
             imageSrc="/placeholders/specimen-21-analysis-panel.jpg"
             alt="Specimen of a future engine analysis panel"
             label="FUTURE ANALYSIS PANEL"
-            caption="PLACEHOLDER · future engine analysis · see /blocks"
+            caption="PLACEHOLDER · future engine analysis · see the UI library"
           />
         </section>
       )}

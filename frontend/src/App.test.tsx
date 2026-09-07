@@ -172,7 +172,6 @@ describe("URL-first exact review", () => {
     expect(dock?.getAttribute("aria-hidden")).toBe("true");
     expect(screen.queryByRole("navigation", { name: "Main views" })).toBeNull();
     expect(screen.queryByRole("complementary", { name: "Task tools" })).toBeNull();
-    expect(screen.getByRole("link", { name: "Open building blocks" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Open mission" }).getAttribute("href")).toBe("/mission");
     expect(screen.getByRole("button", { name: "Open flashcard library" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Privacy" })).toBeNull();
@@ -212,15 +211,9 @@ describe("URL-first exact review", () => {
     expect(screen.queryByRole("textbox", { name: "Email" })).toBeNull();
   });
 
-  it("keeps the building-blocks rail link unlocked and opens it in a new tab", () => {
-    const { container } = renderApp();
-    const link = container.querySelector<HTMLAnchorElement>(".rail-blocks-link");
-    expect(link?.getAttribute("href")).toBe("/blocks/index.html");
-    expect(link?.getAttribute("target")).toBe("_blank");
-    expect(link?.getAttribute("rel")).toBe("noreferrer");
-    expect(link?.textContent).toBe("🎨");
-    expect(link?.hasAttribute("aria-disabled")).toBe(false);
-    expect(link?.classList.contains("capability-locked")).toBe(false);
+  it("does not expose the private UI library from the public app", () => {
+    renderApp();
+    expect(screen.queryByRole("link", { name: "Open building blocks" })).toBeNull();
   });
 
   it("restores a standalone exact review from the browser URL on reload", async () => {

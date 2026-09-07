@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "blocks:dev": "vite --host 127.0.0.1 --mode blocks",
     "build": "tsc -b && vite build --configLoader runner",
     "lint": "eslint .",
     "test": "vitest run"
