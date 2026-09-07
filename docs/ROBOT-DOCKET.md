@@ -26,6 +26,8 @@ deployment -> Backup/domain -> Private UI library
 - [x] FLASHCARD-01 added private saved-moment review state, an author-scoped
   grading endpoint, the documented scheduler stub, and accessible grading
   controls without modifying frozen public moments.
+- [x] UILIB-02: the UI building-block catalog is out of the repository (merge
+  `5565276`); the only copy is the owner's offline archive.
 
 ## 🚧 Active
 
@@ -60,16 +62,11 @@ deployment -> Backup/domain -> Private UI library
 
 - [x] Restore the public website on fresh Ryan-owned infrastructure.
   - Resolved 2026-09-02..05: live at `https://thejimmyapp-production.up.railway.app`.
-- [ ] Point `thejimmyapp.com` at the Ryan-owned service.
-  - Evidence (2026-09-05): `railway domain thejimmyapp.com --service thejimmyapp`
-    fails twice with the generic "Failed to create custom domain". The apex is
-    still a custom domain on Jimmy's project (`alfaswing's Projects` /
-    `thorough-celebration`, domain id `4e8df60a-db18-40b5-bece-d79daec5c129`,
-    stuck in verification since July). Public DNS: apex A -> Railway edge
-    (fallback 404), NS = Namecheap.
-  - Decision: never touch Jimmy's project. Owner call: (a) ask Jimmy to delete the
-    custom domain from his project, then re-run the CLI add; or (b) cut over to
-    `www.thejimmyapp.com` on Ryan's service and forward the apex.
+- [x] Public hostname: [https://www.thejimmyapp.com](https://www.thejimmyapp.com)
+  is live on the Ryan-owned service (custom domain 93ccc8f8, certificate valid,
+  verified by the gate on 2026-09-07: guest cookie, matchups, moment save). Apex
+  thejimmyapp.com: http forwards to www via Namecheap; https on the bare apex
+  stays dead until Jimmy deletes the domain from his project (asked 2026-09-07).
 
 ## 🧯 Failed attempts
 
