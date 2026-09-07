@@ -224,10 +224,23 @@ describe("URL-first exact review", () => {
     renderApp();
 
     await waitFor(() => expect(apiMock.accountMe).toHaveBeenCalledTimes(1));
-    expect(screen.getAllByRole("button", { name: "Sign up" }).every((button) => !(button as HTMLButtonElement).disabled)).toBe(true);
+    expect((screen.getByRole("button", { name: "Sign up" }) as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Open flashcard library" }));
     expect(await screen.findByText("Claimed — Founder #7")).toBeTruthy();
     expect(screen.queryByRole("textbox", { name: "Email" })).toBeNull();
+  });
+
+  it("shows one working Sign up action for a completed guest on the landing", async () => {
+    apiMock.guestSession.mockResolvedValue({ guest_number: 13, total_guests: 13, completions_to_date: 13, saved_moment_count: 3, analysis_unlocked: false, completed: true, completion_ordinal: 7 });
+    apiMock.accountMe.mockResolvedValue({ account: null });
+    renderApp();
+
+    await waitFor(() => expect(screen.getByTestId("quest-progress").textContent).toBe("3/3 learning moments published"));
+    const signUp = screen.getByRole("button", { name: "Sign up" }) as HTMLButtonElement;
+    expect(signUp.disabled).toBe(false);
+    expect(signUp.title).toBe("");
+    fireEvent.click(signUp);
+    expect(document.querySelector("#guest-account-email")).not.toBeNull();
   });
 
   it("does not expose the private UI library from the public app", () => {

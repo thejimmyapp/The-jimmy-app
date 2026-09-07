@@ -3,6 +3,7 @@ import { AccountActions } from "./AccountActions";
 
 interface LandingPageProps {
   completed: boolean;
+  showAccountActions: boolean;
   onStart: () => void;
 }
 
@@ -35,7 +36,7 @@ const slides = [
 
 const registrationCopy = "[COPY-PLACEHOLDER] Publishing 3 learning moments grants account registration.";
 
-export function LandingPage({ completed, onStart }: LandingPageProps) {
+export function LandingPage({ completed, showAccountActions, onStart }: LandingPageProps) {
   const [slideIndex, setSlideIndex] = useState(0);
   const lastSlideIndex = slides.length - 1;
   const slide = slides[slideIndex];
@@ -58,7 +59,7 @@ export function LandingPage({ completed, onStart }: LandingPageProps) {
           <span className="brand-mark" aria-hidden="true">J</span>
           <strong>The Jimmy App</strong>
         </div>
-        <AccountActions completed={completed} />
+        {showAccountActions && !completed && <AccountActions completed={false} />}
       </header>
 
       <div

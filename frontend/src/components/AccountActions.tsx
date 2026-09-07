@@ -9,7 +9,7 @@ export function AccountActions({ completed, onSignUp }: AccountActionsProps) {
   return (
     <div className="account-actions">
       <button type="button" aria-label="Log in" title={SIGN_IN_NOTICE} disabled>Log in</button>
-      <button type="button" aria-label="Sign up" title={SIGN_IN_NOTICE} disabled={!completed} onClick={onSignUp}>Sign up</button>
+      <button type="button" aria-label="Sign up" title={completed ? undefined : SIGN_IN_NOTICE} disabled={!completed} onClick={onSignUp}>Sign up</button>
     </div>
   );
 }

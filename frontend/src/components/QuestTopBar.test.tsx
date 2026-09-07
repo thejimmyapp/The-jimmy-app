@@ -68,6 +68,7 @@ describe("quest top bar", () => {
     rerender(<QuestTopBar {...baseProps} questDeadline={null} questCompleted guestSession={guestSession(3, true)} />);
     const enabledSignUp = screen.getByRole("button", { name: "Sign up" }) as HTMLButtonElement;
     expect(enabledSignUp.disabled).toBe(false);
+    expect(enabledSignUp.title).toBe("");
     fireEvent.click(enabledSignUp);
     expect(document.querySelector("#guest-account-email")).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Close" }));

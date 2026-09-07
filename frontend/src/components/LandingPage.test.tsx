@@ -1,6 +1,5 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SIGN_IN_NOTICE } from "../guestChrome";
 import { LandingPage } from "./LandingPage";
 
 afterEach(() => {
@@ -12,7 +11,7 @@ describe("landing carousel", () => {
   it("supports mouse, dots, and arrow keys without autoplay and shows Start only on the final slide", () => {
     vi.useFakeTimers();
     const onStart = vi.fn();
-    const { container } = render(<LandingPage completed={false} onStart={onStart} />);
+    const { container } = render(<LandingPage completed={false} showAccountActions onStart={onStart} />);
     const carousel = screen.getByRole("region", { name: "Product introduction" });
 
     expect(screen.getByRole("group", { name: "1 of 4" })).toBeTruthy();
@@ -39,15 +38,11 @@ describe("landing carousel", () => {
     expect(screen.queryByRole("button", { name: "Start" })).toBeNull();
   });
 
-  it("uses the account-intake notice and enables only Sign up for a completed guest", () => {
-    render(<LandingPage completed onStart={vi.fn()} />);
-    const login = screen.getByRole("button", { name: "Log in" }) as HTMLButtonElement;
-    const signup = screen.getByRole("button", { name: "Sign up" }) as HTMLButtonElement;
+  it("hides its account actions when the completed quest bar owns them", () => {
+    render(<LandingPage completed showAccountActions onStart={vi.fn()} />);
 
-    expect(login.disabled).toBe(true);
-    expect(login.title).toBe(SIGN_IN_NOTICE);
-    expect(signup.disabled).toBe(false);
-    expect(signup.title).toBe(SIGN_IN_NOTICE);
+    expect(screen.queryByRole("button", { name: "Log in" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Sign up" })).toBeNull();
     expect(within(screen.getByRole("group", { name: "1 of 4" })).getByText(/Publishing 3 learning moments grants account registration/)).toBeTruthy();
   });
 });
