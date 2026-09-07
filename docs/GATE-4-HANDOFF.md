@@ -7,9 +7,9 @@ against production by the gate, not taken from an executor report.
 
 | Item | Value |
 |---|---|
-| `main` | `1c56971` at 02:00 PT; `8845e81` by 08:00 PT (see docket) |
-| Golden build on that tree | Ruff ok · pytest **186** (179 + 7) · vitest **205** (202 + 3) · ESLint ok · Vite build ok |
-| Production | `https://thejimmyapp-production.up.railway.app` — `/health` ok; `/openapi.json` lists `/api/moments/{moment_id}/review` |
+| `main` | `bc6f967` (LAND-04 merge, 2026-09-07 10:30 PT) |
+| Golden build on that tree | Ruff ok · pytest **191** · vitest **211** (44 files) · ESLint ok · Vite build ok |
+| Production | `https://www.thejimmyapp.com` — `/health` ok; bundle `index-D3le_Hua.css` + `index-DbWXpsdu.js`; `/openapi.json` 42 paths |
 | Railway | project `thejimmyapp-ryan` (`65513c12-b3af-4d42-ac78-cdb3c34a9ae5`), env `production` (`2567c380-…`), service `thejimmyapp` (`ea408278-…`), region sfo, volume `thejimmyapp-volume` at `/app/data` |
 
 The "lost" flashcard build was never lost: the worktree that was deleted was a
@@ -98,3 +98,6 @@ Nothing in this loop should be built until the owner rules on credential intake.
 - Prod e2e: the Claude built-in browser pane works; emulate ≥ 992 px wide
   (`resize_window`), drive keyboard-only controls with dispatched
   `KeyboardEvent`s, set React inputs through `form_input`.
+- Browser pane: with viewport emulation on, the click-coordinate factor depends on the pane size — 800×565 pane mapped 1:1 with the picture (CSS = frame × 992/800), a 393×277 pane mapped squared (CSS = frame × (992/393)²). Calibrate once per session with a document click listener before clicking anything that matters; the wizard's Save button sits below a 700 px fold — scrollIntoView first.
+- Production bundle identity: build with VITE_PUBLIC_BASE_URL=https://www.thejimmyapp.com to reproduce the deployed JS filename (publicUrl.ts bakes it); the CSS filename matches the default build.
+- Backend tests in the cloud container: Debian's setuptools breaks the chess==1.11.2 sdist build — use a venv (python3 -m venv), then python -m pytest -q from the repo root (191).
