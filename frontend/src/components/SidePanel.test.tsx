@@ -35,7 +35,6 @@ const renderPanel = (overrides: Partial<Parameters<typeof SidePanel>[0]> = {}) =
     qualifyingGames: 1,
     onOpenSavedLesson: vi.fn().mockResolvedValue(true),
     onRemoveSavedLesson: vi.fn(),
-    onMap: vi.fn(),
     capabilities: {
       ...initialCapabilityMap(),
       dock_review: "unlocked",
@@ -53,13 +52,13 @@ describe("review utility panel", () => {
   beforeEach(() => useCoachStore.setState({ game: null, guestMatch: null, games: [], messages: [], roomId: null, globalPly: 0 }));
   afterEach(cleanup);
 
-  it("orders review tabs with Info first and leaves every sub-tab unselected without a game", () => {
+  it("orders the two review tabs, defaults to Info without a game, and omits Map", () => {
     renderPanel({ boardContent: undefined, capabilities: initialCapabilityMap() });
     const container = document.body;
     const labels = Array.from(container.querySelectorAll<HTMLButtonElement>('[aria-label="Review views"] > button')).map((button) => button.textContent);
-    expect(labels).toEqual(["Info", "Moves", "Second Board"]);
-    expect(container.querySelector('[aria-label="Review views"] > button.active')).toBeNull();
-    expect(container.querySelector('[aria-label="Review views"] > button[aria-selected="true"]')).toBeNull();
+    expect(labels).toEqual(["Info", "Second Board"]);
+    expect(screen.getByRole("tab", { name: "Info" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.queryByRole("button", { name: "Map" })).toBeNull();
     expect(screen.queryByText("Complete onboarding to open review tools.")).toBeNull();
   });
 
@@ -88,7 +87,7 @@ describe("review utility panel", () => {
     const onSwapBoards = vi.fn();
     const onActiveBoardChange = vi.fn();
     renderPanel({ boardFocusEnabled: true, onSwapBoards, onActiveBoardChange });
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Moves" }).getAttribute("aria-selected")).toBe("true"));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Second Board" }).getAttribute("aria-selected")).toBe("true"));
 
     const swap = screen.getByRole("button", { name: "Swap staged board" });
     expect(swap.getAttribute("type")).toBe("button");

@@ -93,18 +93,13 @@ describe("guest replay workspace integration", () => {
     expect(within(stagedSecondBoard).getAllByRole("button")[0].getAttribute("aria-label")?.startsWith("a8")).toBe(true);
     expect(within(stagedSecondPanel).getByText(String(boardB.headers.White))).toBeTruthy();
     expect(stagedSecondPanel.getAttribute("data-keyboard-focus")).toBe("active");
-    expect(screen.getByRole("tab", { name: "Moves" }).getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByRole("tab", { name: "First Board" }).getAttribute("aria-selected")).toBe("false");
-    const timeline = screen.getByLabelText("Synchronized move history");
-    expect(timeline).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "First Board" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.queryByLabelText("Synchronized move history")).toBeNull();
     expect(useCoachStore.getState().game?.timeline).toHaveLength(boardA.plyCount + boardB.plyCount + 1);
-    const firstOriginalBoardBMove = useCoachStore.getState().game?.timeline.find((frame) => frame.board === "B")?.move;
-    expect(firstOriginalBoardBMove).toBeTruthy();
-    expect(within(timeline.querySelectorAll(".move-track")[0] as HTMLElement).getByText(firstOriginalBoardBMove!)).toBeTruthy();
-    const analyze = screen.getByRole("button", { name: /Analyze with Fairy-Stockfish/ }) as HTMLButtonElement;
+    const analyze = screen.getAllByRole("button", { name: /Analyze with Fairy-Stockfish/ }) as HTMLButtonElement[];
     const coach = screen.getByRole("button", { name: /Team Coach/ }) as HTMLButtonElement;
-    expect(analyze.disabled).toBe(true);
-    expect(analyze.classList.contains("capability-locked")).toBe(true);
+    expect(analyze).toHaveLength(2);
+    expect(analyze.every((button) => button.disabled && button.classList.contains("capability-locked"))).toBe(true);
     const enginePlaceholderCaptions = screen.getAllByText("PLACEHOLDER · future engine analysis · see the UI library");
     expect(enginePlaceholderCaptions).toHaveLength(2);
     expect(enginePlaceholderCaptions.every((caption) => caption.closest("figure")?.getAttribute("aria-disabled") === "true")).toBe(true);
@@ -128,7 +123,7 @@ describe("guest replay workspace integration", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Swap staged board" }));
     await waitFor(() => expect(screen.getByRole("tab", { name: "Second Board" }).getAttribute("aria-selected")).toBe("false"));
-    expect(screen.getByRole("tab", { name: "Moves" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: "Info" }).getAttribute("aria-selected")).toBe("true");
     const stagedFirstBoard = screen.getByLabelText("First Board chessboard");
     const stagedFirstPanel = stagedFirstBoard.closest(".board-panel") as HTMLElement;
     expect(within(stagedFirstBoard).getAllByRole("button")[0].getAttribute("aria-label")?.startsWith("h1")).toBe(true);
@@ -144,7 +139,7 @@ describe("guest replay workspace integration", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Swap staged board" }));
     await waitFor(() => expect(screen.getByRole("tab", { name: "First Board" }).getAttribute("aria-selected")).toBe("false"));
-    expect(screen.getByRole("tab", { name: "Moves" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: "Info" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByLabelText("Second Board chessboard").closest(".board-panel")?.getAttribute("data-keyboard-focus")).toBe("active");
 
     fireEvent.keyDown(window, { key: "Tab" });
@@ -162,7 +157,7 @@ describe("guest replay workspace integration", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "First Board" }));
     expect(screen.getByLabelText("First Board chessboard")).toBeTruthy();
-    expect(screen.getAllByLabelText(/droppers$/)).toHaveLength(4);
+    expect(screen.getAllByLabelText(/pocket$/)).toHaveLength(4);
     expect(useCoachStore.getState().game?.cross_board_ordering).toEqual({ method: "clock-inferred", exact: false });
   });
 });
