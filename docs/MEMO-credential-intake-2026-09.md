@@ -1,0 +1,38 @@
+# Credential-intake options memo — September 2026
+
+## 1. Current state
+
+- A guest is identified by the `jimmy_guest_identity` cookie; it is HttpOnly, SameSite=Lax, Secure when configured, and lasts one year (`backend/main.py:76`, `backend/main.py:125-133`).
+- After challenge completion, `POST /api/accounts/claim` accepts only a validated email, links it to the guest, generates a token, and sets the one-year HttpOnly `jimmy_account_token` cookie (`backend/schemas.py:90-98`, `backend/main.py:343-368`, `backend/main.py:136-144`). The database stores email, guest link, token, and creation time; the completion ordinal remains on the joined guest completion (`thejimmyapp/db.py:112-124`, `thejimmyapp/db.py:1026-1069`).
+- `GET /api/accounts/me` looks up that cookie and returns guest number, email, completion ordinal, founder eligibility, and creation time, or `null` (`backend/main.py:147-155`, `backend/main.py:371-377`; service delegation: `backend/services.py:63-74`).
+- The live form already submits email (`frontend/src/api.ts:106-111`, `frontend/src/components/GuestFlashcardPanel.tsx:209-219`), but there is no recovery/sign-in route after cookie loss or on another device (`backend/main.py:343-377`).
+
+## 2. Finding: implementation and published documents disagree
+
+The claim form collects an email and establishes an account cookie, while the policy says: “The service does not currently offer user accounts or an automated deletion dashboard, and it does not currently apply a guaranteed automatic deletion period.” (`frontend/src/components/LegalPage.tsx:66`). The Terms say: “Because the current service has no user accounts, there is no account-termination workflow.” (`frontend/src/components/LegalPage.tsx:110`). Before any new return path, the Privacy Policy must disclose account email and token/guest linkage, purposes, retention, security/service-provider processing, and account-specific access/deletion verification. The Terms must describe account eligibility and responsibility plus restriction, termination, and post-termination data handling. The claim form must link or summarize that disclosure.
+
+## 3. Options matrix
+
+| Option | First time / returning / other device | New data stored and where | Dependencies | Privacy Policy + Terms edits | Abuse surface | Effort / chunks | Does **not** solve |
+|---|---|---|---|---|---|---|---|
+| **(a) Magic link by email** | Claim email → receive one-use link → bind current guest; later or other device → request link → restore account cookie. | Database: normalized email, hashed one-use token, expiry, used-at, attempt/audit timestamps; provider processes address and delivery metadata. Existing account/guest link remains (`thejimmyapp/db.py:118-124`). | Email provider and secrets; verified sending domain; link endpoint; expiry/single-use rules; rate limits. | **Policy—Information:** email, login tokens, delivery metadata. **Use/sharing:** authentication and email processor. **Retention/deletion/security:** token/log schedules and account deletion. **Terms—Accounts/removal:** link control, misuse, suspension/termination. | Email enumeration; link/token replay; inbox compromise; request flooding. | **M:** schema/token service; email integration; request/callback flow; throttling/observability; legal/disclosure QA. | Compromised email; account merge/ownership disputes; definition of unlocked benefits. |
+| **(b) Email + password** | Claim email + create password; later/other device → email/password sign-in → restore cookie; forgotten password → reset flow. | Database: normalized email, password hash and parameters, verification/reset token hashes, timestamps/attempts; never plaintext passwords. | Password hashing and secret/parameter policy; email verification and reset delivery; session rotation; rate limits. | **Policy—Information:** email, password hash, auth/security logs. **Use/retention/security:** authentication, breach/reset and deletion rules. **Terms—Accounts/removal:** credential duties, unauthorized access, suspension/termination. Existing policy only excludes Chess.com credentials (`frontend/src/components/LegalPage.tsx:59-60`). | Credential stuffing; brute force; enumeration; reset takeover; session/token replay. | **L:** schema/hash service; signup/verify/sign-in/sign-out; reset; session rotation; defenses/monitoring; legal/disclosure QA. | Password reuse risk; lost-email recovery; account merge/ownership disputes; unlock definition. |
+| **(c) Chess.com OAuth via callback stub** | Choose Chess.com → authorize → callback links provider identity to current guest; returning/other device repeats OAuth → restore cookie. | Database: provider subject/account ID, link timestamps, granted scopes; access/refresh tokens only if required, encrypted with retention/rotation metadata. | Chess.com developer-app approval, least-privilege scopes, state/PKCE, callback registration. The code default is still the old Railway callback (`backend/config.py:99-101`); the deployed variable points at `www`, and app registration must match before enablement (`docs/GATE-4-HANDOFF.md:49-52`). Callback currently returns “not enabled” (`backend/main.py:219-224`). | **Policy—Information:** OAuth identity/scopes/tokens. **Use/sharing:** Chess.com exchange. **Retention/deletion:** unlink/revocation and token schedule. **Terms—Accounts/removal:** third-party dependency, authorization, unlink/termination. Replace the explicit future-OAuth exclusion (`frontend/src/components/LegalPage.tsx:46`). | OAuth state/code replay; account-link takeover; token leakage; scope creep; provider outage. | **L:** approval/config; state/PKCE flow; identity/link schema; secure token handling; reconnect/unlink; defenses/monitoring; legal/disclosure QA. | Users without Chess.com; provider recovery/outage; preexisting duplicate-account merge; unlock definition. |
+
+## 4. Cross-cutting decisions
+
+Once accounts exist, define account/email/auth-log retention, verified deletion, effects on guest-linked records, and whether deletion is automated; today there is no guaranteed deletion period and requests arrive by email (`frontend/src/components/LegalPage.tsx:66-67`). Put a just-in-time disclosure beside the existing claim input (`frontend/src/components/GuestFlashcardPanel.tsx:213-219`). Before building, the owner must answer:
+
+1. What exactly does an account unlock: durable identity, cross-device saved moments, analysis, founder status, or something else?
+2. Which guest-owned data follows the account, and how are duplicate guests/accounts merged without replacing guest-number ownership?
+3. Must email be verified before claim/unlock, and may one email or provider identity link multiple guests?
+4. What are session duration, sign-out-all-devices, recovery, reauthentication, and suspicious-login requirements?
+5. What are retention periods, deletion scope/timing, audit-log exceptions, portability, and the verification method for requests?
+
+## 5. Owner decision table
+
+| Option | Decision | Prerequisites before adoption |
+|---|---|---|
+| Magic link | ☐ Adopt · ☐ Defer · ☐ Reject | (1) unlock/data-linking ruling; (2) email provider, secrets, and sending domain; (3) retention/deletion and legal-copy approval. |
+| Email + password | ☐ Adopt · ☐ Defer · ☐ Reject | (1) unlock/data-linking ruling; (2) hashing, verification/reset, and session-security design; (3) retention/deletion and legal-copy approval. |
+| Chess.com OAuth | ☐ Adopt · ☐ Defer · ☐ Reject | (1) unlock/data-linking and minimum-scope ruling; (2) Chess.com approval plus exact callback registration; (3) token retention/revocation and legal-copy approval. |
