@@ -27,6 +27,7 @@ describe("public legal pages", () => {
     expect(notices.getByRole("heading", { name: "Third-Party Notices" })).toBeTruthy();
     expect(notices.getByRole("link", { name: "Fairy-Stockfish" }).closest("p")?.textContent).toContain("GPL-3.0-or-later");
     expect(notices.getByRole("link", { name: "lila" }).closest("p")?.textContent).toContain("AGPL-3.0");
+    expect(notices.getByRole("link", { name: "Cburnett chess piece set" }).closest("p")?.textContent).toContain("BSD-3-Clause");
     expect(notices.getByRole("heading", { name: "Chess.com acknowledgment" }).nextElementSibling?.textContent).toContain("Chess.com trademarks, game records, and assets belong to Chess.com");
     expect(notices.getByRole("link", { name: "Notices" }).getAttribute("href")).toBe("/third-party-notices");
   });

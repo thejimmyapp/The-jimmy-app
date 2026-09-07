@@ -9,6 +9,7 @@ import { ExtractionPage } from "./ExtractionPage";
 import { setCanonicalUrl } from "./publicUrl";
 import { legalPageFromPath } from "./routes";
 import "./styles.css";
+import "./boardAppearance.css";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: 1 } } });
 

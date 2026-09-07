@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import replayFixtures from "./fixtures/guest-match-replays.json";
-import { GUEST_PROGRESS_KEY, loadGuestProgress } from "./guestProgress";
+import { GUEST_PROGRESS_KEY, emptyGuestProgress, loadGuestProgress } from "./guestProgress";
 import { SIGN_IN_NOTICE } from "./guestChrome";
 import { QUEST_DURATION_MS } from "./quest";
 import { useCoachStore } from "./store";
@@ -207,6 +207,34 @@ describe("URL-first exact review", () => {
     expect(signup.disabled).toBe(true);
     expect(signup.title).toBe(SIGN_IN_NOTICE);
     expect(loadGuestProgress().questDeadline).toBeNull();
+  });
+
+  it("uses Wood Classic and Cburnett defaults on first load", () => {
+    const { container } = renderApp();
+    const shell = container.querySelector(".app-shell");
+    expect(shell?.getAttribute("data-board-theme")).toBe("wood-classic");
+    expect(shell?.getAttribute("data-piece-set")).toBe("cburnett");
+  });
+
+  it("continues to apply saved legacy appearance ids", () => {
+    localStorage.setItem("thejimmyapp.boardTheme", "violet");
+    localStorage.setItem("thejimmyapp.pieceStyle", "soft");
+    const { container } = renderApp();
+    const shell = container.querySelector(".app-shell");
+    expect(shell?.getAttribute("data-board-theme")).toBe("violet");
+    expect(shell?.getAttribute("data-piece-set")).toBe("soft");
+  });
+
+  it("renders registry-backed theme and Piece set cards in settings", () => {
+    const progress = emptyGuestProgress();
+    progress.capabilities.rail_settings = "unlocked";
+    localStorage.setItem(GUEST_PROGRESS_KEY, JSON.stringify(progress));
+    useCoachStore.setState({ game: completeGame });
+    const { container } = renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "Board settings", hidden: true }));
+    expect(screen.getByRole("heading", { name: "Piece set" })).toBeTruthy();
+    expect(container.querySelectorAll(".theme-grid .appearance-mini-board")).toHaveLength(8);
+    expect(Array.from(container.querySelectorAll(".piece-style-grid .piece-style-card")).map((card) => card.textContent)).toEqual(expect.arrayContaining([expect.stringContaining("Cburnett"), expect.stringContaining("Classic"), expect.stringContaining("Filled"), expect.stringContaining("Bold"), expect.stringContaining("Soft")]));
   });
 
   it("hydrates an existing account for a server-completed guest", async () => {

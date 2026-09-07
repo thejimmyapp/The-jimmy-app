@@ -1,0 +1,19 @@
+html,
+body,
+#root { min-height: 100%; overflow: auto; }
+body { background: #070c14; }
+.appearance-catalog { min-width: 992px; padding: 32px; color: #dce8f6; }
+.appearance-catalog-header { max-width: 760px; margin-bottom: 34px; }
+.appearance-catalog-header > span { color: #24d6e8; font-size: 10px; font-weight: 900; letter-spacing: .14em; }
+.appearance-catalog-header h1 { margin: 8px 0; font-size: 38px; }
+.appearance-catalog-header p { color: #8fa2ba; line-height: 1.5; }
+.appearance-combination { margin: 0 0 36px; padding: 20px; border: 1px solid #26334a; background: #0b121e; }
+.appearance-combination h2 { margin: 0 0 16px; font-size: 18px; }
+.appearance-scales { display: flex; align-items: flex-start; gap: 20px; overflow-x: auto; }
+.appearance-example { flex: 0 0 auto; width: var(--appearance-width); padding: 12px; border: 1px solid #30435d; background: #0d1623; }
+.appearance-example > header { display: flex; justify-content: space-between; margin-bottom: 10px; color: #8fa2ba; font-size: 10px; }
+.appearance-board-row { display: grid; gap: 12px; }
+.appearance-example .board-panel { width: 100%; min-width: 0; max-width: none; height: auto; }
+.appearance-example .board-layout-compact { width: min(72%, 340px); }
+.appearance-pocket-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.appearance-pocket-row .pocket-rail { min-height: 44px; flex-direction: row; justify-content: center; }

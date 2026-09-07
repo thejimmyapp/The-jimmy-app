@@ -28,6 +28,8 @@ This file provides attribution for direct third-party components used by The Jim
 
 ## Additional attributions and acknowledgments
 
+- **Cburnett chess pieces** · `BSD-3-Clause` · Copyright © Colin M.L. Burnett (Cburnett) · [Wikimedia Commons source](https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces/Standard_transparent). The twelve `Chess_*t45.svg` files are redistributed under the BSD license offered on their individual Wikimedia Commons file pages and were modified only by being optimized with svgo.
+- **Wood Classic board texture** · Original work by The Jimmy App project; it is not sourced from Lichess or another third party.
 - **Fairy-Stockfish** · `GPL-3.0-or-later` · Fairy-Stockfish contributors · [Source](https://github.com/fairy-stockfish/Fairy-Stockfish). Fairy-Stockfish runs server-side. Its binary is not conveyed to users or bundled in an artifact produced by this repository.
 - **Stockfish** · `GPL-3.0-or-later` · Stockfish developers · [Source](https://github.com/official-stockfish/Stockfish). Fairy-Stockfish derives from the Stockfish engine lineage.
 - **lichess / lila** · `AGPL-3.0` · lichess.org and contributors · [Source](https://github.com/lichess-org/lila). lila was used only as a pattern reference; no lila code was copied, and this service does not run lila.
