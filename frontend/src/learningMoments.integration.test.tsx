@@ -13,6 +13,8 @@ import type { CallbackReplayBoard, NormalizedMatch } from "./types";
 const apiMock = vi.hoisted(() => ({
   guestSession: vi.fn(),
   resetGuestSession: vi.fn(),
+  accountMe: vi.fn(),
+  claimAccount: vi.fn(),
   guestMatchups: vi.fn(),
   chessComMatchReplay: vi.fn(),
   storeChessComGuestMatch: vi.fn(),
@@ -130,8 +132,24 @@ describe("guest learning moment library", () => {
     nextMomentId = 1;
     clipboardWrite.mockReset().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: clipboardWrite } });
-    apiMock.guestSession.mockImplementation(async () => ({ guest_number: 13, total_guests: 13, completions_to_date: null, saved_moment_count: serverMomentCount, analysis_unlocked: serverMomentCount >= 10 }));
+    apiMock.guestSession.mockImplementation(async () => ({
+      guest_number: 13,
+      total_guests: 13,
+      completions_to_date: serverMomentCount >= 3 ? 1 : null,
+      saved_moment_count: serverMomentCount,
+      analysis_unlocked: serverMomentCount >= 10,
+      completed: serverMomentCount >= 3,
+      completion_ordinal: serverMomentCount >= 3 ? 1 : null,
+    }));
     apiMock.resetGuestSession.mockResolvedValue({ guest_number: 14, total_guests: 14, completions_to_date: null, saved_moment_count: 0, analysis_unlocked: false });
+    apiMock.accountMe.mockResolvedValue({ account: null });
+    apiMock.claimAccount.mockResolvedValue({
+      guest_number: 13,
+      email: "guest@example.com",
+      completion_ordinal: 1,
+      founder_eligible: true,
+      created_at: "2026-09-07T00:00:00+00:00",
+    });
     apiMock.guestMatchups.mockResolvedValue({
       matches: [firstMatch, secondMatch],
       examined: 2,
@@ -419,6 +437,42 @@ describe("guest learning moment library", () => {
     expect((await within(wizard).findByRole("alert")).textContent).toContain("daily_moment_cap_reached");
     expect(container.querySelector(".side-panel")?.getAttribute("data-saved-moment-count")).toBe("0");
     expect(loadGuestProgress().savedMoments).toHaveLength(0);
+  });
+
+  it("updates the quest bar to 1/3 from the refreshed server session without a reload", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    render(<QueryClientProvider client={client}><App /></QueryClientProvider>);
+    const list = await startFromLanding();
+    expect(screen.getByTestId("quest-progress").textContent).toBe("0/3 learning moments published");
+    fireEvent.keyDown(list, { key: "Enter" });
+    expect(await screen.findAllByLabelText(/Board chessboard/)).toHaveLength(2);
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    await saveMoment("!!", "One server-counted moment.");
+
+    await waitFor(() => expect(screen.getByTestId("quest-progress").textContent).toBe("1/3 learning moments published"));
+    expect(apiMock.guestSession).toHaveBeenCalledTimes(2);
+  });
+
+  it("completes the quest bar from the third server-counted save and opens Sign up", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    render(<QueryClientProvider client={client}><App /></QueryClientProvider>);
+    const list = await startFromLanding();
+    fireEvent.keyDown(list, { key: "Enter" });
+    expect(await screen.findAllByLabelText(/Board chessboard/)).toHaveLength(2);
+
+    for (const [glyph, note] of [["!!", "First moment."], ["!?", "Second moment."], ["!", "Third moment."]] as const) {
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+      await saveMoment(glyph, note);
+    }
+
+    await waitFor(() => expect(screen.getByTestId("quest-progress").textContent).toBe("3/3 learning moments published"));
+    expect(loadGuestProgress().questDeadline).toBeNull();
+    expect(screen.queryByRole("timer", { name: "Quest countdown" })).toBeNull();
+    const signUp = screen.getByRole("button", { name: "Sign up" }) as HTMLButtonElement;
+    expect(signUp.disabled).toBe(false);
+    fireEvent.click(signUp);
+    expect(document.querySelector("#guest-account-email")).not.toBeNull();
   });
 
   it("resets an expired guest exactly once and returns to an idle landing phase", async () => {

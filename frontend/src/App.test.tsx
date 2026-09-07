@@ -192,6 +192,7 @@ describe("URL-first exact review", () => {
     expect(container.querySelector("#onboarding-username")).toBeNull();
 
     await startFromLanding();
+    expect(screen.getByTestId("quest-progress").textContent).toBe("0/3 learning moments published");
     expect(lockedRailContent?.hasAttribute("inert")).toBe(true);
     expect(dock?.hasAttribute("inert")).toBe(true);
   });
@@ -223,7 +224,7 @@ describe("URL-first exact review", () => {
     renderApp();
 
     await waitFor(() => expect(apiMock.accountMe).toHaveBeenCalledTimes(1));
-    expect((screen.getByRole("button", { name: "Sign up" }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getAllByRole("button", { name: "Sign up" }).every((button) => !(button as HTMLButtonElement).disabled)).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Open flashcard library" }));
     expect(await screen.findByText("Claimed — Founder #7")).toBeTruthy();
     expect(screen.queryByRole("textbox", { name: "Email" })).toBeNull();

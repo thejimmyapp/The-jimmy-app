@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { BookOpen, X } from "lucide-react";
-import { api, ApiError, type AccountSummary, type MomentRecord, type MomentReviewGrade } from "../api";
+import { api, type AccountSummary, type MomentRecord, type MomentReviewGrade } from "../api";
 import { formatQuestCountdown, QUEST_DURATION_MS } from "../quest";
+import { AccountClaimForm } from "./AccountClaimForm";
 
 interface Props {
   guestNumber: number;
@@ -18,10 +19,6 @@ interface Props {
 export function GuestFlashcardPanel({ guestNumber, remainingSeconds, questCompleted, completionRecorded, account, accountLoading, onClaimAccount, onAccountClaimed, onClose }: Props) {
   const panelRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
-  const [email, setEmail] = useState("");
-  const [claimPending, setClaimPending] = useState(false);
-  const [claimError, setClaimError] = useState<string | null>(null);
-  const [claimedAccount, setClaimedAccount] = useState<AccountSummary | null>(null);
   const [moments, setMoments] = useState<MomentRecord[] | null>(null);
   const [momentsError, setMomentsError] = useState(false);
   const [cardIndex, setCardIndex] = useState(0);
@@ -29,7 +26,6 @@ export function GuestFlashcardPanel({ guestNumber, remainingSeconds, questComple
   const [reviewPending, setReviewPending] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewMessage, setReviewMessage] = useState<string | null>(null);
-  const displayedAccount = claimedAccount ?? account;
   const countdown = questCompleted
     ? "Complete"
     : formatQuestCountdown(remainingSeconds ?? QUEST_DURATION_MS / 1_000);
@@ -120,22 +116,6 @@ export function GuestFlashcardPanel({ guestNumber, remainingSeconds, questComple
     }
   };
 
-  const submitClaim = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (claimPending) return;
-    setClaimPending(true);
-    setClaimError(null);
-    try {
-      const claimed = await onClaimAccount(email);
-      setClaimedAccount(claimed);
-      onAccountClaimed(claimed);
-    } catch (error) {
-      setClaimError(error instanceof ApiError && error.status === 422 ? "enter a valid email" : "Identity claim failed.");
-    } finally {
-      setClaimPending(false);
-    }
-  };
-
   return (
     <div className="guest-library-backdrop" data-onboarding-active-panel>
       <section ref={panelRef} className="guest-library-panel" role="dialog" aria-modal="true" aria-labelledby="guest-library-title" onKeyDown={handleKeyDown}>
@@ -206,19 +186,7 @@ export function GuestFlashcardPanel({ guestNumber, remainingSeconds, questComple
             </div>
           </section>
         )}
-        {completionRecorded && <section className="guest-account-claim" aria-label="Claim your identity">
-          {accountLoading && !displayedAccount ? <span role="status">Checking account…</span> : displayedAccount ? (
-            <strong role="status">{displayedAccount.founder_eligible ? `Claimed — Founder #${displayedAccount.completion_ordinal}` : `Identity claimed (#${displayedAccount.completion_ordinal})`}</strong>
-          ) : (
-            <form noValidate onSubmit={submitClaim}>
-              <strong>Claim your identity</strong>
-              <label htmlFor="guest-account-email">Email</label>
-              <input id="guest-account-email" type="email" inputMode="email" autoComplete="email" maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} />
-              <button type="submit" disabled={claimPending}>{claimPending ? "Claiming…" : "Claim your identity"}</button>
-              {claimError && <span role="alert">{claimError}</span>}
-            </form>
-          )}
-        </section>}
+        {completionRecorded && <AccountClaimForm account={account} accountLoading={accountLoading} onClaimAccount={onClaimAccount} onAccountClaimed={onAccountClaimed} />}
       </section>
     </div>
   );
