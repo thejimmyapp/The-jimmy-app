@@ -89,6 +89,12 @@ deployment -> Backup/domain -> Private UI library
 
 ## 🔭 Next benchmark
 
+**A7 — Landing rebuild.** Owner scratch notes 2026-09-05 → `docs/SPEC-landing-2026-09.md`:
+real landing page (carousel, Log in / Sign up top-right, massive Start), timer
+starts on Start, quest top bar with countdown + 0/3 checklist, then the matchup
+list. Chunks LAND-00…06; Lane 3 builds, Lane 4 owns Log in after the
+credential-intake ruling, Lane 2 merges serially.
+
 **A6 — Return path.** A new user can now land, load a game in under a second,
 save three moments, grade them, and reach the claim form with a mouse. What is
 missing is the way back (credential intake, held P0) and a definition of what an
