@@ -30,7 +30,7 @@ function ThirdPartyNotices() {
       <p><a href="https://github.com/lichess-org/lila">lila</a> is licensed under <strong>AGPL-3.0</strong>. It was used only as a pattern reference; no lila code was copied, and this service does not run lila.</p>
 
       <h2>Cburnett chess pieces</h2>
-      <p>The <a href="https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces/Standard_transparent">Cburnett chess piece set</a> by Colin M.L. Burnett is used under the <strong>BSD-3-Clause</strong> license. The vendored SVG files were modified only by being optimized with svgo. The Wood Classic board texture is original work by The Jimmy App project.</p>
+      <p>The <a href="https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces/Standard_transparent">Cburnett chess piece set</a> by Colin M.L. Burnett is used under the <strong>BSD-3-Clause</strong> license. The vendored SVG files were modified only by being optimized with svgo. The Wood Classic board texture is original work by The Jimmy App project. The full BSD-3-Clause notice is reproduced in <a href="https://github.com/thejimmyapp/the-jimmy-app/blob/main/THIRD-PARTY-NOTICES.md">THIRD-PARTY-NOTICES.md</a>.</p>
 
       <h2>Chess.com acknowledgment</h2>
       <p><a href="https://www.chess.com/">Chess.com</a> trademarks, game records, and assets belong to Chess.com and their respective rights holders. The Jimmy App is unaffiliated with Chess.com and copies no Chess.com assets. This is an acknowledgment, not a software-license entry.</p>
