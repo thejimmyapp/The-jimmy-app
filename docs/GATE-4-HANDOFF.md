@@ -42,27 +42,20 @@ Matchup list cold-load time: fixed by Task 52 (`claude/task-52-guest-list-warm`,
 merged `a843dd6`, pytest 191). Production after deploy: 5 games in ~114 ms,
 `cached=true`, `pool_size=23`, background build 25 s at startup.
 
-## 3. Custom domain — BLOCKED, owner decision
+## 3. Custom domain — RESOLVED via www (2026-09-07)
 
-`railway domain thejimmyapp.com --service thejimmyapp` fails with the generic
-"Failed to create custom domain" (two attempts, CLI 5.27.2). Cause per the
-August handoffs: the apex is still a custom domain on Jimmy's project
-(`alfaswing's Projects` / `thorough-celebration`, domain id
-`4e8df60a-db18-40b5-bece-d79daec5c129`), stuck in verification since July.
-Public DNS: apex A → Railway edge (Railway fallback 404), `www` → Namecheap
-forwarding, NS = `dns1/dns2.registrar-servers.com`.
+[https://www.thejimmyapp.com](https://www.thejimmyapp.com) is live on the
+Ryan-owned service (custom domain `93ccc8f8`, certificate valid, verified by the
+gate on 2026-09-07: guest cookie, matchups, moment save). Apex
+`thejimmyapp.com`: http forwards to www via Namecheap; https on the bare apex
+stays dead until Jimmy deletes the domain from his project (asked 2026-09-07).
 
-Options (never touch Jimmy's project):
-1. Jimmy deletes the custom domain from his project → re-run the CLI add →
-   set the CNAME/ALIAS Railway returns at Namecheap.
-2. Cut over to `www.thejimmyapp.com` on Ryan's service now (unclaimed
-   hostname) and forward the apex; canonical-origin config (cookies, CORS,
-   `VITE_PUBLIC_BASE_URL`, `TRUSTED_HOSTS`, `WEBSOCKET_ORIGINS`,
-   `CHESSCOM_OAUTH_CALLBACK_URL`) must follow.
+Railway variables now list www in `TRUSTED_HOSTS`, `CORS_ORIGINS`,
+`WEBSOCKET_ORIGINS`; `VITE_PUBLIC_BASE_URL` and
+`CHESSCOM_OAUTH_CALLBACK_URL` point at www (the callback change was outside the
+order; the Chess.com app registration must match before OAuth is enabled).
 
-Hazard seen 2026-09-05 in the Railway dashboard tab inside Codex: a staged
-"Apply 1 change — service will be deleted" on the **keeper** project. Owner
-discarded it. Nobody applies staged dashboard changes without reading them.
+Canonical origin ruling: [www.thejimmyapp.com](http://www.thejimmyapp.com).
 
 ## 4. Save-moment → account-unlock loop — what exists
 
