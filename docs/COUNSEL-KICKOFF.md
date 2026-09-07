@@ -1,3 +1,5 @@
+> Superseded 2026-09-07 — historical record. Current state: docs/ROBOT-DOCKET.md, docs/GATE-4-HANDOFF.md, docs/UX-DOCKET.md.
+> Do not delete, rename, rewrite or reformat anything below the banner.
 # COUNSEL — deliberation mode of Claude Gate [#1] (not a session)
 SUPERSEDED STRUCTURE, 2026-08-10: the separate "Claude Counsel [#2]" session is RETIRED. Counsel is
 now a MODE of the gate conversation. This file is the mode's constitution; the gate follows it

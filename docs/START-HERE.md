@@ -1,43 +1,35 @@
-# START HERE — thejimmyapp, for Ryan-in-two-days
-You forgot everything. That's fine. There is ONE rule:
+# START HERE
 
-## THE ONE RULE
-Open the Claude conversation **"Claude Gate [#1]"** (model: Opus 5, effort: High), and type: **status**
-The gate reads the repo, verifies reality, and tells you where everything stands and what's next.
-That's it. Everything else below is reference.
+## CURRENT
 
-## What exists
-- **The product (live):** https://jimmyapp-production.up.railway.app — press Enter twice, watch a
-  fresh bughouse game, press `m` to save a learning moment. thejimmyapp.com points here too
-  (pending one Railway click by Jimmy if not yet clean).
-- **The design catalog (live, shareable):** https://jimmyapp-production.up.railway.app/blocks/index.html
-- **The repo:** github.com/thejimmyapp/The-jimmy-app · local at Documents/4robots/thejimmyapp
-  · every decision in docs/PROJECT-STATE.md · design images in Documents/4robots/design-specimens
-- **Sidebar artifacts (Claude):** project-state · ui-building-blocks · mission-control
+- [ROBOT-DOCKET.md](ROBOT-DOCKET.md) — Evidence ledger, completed work, blockers, and the next benchmark.
+- [GATE-4-HANDOFF.md](GATE-4-HANDOFF.md) — Verified operational and production handoff for the active gate.
+- [UX-DOCKET.md](UX-DOCKET.md) — Owner design rulings translated into gate chunks.
+- [SPEC-landing-2026-09.md](SPEC-landing-2026-09.md) — Landing rebuild flow, acceptance criteria, and chunk boundaries.
+- [MEMO-credential-intake-2026-09.md](MEMO-credential-intake-2026-09.md) — Credential-return options and their privacy and terms implications.
+- [DEV-RUN.md](DEV-RUN.md) — Current local setup and development commands.
 
-## The sessions (and the only ones that should exist)
-| Session | What it is | Your interaction |
-|---|---|---|
-| Claude Gate [#1] · Opus/High | The ONE Claude conversation. Manager of everything. | Type "status", paste executor replies into it, carry its paste-blocks to Codex |
-| Codex "Av3 - General" · Sol Ultra | The builder. Expensive. | Only paste what the Gate writes for it |
-| Codex "Cv2" | Domain watcher (issue #13) | Ignore; it acts on schedule |
-| Anything marked [retired] | Archives | Never message them |
+Current application flow and local startup instructions: see [DEV-RUN.md](DEV-RUN.md).
 
-**Counsel mode (no second session):** when a decision is hard, the Gate will literally tell you:
-"flip the model picker to Fable 5 / Extra and say 'deliberate'." Do that, get the verdict, flip back.
+## HISTORICAL
 
-## Rules that keep you safe
-1. One Claude conversation, ever. If you find two, keep the newest and rename the other "[retired]".
-2. Session titles are NAMES only — never put settings in titles; they drift and lie.
-3. Before pasting a Codex reply into the Gate, glance at its first line — if you've pasted it
-   before, it's stale; skip it.
-4. Never change Namecheap DNS. It is correct.
-5. If the Gate conversation dies or gets weird: new Claude session, connect the 4robots folder,
-   paste docs/NEXT-GATE-KICKOFF.md, rename it "Claude Gate [#1]". Full memory restored from repo.
-
-## Likely next steps (see PROJECT-STATE for the full queue)
-Engine-licensing ruling is DONE (R38, 2026-08-10): after issue #13 closes, flip the GitHub repo to
-PRIVATE (Settings → General → Danger Zone → Change visibility), then let the Gate finish the docs
-commit · paste Task 8-REVISED (steps 1–4) and the notices task the Gate hands you · redline the
-images in design-specimens/current-ui (Photoshop) → hand to Gate → skin pass · engine eval card
-(backend route already works) · username funnel · domain closure (issue #13, after Jimmy's click).
+- [A5-KICKOFF.md](A5-KICKOFF.md) — Superseded private UI-library inventory kickoff.
+- [A5-TAKEOVER-KICKOFF-2XL.md](A5-TAKEOVER-KICKOFF-2XL.md) — Superseded takeover and fresh-deployment kickoff.
+- [COUNSEL-KICKOFF.md](COUNSEL-KICKOFF.md) — Superseded counsel-mode operating instructions.
+- [CURRENT-HANDOFF.md](CURRENT-HANDOFF.md) — Superseded August recovery and Railway handoff.
+- [DEPLOY-RECON.md](DEPLOY-RECON.md) — Historical deployment reconnaissance snapshot.
+- [GATE-HANDOFF-ADDENDUM.md](GATE-HANDOFF-ADDENDUM.md) — Historical first-gate handoff addendum.
+- [MERGE_AUDIT.md](MERGE_AUDIT.md) — Historical local-to-web merge audit.
+- [NEXT-GATE-KICKOFF.md](NEXT-GATE-KICKOFF.md) — Superseded successor-gate boot prompt.
+- [PROJECT-STATE.md](PROJECT-STATE.md) — Historical project decision and state ledger.
+- [RECOVERY.md](RECOVERY.md) — Superseded Claude-session recovery instructions.
+- [SPEC-guest-commentary.md](SPEC-guest-commentary.md) — Historical guest annotation and commentary specification.
+- [bughouse-viewer-audit.md](bughouse-viewer-audit.md) — Historical third-party viewer audit.
+- [extraction-lab-handoff.md](extraction-lab-handoff.md) — Historical extraction-lab handoff.
+- [extraction-showcase.md](extraction-showcase.md) — Historical extraction showcase report.
+- [moment-addressing-engine-handoff.md](moment-addressing-engine-handoff.md) — Historical addressing and engine-handoff audit.
+- [operations/custom-domain-escalation-2026-08-02.md](operations/custom-domain-escalation-2026-08-02.md) — Historical custom-domain escalation.
+- [operations/custom-domain-readiness-2026-07-28.md](operations/custom-domain-readiness-2026-07-28.md) — Historical custom-domain readiness snapshot.
+- [operations/data-deletion-runbook.md](operations/data-deletion-runbook.md) — Historical deletion runbook predating live accounts.
+- [operations/railway-volume-and-infrastructure-options-2026-07-28.md](operations/railway-volume-and-infrastructure-options-2026-07-28.md) — Historical Railway ownership and volume options.
+- [reconciliation-qwen-safety-2026-08-01.md](reconciliation-qwen-safety-2026-08-01.md) — Historical Qwen and safety reconciliation ledger.

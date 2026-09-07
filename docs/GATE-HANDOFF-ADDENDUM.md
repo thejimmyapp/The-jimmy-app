@@ -1,3 +1,5 @@
+> Superseded 2026-09-07 — historical record. Current state: docs/ROBOT-DOCKET.md, docs/GATE-4-HANDOFF.md, docs/UX-DOCKET.md.
+> Do not delete, rename, rewrite or reformat anything below the banner.
 # GATE-HANDOFF-ADDENDUM — in-flight state of the FIRST Gate session (died 2026-08-10 ~01:45 PDT)
 Read this IMMEDIATELY AFTER NEXT-GATE-KICKOFF.md. It reconstructs decisions the previous Gate
 made that are not yet in PROJECT-STATE.md (it was barred from committing them by its own R38).

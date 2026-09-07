@@ -1,3 +1,5 @@
+> Superseded 2026-09-07 — historical record. Current state: docs/ROBOT-DOCKET.md, docs/GATE-4-HANDOFF.md, docs/UX-DOCKET.md.
+> Do not delete, rename, rewrite or reformat anything below the banner.
 # SPEC — Guest Annotation + Public Commentary (MVP)
 
 Drafted by Spec-Drafter [#2] against `main @ f8f43cd`. For Gate [#1] to slice into executor prompts.
