@@ -1,6 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import replayFixtures from "./fixtures/guest-match-replays.json";
@@ -48,7 +47,7 @@ vi.mock("./components/BoardPanel", () => ({
     <div data-testid={`board-${title}`}>{showTitle && <span>{title}</span>}{unavailable && <span>Second board was not included in the available Chess.com data.</span>}{beforeAnalyze && <button onClick={() => void beforeAnalyze()}>Run mocked analysis</button>}</div>
   ),
 }));
-vi.mock("./components/SidePanel", () => ({ SidePanel: ({ boardContent, dockBoardName = "Second Board" }: { boardContent: ReactNode; dockBoardName?: string }) => <div>Games panel<div role="tablist" aria-label="Review views"><button role="tab">Info</button><button role="tab">{dockBoardName}</button></div>{boardContent}</div> }));
+vi.mock("./components/SidePanel", () => ({ SidePanel: () => <div>Games panel</div> }));
 
 const completeGame: GamePayload = {
   game: {
@@ -257,7 +256,16 @@ describe("URL-first exact review", () => {
     expect(new URLSearchParams(location.search).get("game")).toBe("42");
   });
 
-  it("loads guest matchups, selects by keyboard, and unlocks Review with Info and Second Board", async () => {
+  it("renders replay controls with the main board and the second board in the secondary rail", async () => {
+    history.replaceState(null, "", "/?game=42");
+    const { container } = renderApp();
+
+    await screen.findByTestId("board-First Board");
+    expect(within(container.querySelector(".review-main") as HTMLElement).getByRole("button", { name: "Next" })).toBeTruthy();
+    expect(within(container.querySelector(".review-secondary") as HTMLElement).getByTestId("board-Second Board")).toBeTruthy();
+  });
+
+  it("loads guest matchups, selects by keyboard, and unlocks the Review workspace", async () => {
     renderApp();
     const statistics = screen.getByRole("button", { name: "Statistics", hidden: true }) as HTMLButtonElement;
     expect(statistics.disabled).toBe(true);
@@ -272,7 +280,6 @@ describe("URL-first exact review", () => {
     expect(screen.queryByText("BOARD B · PARTNER BOARD")).toBeNull();
     expect(screen.queryByText(/175% browser zoom/)).toBeNull();
     expect((screen.getByRole("button", { name: "Review" }) as HTMLButtonElement).disabled).toBe(false);
-    expect(Array.from(document.querySelectorAll<HTMLButtonElement>('[aria-label="Review views"] > button')).map((button) => button.textContent)).toEqual(["Info", "Second Board"]);
     expect(statistics.disabled).toBe(true);
     const stored = JSON.parse(localStorage.getItem(GUEST_PROGRESS_KEY) ?? "{}") as { capabilities?: Record<string, string> };
     expect(stored.capabilities?.rail_review).toBe("unlocked");

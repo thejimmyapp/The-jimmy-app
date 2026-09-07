@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { initialCapabilityMap, type SavedLesson } from "../guestProgress";
 import { QUEST_COPY } from "../quest";
 import { useCoachStore } from "../store";
-import type { NormalizedMatch } from "../types";
 import { SidePanel } from "./SidePanel";
 
 const saved: SavedLesson = {
@@ -28,7 +27,6 @@ const renderPanel = (overrides: Partial<Parameters<typeof SidePanel>[0]> = {}) =
   const props: Parameters<typeof SidePanel>[0] = {
     onSelectGame: vi.fn(),
     loadingGame: false,
-    boardContent: <div>Compact second board</div>,
     analysisContent: <div>Live engine card</div>,
     infoContent: <div>Review information</div>,
     savedLessons: [saved],
@@ -52,12 +50,10 @@ describe("review utility panel", () => {
   beforeEach(() => useCoachStore.setState({ game: null, guestMatch: null, games: [], messages: [], roomId: null, globalPly: 0 }));
   afterEach(cleanup);
 
-  it("orders the two review tabs, defaults to Info without a game, and omits Map", () => {
-    renderPanel({ boardContent: undefined, capabilities: initialCapabilityMap() });
-    const container = document.body;
-    const labels = Array.from(container.querySelectorAll<HTMLButtonElement>('[aria-label="Review views"] > button')).map((button) => button.textContent);
-    expect(labels).toEqual(["Info", "Second Board"]);
-    expect(screen.getByRole("tab", { name: "Info" }).getAttribute("aria-selected")).toBe("true");
+  it("shows review information directly without a review sub-tab list or Map", () => {
+    renderPanel({ capabilities: initialCapabilityMap() });
+    expect(screen.getByText("Review information")).toBeTruthy();
+    expect(screen.queryByRole("tablist", { name: "Review views" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Map" })).toBeNull();
     expect(screen.queryByText("Complete onboarding to open review tools.")).toBeNull();
   });
@@ -80,22 +76,6 @@ describe("review utility panel", () => {
     fireEvent.click(analysis);
     expect(screen.getByText("Live engine card")).toBeTruthy();
     expect(screen.getByText("Live engine card").closest(".analysis-pane")?.getAttribute("aria-hidden")).toBe("false");
-  });
-
-  it("exposes a native swap button and keeps focus attached to the same named board", async () => {
-    useCoachStore.setState({ guestMatch: {} as NormalizedMatch });
-    const onSwapBoards = vi.fn();
-    const onActiveBoardChange = vi.fn();
-    renderPanel({ boardFocusEnabled: true, onSwapBoards, onActiveBoardChange });
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Second Board" }).getAttribute("aria-selected")).toBe("true"));
-
-    const swap = screen.getByRole("button", { name: "Swap staged board" });
-    expect(swap.getAttribute("type")).toBe("button");
-    fireEvent.click(swap);
-
-    expect(onSwapBoards).toHaveBeenCalledOnce();
-    expect(onActiveBoardChange).toHaveBeenLastCalledWith("B");
-    expect(screen.getByRole("tab", { name: "Second Board" }).getAttribute("aria-selected")).toBe("true");
   });
 
   it("reopens a saved exact game reference and can remove it", async () => {

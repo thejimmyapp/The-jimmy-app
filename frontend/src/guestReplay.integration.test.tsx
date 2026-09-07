@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import replayFixtures from "./fixtures/guest-match-replays.json";
+import { sendRoomEvent } from "./socket";
 import { useCoachStore } from "./store";
 import type { CallbackReplayBoard, GuestMatchReplaySource, NormalizedMatch } from "./types";
 
@@ -87,14 +88,19 @@ describe("guest replay workspace integration", () => {
     fireEvent.keyDown(list, { key: "Enter" });
 
     const stagedSecondBoard = await screen.findByLabelText("Second Board chessboard");
+    const dockFirstBoard = screen.getByLabelText("First Board chessboard");
     const stagedSecondPanel = stagedSecondBoard.closest(".board-panel") as HTMLElement;
+    const dockFirstPanel = dockFirstBoard.closest(".board-panel") as HTMLElement;
+    const secondaryRail = document.querySelector(".review-secondary") as HTMLElement;
     expect(screen.queryByText("BOARD A · FEATURED PLAYER")).toBeNull();
+    expect(within(secondaryRail).getByLabelText("First Board chessboard")).toBe(dockFirstBoard);
     expect(within(stagedSecondBoard).getAllByRole("button")).toHaveLength(64);
     expect(within(stagedSecondBoard).getAllByRole("button")[0].getAttribute("aria-label")?.startsWith("a8")).toBe(true);
     expect(within(stagedSecondPanel).getByText(String(boardB.headers.White))).toBeTruthy();
+    expect(within(dockFirstBoard).getAllByRole("button")[0].getAttribute("aria-label")?.startsWith("h1")).toBe(true);
+    expect(within(dockFirstPanel).getByText(String(boardA.headers.Black))).toBeTruthy();
     expect(stagedSecondPanel.getAttribute("data-keyboard-focus")).toBe("active");
-    expect(screen.getByRole("tab", { name: "First Board" }).getAttribute("aria-selected")).toBe("true");
-    expect(screen.queryByLabelText("Synchronized move history")).toBeNull();
+    expect(dockFirstPanel.getAttribute("data-keyboard-focus")).toBe("inactive");
     expect(useCoachStore.getState().game?.timeline).toHaveLength(boardA.plyCount + boardB.plyCount + 1);
     const analyze = screen.getAllByRole("button", { name: /Analyze with Fairy-Stockfish/ }) as HTMLButtonElement[];
     const coach = screen.getByRole("button", { name: /Team Coach/ }) as HTMLButtonElement;
@@ -110,40 +116,35 @@ describe("guest replay workspace integration", () => {
 
     fireEvent.keyDown(window, { key: "ArrowRight" });
     expect(useCoachStore.getState().globalPly).toBe(1);
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    expect(useCoachStore.getState().globalPly).toBe(0);
+
     fireEvent.keyDown(window, { key: "Tab" });
-    await waitFor(() => expect(screen.getByRole("tab", { name: "First Board" }).getAttribute("aria-selected")).toBe("true"));
-    const dockFirstBoard = screen.getByLabelText("First Board chessboard");
-    const dockFirstPanel = dockFirstBoard.closest(".board-panel") as HTMLElement;
-    expect(within(dockFirstBoard).getAllByRole("button")[0].getAttribute("aria-label")?.startsWith("h1")).toBe(true);
-    expect(within(dockFirstPanel).getByText(String(boardA.headers.Black))).toBeTruthy();
+    await waitFor(() => expect(dockFirstPanel.getAttribute("data-keyboard-focus")).toBe("active"));
     expect(stagedSecondPanel.getAttribute("data-keyboard-focus")).toBe("inactive");
-    expect(dockFirstPanel.getAttribute("data-keyboard-focus")).toBe("active");
-    fireEvent.keyDown(window, { key: "ArrowRight" });
-    expect(useCoachStore.getState().globalPly).toBe(2);
+
+    vi.mocked(sendRoomEvent).mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(useCoachStore.getState().globalPly).toBe(1);
+    fireEvent.click(screen.getByRole("button", { name: "Previous" }));
+    expect(useCoachStore.getState().globalPly).toBe(0);
+    expect(vi.mocked(sendRoomEvent).mock.calls).toEqual([
+      ["timeline.seek", { global_ply: 1 }],
+      ["timeline.seek", { global_ply: 0 }],
+    ]);
 
     fireEvent.click(screen.getByRole("button", { name: "Swap staged board" }));
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Second Board" }).getAttribute("aria-selected")).toBe("false"));
-    expect(screen.getByRole("tab", { name: "Info" }).getAttribute("aria-selected")).toBe("true");
-    const stagedFirstBoard = screen.getByLabelText("First Board chessboard");
+    const stagedFirstBoard = await screen.findByLabelText("First Board chessboard");
     const stagedFirstPanel = stagedFirstBoard.closest(".board-panel") as HTMLElement;
+    const dockSecondBoard = within(secondaryRail).getByLabelText("Second Board chessboard");
+    const dockSecondPanel = dockSecondBoard.closest(".board-panel") as HTMLElement;
     expect(within(stagedFirstBoard).getAllByRole("button")[0].getAttribute("aria-label")?.startsWith("h1")).toBe(true);
     expect(within(stagedFirstPanel).getByText(String(boardA.headers.Black))).toBeTruthy();
     expect(stagedFirstPanel.getAttribute("data-keyboard-focus")).toBe("active");
-
-    fireEvent.click(screen.getByRole("tab", { name: "Second Board" }));
-    const dockSecondBoard = screen.getByLabelText("Second Board chessboard");
-    const dockSecondPanel = dockSecondBoard.closest(".board-panel") as HTMLElement;
     expect(within(dockSecondBoard).getAllByRole("button")[0].getAttribute("aria-label")?.startsWith("a8")).toBe(true);
     expect(within(dockSecondPanel).getByText(String(boardB.headers.White))).toBeTruthy();
-    expect(dockSecondPanel.getAttribute("data-keyboard-focus")).toBe("active");
+    expect(dockSecondPanel.getAttribute("data-keyboard-focus")).toBe("inactive");
 
-    fireEvent.click(screen.getByRole("button", { name: "Swap staged board" }));
-    await waitFor(() => expect(screen.getByRole("tab", { name: "First Board" }).getAttribute("aria-selected")).toBe("false"));
-    expect(screen.getByRole("tab", { name: "Info" }).getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByLabelText("Second Board chessboard").closest(".board-panel")?.getAttribute("data-keyboard-focus")).toBe("active");
-
-    fireEvent.keyDown(window, { key: "Tab" });
-    await waitFor(() => expect(screen.getByRole("tab", { name: "First Board" }).getAttribute("aria-selected")).toBe("true"));
     const firstPocketPly = useCoachStore.getState().game?.timeline.findIndex((frame) =>
       frame.board_a.white_pocket !== "-"
       || frame.board_a.black_pocket !== "-"
@@ -155,8 +156,6 @@ describe("guest replay workspace integration", () => {
     await waitFor(() => expect(useCoachStore.getState().globalPly).toBe(firstPocketPly));
     expect(document.querySelectorAll(".pocket-rail span").length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole("tab", { name: "First Board" }));
-    expect(screen.getByLabelText("First Board chessboard")).toBeTruthy();
     expect(screen.getAllByLabelText(/pocket$/)).toHaveLength(4);
     expect(useCoachStore.getState().game?.cross_board_ordering).toEqual({ method: "clock-inferred", exact: false });
   });

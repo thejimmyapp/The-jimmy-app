@@ -1,8 +1,7 @@
-import { Pause, Play, SkipBack, SkipForward, StepBack, StepForward } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { sendRoomEvent } from "../socket";
-import { useCoachStore } from "../store";
+import { useEffect } from "react";
 import type { BoardId } from "../types";
+import { ReplayControls } from "./ReplayControls";
+import { useReplayMovement } from "./useReplayMovement";
 
 interface Props {
   variant?: "full" | "panel";
@@ -16,20 +15,8 @@ interface Props {
 }
 
 export function Timeline({ variant = "full", activeBoard = "A", boardFocusEnabled = false, onActiveBoardChange, stagedSourceBoard = "A", dockSourceBoard = "B", stagedBoardName = "First Board", dockBoardName = "Second Board" }: Props) {
-  const { game, globalPly, seek, mode } = useCoachStore();
-  const [playing, setPlaying] = useState(false);
-  const max = Math.max(0, game?.timeline.length ? game.timeline.length - 1 : (game?.positions_a.length ?? 1) - 1);
+  const { game, globalPly, max, mode, move } = useReplayMovement();
   const focusedBoardName = activeBoard === "A" ? stagedBoardName : dockBoardName;
-  useEffect(() => {
-    if (!playing || globalPly >= max) return;
-    const timer = window.setTimeout(() => {
-      const next = globalPly + 1;
-      seek(next);
-      sendRoomEvent("timeline.seek", { global_ply: next });
-    }, 650);
-    return () => window.clearTimeout(timer);
-  }, [playing, globalPly, max, seek]);
-  const move = useCallback((ply: number) => { const next = Math.max(0, Math.min(max, ply)); seek(next); sendRoomEvent("timeline.seek", { global_ply: next }); }, [max, seek]);
   useEffect(() => {
     const handleArrowNavigation = (event: KeyboardEvent) => {
       const target = event.target;
@@ -52,13 +39,7 @@ export function Timeline({ variant = "full", activeBoard = "A", boardFocusEnable
   return (
     <section className={`timeline ${variant === "panel" ? "timeline-panel" : ""}`} aria-label="Synchronized move history">
       <div className="timeline-left">
-        <div className="timeline-actions">
-          <button onClick={() => move(0)} aria-label="Start"><SkipBack size={17} /></button>
-          <button onClick={() => move(globalPly - 1)} aria-label="Previous"><StepBack size={17} /></button>
-          <button className="play" onClick={() => setPlaying(!playing)} aria-label={playing ? "Pause" : "Play"}>{playing ? <Pause size={18} /> : <Play size={18} />}</button>
-          <button onClick={() => move(globalPly + 1)} aria-label="Next"><StepForward size={17} /></button>
-          <button onClick={() => move(max)} aria-label="End"><SkipForward size={17} /></button>
-        </div>
+        <ReplayControls />
         <div className={`mode-badge ${mode}`}><span />{mode === "review" ? `GAME REVIEW · MOVE ${globalPly}${boardFocusEnabled ? ` · ${focusedBoardName.toUpperCase()} FOCUS` : ""}` : `EXPLORATION · MOVE ${globalPly}`}</div>
       </div>
       <div className="timeline-tracks">
