@@ -7,7 +7,7 @@ against production by the gate, not taken from an executor report.
 
 | Item | Value |
 |---|---|
-| `main` | `1c56971` = merge of `codex/flashcard-review-state` (`765acc5`) onto `a57dfdc`, `--no-ff` |
+| `main` | `1c56971` at 02:00 PT; `8845e81` by 08:00 PT (see docket) |
 | Golden build on that tree | Ruff ok · pytest **186** (179 + 7) · vitest **205** (202 + 3) · ESLint ok · Vite build ok |
 | Production | `https://thejimmyapp-production.up.railway.app` — `/health` ok; `/openapi.json` lists `/api/moments/{moment_id}/review` |
 | Railway | project `thejimmyapp-ryan` (`65513c12-b3af-4d42-ac78-cdb3c34a9ae5`), env `production` (`2567c380-…`), service `thejimmyapp` (`ea408278-…`), region sfo, volume `thejimmyapp-volume` at `/app/data` |
@@ -72,12 +72,11 @@ discarded it. Nobody applies staged dashboard changes without reading them.
 | Three-for-five completion (`guest_completions`, `completion_ordinal`) | Live, verified |
 | `POST /api/accounts/claim` (email only, gated on completion) + account cookie | Live |
 | `GET /api/accounts/me` | Live |
-| Claim UI in the library panel (`completionRecorded`) | Live (behind LIBRARY-01) |
+| Claim UI in the library panel (`completionRecorded`) | Live (LIBRARY-01 fixed, `adb2989`) |
 | Return path on another device / after cookie loss | **Missing** — this is the held credential-intake decision (P0, owner) |
 | What an account unlocks beyond the label | **Undefined** — product decision |
 
-Nothing in this loop should be built until LIBRARY-01 is merged and the owner
-rules on credential intake.
+Nothing in this loop should be built until the owner rules on credential intake.
 
 ## 5. Unpushed work in the canonical repo (push-only, no merge)
 
