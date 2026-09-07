@@ -47,8 +47,6 @@ If using a separately installed `pnpm`, run `pnpm --dir frontend dev` instead.
 
 Open [http://127.0.0.1:5173](http://127.0.0.1:5173). Choose **Guest Spawn**, use Arrow Up/Arrow Down to choose a matchup, and press Enter. The selected match opens at the starting position; Arrow Left/Arrow Right steps the synchronized two-board replay.
 
-The private UI building-block catalog is excluded from the production build. To serve it locally, run `corepack pnpm --dir frontend blocks:dev` from the repository root, then open [http://127.0.0.1:5173/blocks](http://127.0.0.1:5173/blocks).
-
 Stop each server with `Ctrl+C` in its terminal.
 
 ## Verification commands
