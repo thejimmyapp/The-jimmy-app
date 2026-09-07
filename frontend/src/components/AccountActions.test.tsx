@@ -20,7 +20,9 @@ describe("account actions", () => {
     expect(onSignUp).not.toHaveBeenCalled();
 
     rerender(<AccountActions completed onSignUp={onSignUp} />);
-    fireEvent.click(screen.getByRole("button", { name: "Sign up" }));
+    const enabledSignUp = screen.getByRole("button", { name: "Sign up" }) as HTMLButtonElement;
+    expect(enabledSignUp.title).toBe("");
+    fireEvent.click(enabledSignUp);
     expect(onSignUp).toHaveBeenCalledOnce();
   });
 });

@@ -84,7 +84,7 @@ export function GuestMatchupList({ onSelect }: Props) {
       tabIndex={-1}
       onKeyDown={handleSurfaceKeyDown}
     >
-      <div className="onboarding-entry-copy">
+      <div className="guest-matchup-copy">
         <span>GUEST MATCHUPS</span>
         <h1>Choose a game to review.</h1>
         <p>Use Arrow Up or Arrow Down to move. Press Enter to select.</p>
