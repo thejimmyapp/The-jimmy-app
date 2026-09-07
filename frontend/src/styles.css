@@ -83,13 +83,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   padding: 0 10px;
   overflow: visible;
 }
-.pocket-rail > small {
-  width: 48px;
-  flex: 0 0 48px;
-  font-size: 8px;
-  line-height: 1.15;
-  text-transform: uppercase;
-}
 .pocket-rail span {
   position: relative;
   line-height: .58;
@@ -1289,7 +1282,6 @@ body { background: #050910; }
   background: #09111c;
 }
 .vertical-pockets .pocket-rail:last-child { justify-content: flex-end; }
-.vertical-pockets .pocket-rail > small { width: auto; flex: 0 0 auto; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 7px; line-height: 1; letter-spacing: .08em; }
 .vertical-pockets .pocket-rail span { flex: 0 0 auto; font-size: clamp(20px, 5.2cqi, 34px); line-height: .75; }
 .board-layout-compact .vertical-pockets .pocket-rail span { font-size: clamp(16px, 5.1cqi, 24px); }
 .board-layout-primary .board-footer,
