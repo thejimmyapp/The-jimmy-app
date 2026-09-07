@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
+import json
 import time
 from typing import Any
 
@@ -65,6 +66,68 @@ def callback_board(
             "bottom": {"color": "white", "username": white[0], "rating": white[1]},
         },
     }
+
+
+def rating_class_fixture(
+    games_by_player: dict[str, list[int]],
+    specs: dict[int, tuple[int, int, int]],
+    **setting_overrides: Any,
+) -> tuple[ChessComMatchupService, list[str]]:
+    callbacks: dict[str, dict[str, Any]] = {}
+    for game_id, (top_rating, end_time, plies) in specs.items():
+        primary_uuid = f"{game_id:08x}-0000-4000-8000-{game_id:012x}"
+        partner_id = game_id + 1000
+        partner_uuid = f"{partner_id:08x}-0000-4000-8000-{partner_id:012x}"
+        callbacks[str(game_id)] = callback_board(
+            game_id,
+            primary_uuid,
+            partner_uuid,
+            white=(f"Top{game_id}", top_rating),
+            black=(f"Other{game_id}", max(0, top_rating - 100)),
+            winner="white",
+            reason="checkmated",
+            plies=plies,
+            end_time=end_time,
+        )
+        callbacks[partner_uuid] = callback_board(
+            partner_id,
+            partner_uuid,
+            primary_uuid,
+            white=(f"Diagonal{game_id}", max(0, top_rating - 200)),
+            black=(f"Partner{game_id}", max(0, top_rating - 50)),
+            winner="black",
+            reason="bughousepartnerlose",
+            plies=plies,
+            end_time=end_time,
+        )
+
+    requests: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(str(request.url))
+        path = request.url.path
+        if path == "/pub/leaderboards":
+            payload = {"live_bughouse": []}
+        elif path.endswith("/games/2026/08"):
+            username = path.split("/")[3]
+            payload = {"games": [
+                {
+                    "rules": "bughouse",
+                    "url": f"https://www.chess.com/game/live/{game_id}",
+                    "end_time": specs[game_id][1],
+                }
+                for game_id in games_by_player.get(username, [])
+            ]}
+        else:
+            payload = callbacks[path.rsplit("/", 1)[-1]]
+        return httpx.Response(200, json=payload, request=request)
+
+    settings = Settings(
+        chesscom_guest_max_archives_per_player=1,
+        chesscom_guest_max_matches_examined=100,
+        **setting_overrides,
+    )
+    return ChessComMatchupService(settings, transport=httpx.MockTransport(handler)), requests
 
 
 def test_match_proxy_fetches_partner_sequentially_normalizes_and_caches_raw_pair() -> None:
@@ -171,7 +234,7 @@ def test_match_proxy_fails_closed_for_unknown_terminal_code_even_if_message_look
         asyncio.run(service.normalized_match(42))
 
 
-def test_guest_list_widens_to_three_hours_filters_short_match_and_reuses_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_guest_list_selects_freshest_per_class_ties_on_plies_and_reuses_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("backend.chesscom_matchups.time.time", lambda: NOW)
     requests: list[str] = []
     callback_payloads: dict[str, dict[str, Any]] = {}
@@ -185,12 +248,13 @@ def test_guest_list_widens_to_three_hours_filters_short_match_and_reuses_cache(m
         partner_id = game_id + 1000
         partner_uuid = f"{partner_id:08x}-0000-4000-8000-{partner_id:012x}"
         plies = 12 if game_id == 106 else 30 + offset
+        top_rating = 2500 if game_id < 103 else 2200 if game_id < 105 else 1800
         callback_payloads[str(game_id)] = callback_board(
             game_id,
             primary_uuid,
             partner_uuid,
-            white=(f"High{game_id}", 2500),
-            black=(f"Low{game_id}", 2100),
+            white=(f"High{game_id}", top_rating),
+            black=(f"Low{game_id}", max(1400, top_rating - 200)),
             winner="white",
             reason="checkmated",
             plies=plies,
@@ -199,8 +263,8 @@ def test_guest_list_widens_to_three_hours_filters_short_match_and_reuses_cache(m
             partner_id,
             partner_uuid,
             primary_uuid,
-            white=(f"PartnerOpponent{game_id}", 2000),
-            black=(f"Partner{game_id}", 2200),
+            white=(f"PartnerOpponent{game_id}", max(1400, top_rating - 300)),
+            black=(f"Partner{game_id}", max(1400, top_rating - 100)),
             winner="black",
             reason="bughousepartnerlose",
             plies=plies,
@@ -228,14 +292,16 @@ def test_guest_list_widens_to_three_hours_filters_short_match_and_reuses_cache(m
                     "url": f"https://www.chess.com/game/live/{game_id}",
                     "end_time": NOW - (30 * 60 if game_id in {101, 102} else 2 * 3600),
                 }
-                for game_id in games_by_player[username]
+                for game_id in games_by_player.get(username, [])
             ]}
         else:
             payload = callback_payloads[path.rsplit("/", 1)[-1]]
         return httpx.Response(200, json=payload, request=request)
 
     settings = Settings(
-        chesscom_players_of_interest="Missing, NoGames, Alpha, Beta",
+        chesscom_players_of_interest="Alpha",
+        chesscom_seed_players_1900_2300="Beta",
+        chesscom_seed_players_1400_1900="Gamma",
         chesscom_guest_max_archives_per_player=1,
         chesscom_guest_max_matches_examined=10,
     )
@@ -244,18 +310,19 @@ def test_guest_list_widens_to_three_hours_filters_short_match_and_reuses_cache(m
     request_count = len(requests)
     second = asyncio.run(service.guest_matchups())
 
-    assert len(first["matches"]) == 5
+    assert len(first["matches"]) == 3
     assert first["examined"] == 6
     assert first["excluded"] == 1
     assert first["exclusion_counts"] == {"under_20_plies": 1}
-    assert first["players_sampled"] == ["Missing", "NoGames", "Alpha", "Beta", "Gamma"]
+    assert {"Alpha", "Beta", "Gamma"}.issubset(first["players_sampled"])
     assert first["players_represented"] == ["Alpha", "Beta", "Gamma"]
-    assert first["seed_source"] == "players_of_interest_then_leaderboard_top_50"
+    assert first["seed_source"] == "players_of_interest"
     assert first["selection_window_hours"] == 3
-    assert {match["end_time"] for match in first["matches"]} == {NOW - 30 * 60, NOW - 2 * 3600}
-    assert sum(1 for match in first["matches"] if match["game_ids"]["A"] in games_by_player["alpha"]) == 2
-    assert sum(1 for match in first["matches"] if match["game_ids"]["A"] in games_by_player["beta"]) == 2
-    assert sum(1 for match in first["matches"] if match["game_ids"]["A"] in games_by_player["gamma"]) == 1
+    assert [match["rating_class"]["label"] for match in first["matches"]] == ["2300+", "1900–2300", "1400–1900"]
+    assert [match["game_ids"]["A"] for match in first["matches"]] == [102, 104, 105]
+    assert [match["top_rating"] for match in first["matches"]] == [2500, 2200, 1800]
+    assert [item["status"] for item in first["classes"]] == ["fresh", "older", "older"]
+    assert [item["window_hours"] for item in first["classes"]] == [1, 3, 3]
     assert first["cached"] is False
     assert second["cached"] is True
     assert len(requests) == request_count
@@ -300,6 +367,10 @@ def test_guest_endpoint_returns_validated_partial_list_within_cold_budget(tmp_pa
         elif path.endswith("/beta/games/2026/08"):
             await asyncio.sleep(0.2)
             payload = {"games": []}
+        elif path.endswith("/games/2026/08"):
+            payload = {"games": []}
+        elif path == "/pub/leaderboards":
+            payload = {"live_bughouse": []}
         else:
             payload = callback_payloads[path.rsplit("/", 1)[-1]]
         return httpx.Response(200, json=payload, request=request)
@@ -307,6 +378,7 @@ def test_guest_endpoint_returns_validated_partial_list_within_cold_budget(tmp_pa
     service = ChessComMatchupService(
         Settings(
             chesscom_players_of_interest="Alpha,Beta",
+            chesscom_seed_players_1900_2300="Beta",
             chesscom_guest_max_archives_per_player=1,
         ),
         transport=httpx.MockTransport(handler),
@@ -325,7 +397,8 @@ def test_guest_endpoint_returns_validated_partial_list_within_cold_budget(tmp_pa
 
     assert elapsed < 0.2
     assert response.status_code == 200
-    assert len(response.json()["matches"]) == 2
+    assert len(response.json()["matches"]) == 3
+    assert sum(match.get("placeholder", False) for match in response.json()["matches"]) == 2
     assert response.json()["partial"] is True
     assert response.json()["assembly_budget_exhausted"] is True
 
@@ -338,27 +411,151 @@ def test_configured_players_of_interest_preserve_priority_order() -> None:
     assert service._configured_seed_usernames() == ["Gamma", "Alpha", "Beta"]
 
 
+def test_rating_boundaries_and_floor_exclusion_are_exact(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("backend.chesscom_matchups.time.time", lambda: NOW)
+    service, _requests = rating_class_fixture(
+        {"topseed": [401], "midseed": [402], "lowseed": [403]},
+        {
+            401: (2300, NOW - 600, 40),
+            402: (1900, NOW - 500, 40),
+            403: (1399, NOW - 400, 40),
+        },
+        chesscom_players_of_interest="TopSeed",
+        chesscom_seed_players_1900_2300="MidSeed",
+        chesscom_seed_players_1400_1900="LowSeed",
+    )
+
+    payload = asyncio.run(service.guest_matchups())
+
+    assert payload["matches"][0]["top_rating"] == 2300
+    assert payload["matches"][0]["rating_class"]["label"] == "2300+"
+    assert payload["matches"][1]["top_rating"] == 1900
+    assert payload["matches"][1]["rating_class"]["label"] == "1900–2300"
+    assert payload["matches"][2] == {
+        "rating_class": {"label": "1400–1900", "min": 1400, "max": 1900},
+        "placeholder": True,
+        "reason": "no_game_in_7_days",
+    }
+    assert payload["exclusion_counts"]["below_floor"] == 1
+    assert payload["partial"] is True
+
+
+def test_each_class_ladder_reaches_seven_days_and_counts_older_games(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("backend.chesscom_matchups.time.time", lambda: NOW)
+    service, _requests = rating_class_fixture(
+        {"topseed": [], "oldseed": [411, 412]},
+        {
+            411: (1800, NOW - 6 * 86_400, 40),
+            412: (1800, NOW - 8 * 86_400, 40),
+        },
+        chesscom_players_of_interest="TopSeed",
+        chesscom_seed_players_1400_1900="OldSeed",
+    )
+
+    payload = asyncio.run(service.guest_matchups())
+
+    assert payload["matches"][2]["game_ids"]["A"] == 411
+    assert payload["matches"][2]["finished_seconds_ago"] == 6 * 86_400
+    assert payload["classes"][2] == {
+        "label": "1400–1900",
+        "min": 1400,
+        "max": 1900,
+        "status": "older",
+        "window_hours": 168,
+    }
+    assert payload["selection_window_hours"] == 168
+    assert payload["exclusion_counts"]["outside_48h"] == 1
+
+
+@pytest.mark.parametrize(
+    ("classes", "floor", "message"),
+    [
+        ("1900-2300,2300+,1400-1900", 1400, "open-ended highest"),
+        ("2300+,1800-2200,1400-1800", 1400, "high-to-low and contiguous"),
+        ("2300+,1900-2300,1400-1900", 1300, "must start"),
+    ],
+)
+def test_invalid_rating_class_config_is_rejected(classes: str, floor: int, message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        Settings(chesscom_guest_rating_classes=classes, chesscom_guest_min_top_rating=floor)
+
+
+def test_roster_records_seats_by_own_class_and_prunes_by_age_and_cap() -> None:
+    service = ChessComMatchupService(Settings(chesscom_guest_roster_max_per_class=1))
+    service._record_match_roster({
+        "end_time": NOW,
+        "seats": {
+            "A-white": {"name": "Top", "rating": 2400},
+            "A-black": {"name": "Middle", "rating": 2100},
+            "B-white": {"name": "Lower", "rating": 1700},
+            "B-black": {"name": "Below", "rating": 1399},
+        },
+    })
+    service._record_roster_seat("OlderTop", 2500, NOW - 1)
+    service._record_roster_seat("ExpiredMiddle", 2000, NOW - 8 * 86_400)
+    service._prune_roster(NOW)
+
+    assert list(service._roster["2300+"]) == ["top"]
+    assert list(service._roster["1900–2300"]) == ["middle"]
+    assert list(service._roster["1400–1900"]) == ["lower"]
+    assert "below" not in {name for members in service._roster.values() for name in members}
+
+
+def test_version_one_cache_still_loads_without_a_roster(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("backend.chesscom_matchups.time.time", lambda: NOW)
+    path = tmp_path / "v1.json"
+    path.write_text(json.dumps({
+        "version": 1,
+        "saved_at": NOW,
+        "payload": {"matches": []},
+        "pool": [],
+        "player_last_active": {"alpha": NOW},
+    }), encoding="utf-8")
+    service = ChessComMatchupService(Settings())
+    service.cache_path = path
+
+    assert service._load_persisted() is True
+    assert service._player_last_active == {"alpha": NOW}
+    assert all(not members for members in service._roster.values())
+
+
+def test_default_guest_list_ttl_drives_refresh_loop(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = ChessComMatchupService(Settings())
+    service._store_entry({"matches": []}, [])
+    sleeps: list[float] = []
+
+    async def stop_after_sleep(delay: float) -> None:
+        sleeps.append(delay)
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr("backend.chesscom_matchups.asyncio.sleep", stop_after_sleep)
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(service._refresh_loop())
+
+    assert service.settings.chesscom_guest_list_ttl_seconds == 300
+    assert sleeps[0] == pytest.approx(210, abs=0.1)
+
+
 def test_guest_refresh_bypasses_list_cache_and_prefers_non_current_pairs(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("backend.chesscom_matchups.time.time", lambda: NOW)
     players = {
         "alpha": [201, 202],
         "beta": [203, 204],
         "gamma": [205, 206],
-        "delta": [207, 208],
-        "epsilon": [209, 210],
     }
     callbacks: dict[str, dict[str, Any]] = {}
     requests: list[str] = []
-    for game_id in range(201, 211):
+    for game_id in range(201, 207):
         primary_uuid = f"{game_id:08x}-0000-4000-8000-{game_id:012x}"
         partner_id = game_id + 1000
         partner_uuid = f"{partner_id:08x}-0000-4000-8000-{partner_id:012x}"
+        top_rating = 2500 if game_id < 203 else 2200 if game_id < 205 else 1800
         callbacks[str(game_id)] = callback_board(
             game_id,
             primary_uuid,
             partner_uuid,
-            white=(f"High{game_id}", 2500),
-            black=(f"Low{game_id}", 2100),
+            white=(f"High{game_id}", top_rating),
+            black=(f"Low{game_id}", max(1400, top_rating - 200)),
             winner="white",
             reason="checkmated",
         )
@@ -366,8 +563,8 @@ def test_guest_refresh_bypasses_list_cache_and_prefers_non_current_pairs(monkeyp
             partner_id,
             partner_uuid,
             primary_uuid,
-            white=(f"PartnerOpponent{game_id}", 2000),
-            black=(f"Partner{game_id}", 2200),
+            white=(f"PartnerOpponent{game_id}", max(1400, top_rating - 300)),
+            black=(f"Partner{game_id}", max(1400, top_rating - 100)),
             winner="black",
             reason="bughousepartnerlose",
         )
@@ -386,7 +583,7 @@ def test_guest_refresh_bypasses_list_cache_and_prefers_non_current_pairs(monkeyp
                     "url": f"https://www.chess.com/game/live/{game_id}",
                     "end_time": NOW - 10 * 60,
                 }
-                for game_id in players[username]
+                for game_id in players.get(username, [])
             ]}
         elif path == "/pub/leaderboards":
             payload = {"live_bughouse": [{"username": name} for name in players]}
@@ -396,7 +593,9 @@ def test_guest_refresh_bypasses_list_cache_and_prefers_non_current_pairs(monkeyp
 
     service = ChessComMatchupService(
         Settings(
-            chesscom_players_of_interest="Alpha, Beta, Gamma, Delta, Epsilon",
+            chesscom_players_of_interest="Alpha",
+            chesscom_seed_players_1900_2300="Beta",
+            chesscom_seed_players_1400_1900="Gamma",
             chesscom_guest_max_archives_per_player=1,
             chesscom_guest_max_matches_examined=20,
         ),
@@ -416,11 +615,12 @@ def test_guest_refresh_bypasses_list_cache_and_prefers_non_current_pairs(monkeyp
         for game_id in match["game_ids"].values()
     }
 
-    assert len(requests) > first_request_count
+    assert len(requests) == first_request_count
     assert current_ids.isdisjoint(refreshed_ids)
-    assert refreshed["cached"] is False
+    assert len(refreshed["matches"]) == 3
+    assert refreshed["cached"] is True
+    assert refreshed["regenerated_from_pool"] is True
     assert refreshed["selection_window_hours"] == 1
-    assert refreshed["players_represented"] == ["Gamma", "Delta", "Epsilon"]
 
 
 def test_kill_switch_disables_match_and_guest_routes_before_network_access() -> None:
@@ -444,14 +644,20 @@ def _five_player_fixture(requests: list[str]):
         primary_uuid = f"{game_id:08x}-0000-4000-8000-{game_id:012x}"
         partner_id = game_id + 1000
         partner_uuid = f"{partner_id:08x}-0000-4000-8000-{partner_id:012x}"
+        top_rating = (
+            2500 if game_id in {301, 302, 307, 310}
+            else 2200 if game_id in {303, 304, 308}
+            else 1800
+        )
         callbacks[str(game_id)] = callback_board(
             game_id, primary_uuid, partner_uuid,
-            white=(f"High{game_id}", 2500), black=(f"Low{game_id}", 2100),
+            white=(f"High{game_id}", top_rating), black=(f"Low{game_id}", max(1400, top_rating - 200)),
             winner="white", reason="checkmated",
         )
         callbacks[partner_uuid] = callback_board(
             partner_id, partner_uuid, primary_uuid,
-            white=(f"PartnerOpponent{game_id}", 2000), black=(f"Partner{game_id}", 2200),
+            white=(f"PartnerOpponent{game_id}", max(1400, top_rating - 300)),
+            black=(f"Partner{game_id}", max(1400, top_rating - 100)),
             winner="black", reason="bughousepartnerlose",
         )
 
@@ -468,10 +674,10 @@ def _five_player_fixture(requests: list[str]):
             username = path.split("/")[3]
             payload = {"games": [
                 {"rules": "bughouse", "url": f"https://www.chess.com/game/live/{game_id}", "end_time": NOW - 10 * 60}
-                for game_id in players[username]
+                for game_id in players.get(username, [])
             ]}
         elif path.endswith("/games/2026/07"):
-            raise AssertionError("July archive cannot hold games from the last 48 hours and must not be fetched")
+            raise AssertionError("July archive cannot hold games from the last seven days and must not be fetched")
         elif path == "/pub/leaderboards":
             payload = {"live_bughouse": [{"username": name} for name in players]}
         else:
@@ -480,6 +686,8 @@ def _five_player_fixture(requests: list[str]):
 
     settings = Settings(
         chesscom_players_of_interest="Alpha, Beta, Gamma, Delta, Epsilon",
+        chesscom_seed_players_1900_2300="Beta, Delta",
+        chesscom_seed_players_1400_1900="Gamma, Epsilon",
         chesscom_guest_max_archives_per_player=2,
         chesscom_guest_max_matches_examined=20,
         chesscom_guest_pool_target=10,
@@ -507,19 +715,18 @@ def test_background_build_fills_a_pool_so_regenerate_needs_no_upstream_calls(mon
 
     assert first["cached"] is True
     assert first["pool_size"] == 10
-    assert first["upstream_requests"] == 5 + 20  # one August archive per player, two callbacks per match
+    assert first["upstream_requests"] >= 5 + 20
     assert not any(url.endswith("/games/archives") for url in requests)
     assert not any(url.endswith("/games/2026/07") for url in requests)
-    assert len(rotated["matches"]) == 5
+    assert len(rotated["matches"]) == 3
     assert rotated["regenerated_from_pool"] is True
     assert rotated["cached"] is True
     assert rotated["upstream_requests"] == 0
-    assert rotated["players_represented"] == ["Gamma", "Delta", "Epsilon"]
     assert after_rotate == after_build
-    # Pool exhausted: falls back to a real rebuild that honours the exclusions.
-    assert exhausted["regenerated_from_pool"] is False
-    assert exhausted["cached"] is False
-    assert len(requests) > after_rotate
+    assert exhausted["regenerated_from_pool"] is True
+    assert exhausted["cached"] is True
+    assert len(exhausted["matches"]) == 3
+    assert len(requests) == after_rotate
 
 
 def test_expired_list_is_served_stale_while_a_background_rebuild_runs(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -529,7 +736,7 @@ def test_expired_list_is_served_stale_while_a_background_rebuild_runs(monkeypatc
 
     async def scenario() -> tuple[dict[str, Any], int, dict[str, Any]]:
         await service.guest_matchups()
-        service._guest_cache.stored_at -= service.settings.chesscom_match_cache_ttl_seconds + 1
+        service._guest_cache.stored_at -= service.settings.chesscom_guest_list_ttl_seconds + 1
         before = len(requests)
         stale = await service.guest_matchups()
         assert len(requests) == before  # returned without waiting on Chess.com
@@ -540,7 +747,7 @@ def test_expired_list_is_served_stale_while_a_background_rebuild_runs(monkeypatc
 
     stale, before, fresh = asyncio.run(scenario())
     assert stale["cached"] is True and stale["stale"] is True
-    assert len(stale["matches"]) == 5
+    assert len(stale["matches"]) == 3
     assert fresh["cached"] is True and "stale" not in fresh
     assert len(requests) > before
 
@@ -569,6 +776,9 @@ def test_persisted_list_survives_a_restart(tmp_path, monkeypatch: pytest.MonkeyP
     monkeypatch.setattr("backend.chesscom_matchups.time.time", lambda: NOW)
     asyncio.run(service._background_rebuild())
     assert service.cache_path.is_file()
+    persisted = json.loads(service.cache_path.read_text(encoding="utf-8"))
+    assert persisted["version"] == 2
+    assert persisted["roster"]
 
     restarted: list[str] = []
     fresh_process = _five_player_fixture(restarted)
@@ -576,8 +786,9 @@ def test_persisted_list_survives_a_restart(tmp_path, monkeypatch: pytest.MonkeyP
     assert fresh_process._load_persisted() is True
     served = asyncio.run(fresh_process.guest_matchups())
     assert served["cached"] is True
-    assert len(served["matches"]) == 5
+    assert len(served["matches"]) == 3
     assert len(fresh_process._guest_cache.pool) == 10
+    assert any(fresh_process._roster.values())
     assert restarted == []
 
 

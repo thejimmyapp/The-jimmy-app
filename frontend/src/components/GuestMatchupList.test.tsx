@@ -5,27 +5,42 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../api";
 import { MoveListDecodeError } from "../bughouseDecoder";
 import { formatRelativeAge } from "../guestMatchAge";
-import type { NormalizedMatch } from "../types";
+import type { GuestMatchupList as GuestMatchupListPayload, NormalizedMatch } from "../types";
 import { GuestMatchupList } from "./GuestMatchupList";
 
 vi.mock("../api", () => ({ api: { guestMatchups: vi.fn() } }));
 
-const matches: NormalizedMatch[] = Array.from({ length: 5 }, (_, index) => ({
+const classSpecs = [
+  { label: "2300+", min: 2300, max: null, rating: 2500 },
+  { label: "1900–2300", min: 1900, max: 2300, rating: 2200 },
+  { label: "1400–1900", min: 1400, max: 1900, rating: 1800 },
+] as const;
+
+const matches = classSpecs.map((ratingClass, index) => ({
   game_ids: { A: 100 + index * 2, B: 101 + index * 2 },
   end_time: 1_786_319_880 - index * 3600,
   seats: {
-    "A-white": { name: `Player${index}`, rating: 2500 - index },
-    "A-black": { name: "Opponent", rating: 2200 },
-    "B-white": { name: "Diagonal", rating: 2100 },
-    "B-black": { name: "Partner", rating: 2150 },
+    "A-white": { name: `Player${index}`, rating: ratingClass.rating },
+    "A-black": { name: "Opponent", rating: Math.max(1400, ratingClass.rating - 100) },
+    "B-white": { name: "Diagonal", rating: Math.max(1400, ratingClass.rating - 200) },
+    "B-black": { name: "Partner", rating: Math.max(1400, ratingClass.rating - 150) },
   },
   ply_counts: { A: 40, B: 42 },
   decisive_board: "A",
   loser_seat: "A-black",
   action: "checkmated",
-  highest_rated: { name: `Player${index}`, rating: 2500 - index, seat: "A-white", outcome: "WON" },
+  highest_rated: { name: `Player${index}`, rating: ratingClass.rating, seat: "A-white", outcome: "WON" },
   loser_relative_to_highest: "oppo",
-}));
+  rating_class: { label: ratingClass.label, min: ratingClass.min, max: ratingClass.max },
+  top_rating: ratingClass.rating,
+  finished_seconds_ago: 120 + index * 3600,
+})) satisfies Array<NormalizedMatch & { rating_class: { label: string; min: number; max: number | null }; top_rating: number; finished_seconds_ago: number }>;
+
+const placeholder = {
+  rating_class: { label: "1900–2300", min: 1900, max: 2300 },
+  placeholder: true,
+  reason: "no_game_in_7_days",
+};
 
 const matchupPayload = (items = matches) => ({
   matches: items,
@@ -37,7 +52,7 @@ const matchupPayload = (items = matches) => ({
   seed_source: "leaderboard_top_50" as const,
   selection_window_hours: 12 as const,
   cached: false,
-});
+}) as unknown as GuestMatchupListPayload;
 
 const renderList = (children: ReactNode) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -66,7 +81,7 @@ describe("guest matchup list", () => {
     expect(screen.getAllByRole("option")[1].getAttribute("aria-selected")).toBe("true");
     fireEvent.keyDown(list, { key: "Enter" });
     expect(onSelect).toHaveBeenCalledWith(matches[1]);
-    expect(screen.getByText("Player1(2499) WON — oppo checkmated")).toBeTruthy();
+    expect(screen.getByText("1900–2300 · Player1(2200) WON — oppo checkmated")).toBeTruthy();
   });
 
   it("keeps the error state keyboard-only and retries with Enter", async () => {
@@ -107,13 +122,33 @@ describe("guest matchup list", () => {
     expect(details.open).toBe(false);
     fireEvent.click(screen.getByText("why is this the list of options"));
     expect(details.open).toBe(true);
-    expect(screen.getByText("Because it's a quest. Five fresh games from strong and interesting bughouse players, played recently. More options does not mean more good.")).toBeTruthy();
+    expect(screen.getByText("[COPY-PLACEHOLDER] Three games, one per rating class.")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Regenerate list" }));
-    expect(await screen.findByText("Fresh0(2500) WON — oppo checkmated")).toBeTruthy();
+    expect(await screen.findByText("2300+ · Fresh0(2500) WON — oppo checkmated")).toBeTruthy();
     expect(api.guestMatchups).toHaveBeenLastCalledWith({
       refresh: true,
       excludeGameIds: matches.flatMap((match) => [match.game_ids.A, match.game_ids.B]),
     });
+  });
+
+  it("renders a disabled placeholder and skips it for arrows and Enter", async () => {
+    vi.mocked(api.guestMatchups).mockResolvedValue(matchupPayload([matches[0], placeholder, matches[2]] as never));
+    const onSelect = vi.fn();
+    renderList(<GuestMatchupList onSelect={onSelect} />);
+    const list = await screen.findByRole("listbox", { name: "Guest matchups" });
+    const options = screen.getAllByRole("option");
+
+    expect(options[1].getAttribute("aria-disabled")).toBe("true");
+    expect(options[1].hasAttribute("data-copy-placeholder")).toBe(true);
+    expect(screen.getByText("[COPY-PLACEHOLDER] 1900–2300 · no finished game in the last 7 days")).toBeTruthy();
+    fireEvent.click(options[1]);
+    expect(onSelect).not.toHaveBeenCalled();
+    fireEvent.keyDown(list, { key: "ArrowDown" });
+    expect(options[2].getAttribute("aria-selected")).toBe("true");
+    fireEvent.keyDown(list, { key: "ArrowUp" });
+    expect(options[0].getAttribute("aria-selected")).toBe("true");
+    fireEvent.keyDown(list, { key: "Enter" });
+    expect(onSelect).toHaveBeenCalledWith(matches[0]);
   });
 });

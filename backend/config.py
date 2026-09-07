@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 import os
 import platform
+import re
 import shutil
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -46,6 +48,34 @@ DEFAULT_CHESSCOM_PLAYERS_OF_INTEREST = ",".join((
     "XxElproxX2nd",
     "chessexclam",
 ))
+DEFAULT_CHESSCOM_GUEST_RATING_CLASSES = "2300+,1900-2300,1400-1900"
+
+
+@dataclass(frozen=True)
+class ChessComGuestRatingClass:
+    label: str
+    minimum: int
+    maximum: int | None
+
+
+def _parse_guest_rating_classes(value: str) -> list[ChessComGuestRatingClass]:
+    classes: list[ChessComGuestRatingClass] = []
+    for raw in _split_csv(value):
+        plus = re.fullmatch(r"(\d+)\+", raw)
+        bounded = re.fullmatch(r"(\d+)\s*[-–]\s*(\d+)", raw)
+        if plus:
+            minimum = int(plus.group(1))
+            classes.append(ChessComGuestRatingClass(f"{minimum}+", minimum, None))
+        elif bounded:
+            minimum, maximum = int(bounded.group(1)), int(bounded.group(2))
+            if minimum >= maximum:
+                raise ValueError(f"invalid Chess.com guest rating class: {raw}")
+            classes.append(ChessComGuestRatingClass(f"{minimum}–{maximum}", minimum, maximum))
+        else:
+            raise ValueError(f"invalid Chess.com guest rating class: {raw}")
+    if not classes:
+        raise ValueError("at least one Chess.com guest rating class is required")
+    return classes
 
 
 def _runtime_data_dir() -> Path:
@@ -88,6 +118,11 @@ class Settings(BaseSettings):
     chesscom_match_timeout_seconds: float = Field(default=12.0, ge=1, le=30)
     chesscom_match_cache_ttl_seconds: int = Field(default=900, ge=60, le=86_400)
     chesscom_players_of_interest: str = DEFAULT_CHESSCOM_PLAYERS_OF_INTEREST
+    chesscom_seed_players_1900_2300: str = ""
+    chesscom_seed_players_1400_1900: str = ""
+    chesscom_guest_rating_classes: str = DEFAULT_CHESSCOM_GUEST_RATING_CLASSES
+    chesscom_guest_min_top_rating: int = Field(default=1400, ge=0, le=10_000)
+    chesscom_guest_list_ttl_seconds: int = Field(default=300, ge=60, le=86_400)
     chesscom_guest_max_archives_per_player: int = Field(default=2, ge=1, le=6)
     chesscom_guest_max_matches_examined: int = Field(default=40, ge=5, le=200)
     chesscom_guest_warm_on_startup: bool = True
@@ -95,6 +130,8 @@ class Settings(BaseSettings):
     chesscom_guest_pool_target: int = Field(default=15, ge=5, le=40)
     chesscom_guest_background_budget_seconds: float = Field(default=60.0, ge=5, le=300)
     chesscom_guest_stale_max_seconds: int = Field(default=86_400, ge=60, le=604_800)
+    chesscom_guest_roster_active_days: int = Field(default=7, ge=1, le=365)
+    chesscom_guest_roster_max_per_class: int = Field(default=40, ge=1, le=500)
     chesscom_guest_cache_path: Path | None = None
     chesscom_oauth_callback_url: str = (
         "https://jimmyapp-production.up.railway.app/api/oauth/chesscom/callback"
@@ -156,6 +193,30 @@ class Settings(BaseSettings):
     @property
     def chesscom_players_of_interest_list(self) -> list[str]:
         return _split_csv(self.chesscom_players_of_interest)
+
+    @property
+    def chesscom_seed_players_1900_2300_list(self) -> list[str]:
+        return _split_csv(self.chesscom_seed_players_1900_2300)
+
+    @property
+    def chesscom_seed_players_1400_1900_list(self) -> list[str]:
+        return _split_csv(self.chesscom_seed_players_1400_1900)
+
+    @property
+    def chesscom_guest_rating_class_list(self) -> list[ChessComGuestRatingClass]:
+        return _parse_guest_rating_classes(self.chesscom_guest_rating_classes)
+
+    @model_validator(mode="after")
+    def validate_guest_rating_classes(self) -> Settings:
+        classes = self.chesscom_guest_rating_class_list
+        if classes[0].maximum is not None:
+            raise ValueError("Chess.com guest rating classes must start with an open-ended highest range")
+        for higher, lower in zip(classes, classes[1:]):
+            if higher.minimum <= lower.minimum or lower.maximum != higher.minimum:
+                raise ValueError("Chess.com guest rating classes must be ordered high-to-low and contiguous")
+        if classes[-1].minimum != self.chesscom_guest_min_top_rating:
+            raise ValueError("lowest Chess.com guest rating class must start at chesscom_guest_min_top_rating")
+        return self
 
     def is_allowed_websocket_origin(self, origin: str | None) -> bool:
         if not origin:
