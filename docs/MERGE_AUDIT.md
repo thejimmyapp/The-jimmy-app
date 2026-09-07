@@ -1,3 +1,5 @@
+> Superseded 2026-09-07 — historical record. Current state: docs/ROBOT-DOCKET.md, docs/GATE-4-HANDOFF.md, docs/UX-DOCKET.md.
+> Do not delete, rename, rewrite or reformat anything below the banner.
 # Local-to-Web Merge Audit
 
 The production target is the FastAPI/React application. The Streamlit app remains a reference implementation while useful domain modules are migrated into the web architecture.

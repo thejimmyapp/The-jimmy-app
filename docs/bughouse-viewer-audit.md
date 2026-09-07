@@ -1,3 +1,5 @@
+> Superseded 2026-09-07 — historical record. Current state: docs/ROBOT-DOCKET.md, docs/GATE-4-HANDOFF.md, docs/UX-DOCKET.md.
+> Do not delete, rename, rewrite or reformat anything below the banner.
 # `bmacho/bughouse-viewer` audit
 
 Audit date: 2026-08-09 (America/Los_Angeles)

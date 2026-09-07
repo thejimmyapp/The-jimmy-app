@@ -1,3 +1,5 @@
+> Superseded 2026-09-07 — historical record. Current state: docs/ROBOT-DOCKET.md, docs/GATE-4-HANDOFF.md, docs/UX-DOCKET.md.
+> Do not delete, rename, rewrite or reformat anything below the banner.
 # NEXT-GATE-KICKOFF — boot prompt for the successor Claude review gate
 Owner: open a NEW Claude Cowork session, connect the folder /Users/user/Documents/4robots,
 then paste everything below the line as your first message. That's the whole ritual.

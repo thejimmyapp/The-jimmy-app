@@ -1,3 +1,5 @@
+> Superseded 2026-09-07 — historical record. Current state: docs/ROBOT-DOCKET.md, docs/GATE-4-HANDOFF.md, docs/UX-DOCKET.md.
+> Do not delete, rename, rewrite or reformat anything below the banner.
 # thejimmyapp — PROJECT STATE
 Maintained by Claude (manager/filter). Updated at each review gate. Last update: 2026-08-10 (Claude Gate [#1]).
 Drop this file in the repo at `docs/PROJECT-STATE.md`. It is the canonical decision record.

@@ -1,3 +1,5 @@
+> Superseded 2026-09-07 — historical record. Current state: docs/ROBOT-DOCKET.md, docs/GATE-4-HANDOFF.md, docs/UX-DOCKET.md.
+> Do not delete, rename, rewrite or reformat anything below the banner.
 # Deployment pipeline reconnaissance
 
 Snapshot: 2026-08-09 17:43 PDT (2026-08-10 UTC)

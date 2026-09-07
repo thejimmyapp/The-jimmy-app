@@ -1,3 +1,5 @@
+> Superseded 2026-09-07 — historical record. Current state: docs/ROBOT-DOCKET.md, docs/GATE-4-HANDOFF.md, docs/UX-DOCKET.md.
+> Do not delete, rename, rewrite or reformat anything below the banner.
 # Extraction Lab handoff
 
 This is the cold-start brief for any future AI thread continuing the standalone `/extraction` lab. Read [`PROJECT-STATE.md`](./PROJECT-STATE.md) first: it is the canonical rulings record. This handoff points to those rulings and the lab's evidence; it does not restate the project-wide decision log.
