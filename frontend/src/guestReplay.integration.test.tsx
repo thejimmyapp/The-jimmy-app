@@ -97,7 +97,7 @@ describe("guest replay workspace integration", () => {
     const coach = screen.getByRole("button", { name: /Team Coach/ }) as HTMLButtonElement;
     expect(analyze.disabled).toBe(true);
     expect(analyze.classList.contains("capability-locked")).toBe(true);
-    const enginePlaceholderCaptions = screen.getAllByText("PLACEHOLDER · future engine analysis · see /blocks");
+    const enginePlaceholderCaptions = screen.getAllByText("PLACEHOLDER · future engine analysis · see the UI library");
     expect(enginePlaceholderCaptions).toHaveLength(2);
     expect(enginePlaceholderCaptions.every((caption) => caption.closest("figure")?.getAttribute("aria-disabled") === "true")).toBe(true);
     expect(screen.getByAltText("Specimen of a future engine evaluation row").getAttribute("src")).toBe("/placeholders/specimen-12-eval-row.jpg");

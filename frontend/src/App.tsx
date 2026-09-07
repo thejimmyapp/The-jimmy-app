@@ -764,7 +764,6 @@ export default function App() {
       onboardingLocked={showOnboarding}
       dockOverlayActive={showOnboarding && wordVertigoActive}
       railUnlockedAction={<div className="rail-unlocked-actions">
-        <a className="rail-blocks-link rail-active-item" data-onboarding-active-rail href="/blocks/index.html" target="_blank" rel="noreferrer" aria-label="Open building blocks" title="Open building blocks"><span className="rail-blocks-glyph" aria-hidden="true">🎨</span></a>
         <a className="rail-active-item" data-onboarding-active-rail href="/mission" aria-label="Open mission" title="Mission"><Flag size={17} /></a>
         <button className="rail-active-item" data-onboarding-active-rail type="button" aria-label="Open flashcard library" title="Flashcard library" onClick={() => setGuestLibraryOpen(true)}><BookOpen size={17} /></button>
       </div>}
