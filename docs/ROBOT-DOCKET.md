@@ -14,7 +14,6 @@ deployment -> Backup/domain -> Private UI library
 - [x] Defined “everything synced” as an observable finish line.
 - [x] Established repository-local instructions for future agents.
 - [x] Created a current Claude/Codex-readable handoff.
-- [x] Separated the UI library from the public application bundle.
 - [x] Converted Evan's role into optional, bounded portfolio opportunities.
 - [x] Opened and pinned GitHub issue #19 as the robot communication channel.
 - [x] Proposed a one-time dental-office concept reminder for 2026-09-07.
@@ -30,6 +29,8 @@ deployment -> Backup/domain -> Private UI library
 
 ## 🚧 Active
 
+- [ ] Separate the UI library from the public application bundle.
+  - Evidence at 8845e81: frontend/src/blocks.tsx is a Vite entry (vite.config.ts:46); frontend/public/blocks/ ships index.html + 3 specimens; production /blocks/index.html returns 200.
 - [x] Reproduced the handoff's backend/frontend test counts from a clean worktree:
   179 backend tests and 42 files / 202 frontend tests passed.
 - [x] Reproduced ESLint and the production Vite build.
@@ -79,7 +80,7 @@ deployment -> Backup/domain -> Private UI library
 
 - [x] Invisible “global Codex memory” as the coordination mechanism.
   - Reason: it is not repository-scoped, auditable, or reliably shared across agents.
-- [x] Shipping the private UI library inside the public application bundle.
+- [x] Shipping the private UI library inside the public application bundle. (decision recorded 2026-09-02; not yet executed — see Active).
   - Reason: performance and access-control boundaries belong outside the public app.
 - [x] Diverting active work into a dental-office website service this week.
   - Revisit after one week; do not let it fragment the recovery effort now.
