@@ -19,15 +19,44 @@ export interface NormalizedMatch {
   loser_relative_to_highest: "oppo" | "partner" | "diag oppo" | null;
 }
 
+export interface GuestMatchupRatingClass {
+  label: string;
+  min: number;
+  max: number | null;
+}
+
+export interface GuestMatchupClass extends GuestMatchupRatingClass {
+  status: "fresh" | "older" | "none";
+  window_hours: number;
+  rotated?: boolean;
+}
+
+export type GuestMatchupClassifiedMatch = NormalizedMatch & {
+  rating_class: GuestMatchupRatingClass;
+  top_rating: number;
+  finished_seconds_ago: number;
+};
+
+export interface GuestMatchupPlaceholder {
+  rating_class: GuestMatchupRatingClass;
+  placeholder: true;
+  reason: "no_game_in_7_days";
+}
+
+export type GuestMatchupEntry = GuestMatchupClassifiedMatch | GuestMatchupPlaceholder;
+
 export interface GuestMatchupList {
-  matches: NormalizedMatch[];
+  matches: GuestMatchupEntry[];
+  classes: GuestMatchupClass[];
   examined: number;
   excluded: number;
   exclusion_counts: Record<string, number>;
   players_sampled: string[];
   players_represented: string[];
   seed_source: "players_of_interest" | "leaderboard_top_50" | "players_of_interest_then_leaderboard_top_50";
-  selection_window_hours: 1 | 3 | 12 | 48;
+  selection_window_hours: 1 | 3 | 12 | 48 | 168;
+  regenerated_from_pool?: boolean;
+  partial: boolean;
   cached: boolean;
 }
 

@@ -287,6 +287,7 @@ class ChessComMatchupService:
                 and not (excluded_ids | current_ids).intersection(item.match.get("game_ids", {}).values())
             ]
             alternatives.sort(key=_qualified_sort_key, reverse=True)
+            did_rotate = bool(alternatives)
             if alternatives:
                 chosen = alternatives[0]
                 match = deepcopy(chosen.match)
@@ -317,6 +318,7 @@ class ChessComMatchupService:
                 **self._rating_class_payload(rating_class),
                 "status": status,
                 "window_hours": window_hours,
+                "rotated": did_rotate,
             })
         payload["matches"] = rotated_matches
         payload["classes"] = classes_payload
@@ -583,7 +585,7 @@ class ChessComMatchupService:
                         _count(excluded, "future_end_time")
                         continue
                     if age_seconds > _GUEST_FRESHNESS_WINDOWS_HOURS[-1] * 3600:
-                        _count(excluded, "outside_48h")
+                        _count(excluded, "outside_7d")
                         continue
                     candidate = _GuestCandidate(numeric_id, end_time, username)
                     candidates.append(candidate)

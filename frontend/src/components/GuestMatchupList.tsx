@@ -2,34 +2,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { api } from "../api";
 import { formatRelativeAge } from "../guestMatchAge";
+import { isRealMatch } from "../guestMatchupEntries";
 import { guestMatchupsQuery, guestMatchupsQueryKey } from "../guestMatchupsQuery";
-import type { NormalizedMatch } from "../types";
+import type {
+  GuestMatchupClassifiedMatch,
+  GuestMatchupEntry,
+  NormalizedMatch,
+} from "../types";
 
 interface Props {
   onSelect: (match: NormalizedMatch) => void | Promise<void>;
 }
-
-interface RatingClass {
-  label: string;
-  min: number;
-  max: number | null;
-}
-
-type ClassifiedMatch = NormalizedMatch & {
-  rating_class: RatingClass;
-  top_rating: number;
-  finished_seconds_ago: number;
-};
-
-interface MatchPlaceholder {
-  rating_class: RatingClass;
-  placeholder: true;
-  reason: "no_game_in_7_days";
-}
-
-type GuestMatchupEntry = ClassifiedMatch | MatchPlaceholder;
-
-const isRealMatch = (match: GuestMatchupEntry): match is ClassifiedMatch => !("placeholder" in match);
 
 const firstSelectableIndex = (matches: GuestMatchupEntry[]) => {
   const index = matches.findIndex(isRealMatch);
@@ -44,7 +27,7 @@ const nextSelectableIndex = (matches: GuestMatchupEntry[], current: number, dire
   return current;
 };
 
-const cardText = (match: ClassifiedMatch) => {
+const cardText = (match: GuestMatchupClassifiedMatch) => {
   const highest = match.highest_rated;
   const relative = match.loser_relative_to_highest ? `${match.loser_relative_to_highest} ` : "";
   const classPrefix = match.rating_class?.label ? `${match.rating_class.label} · ` : "";
@@ -57,10 +40,12 @@ export function GuestMatchupList({ onSelect }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [selecting, setSelecting] = useState(false);
   const [selectionError, setSelectionError] = useState("");
+  const [rotationNoteLabels, setRotationNoteLabels] = useState<string[]>([]);
+  const preserveRotationNoteRef = useRef(false);
   const queryClient = useQueryClient();
   const query = useQuery({ ...guestMatchupsQuery, retry: false });
   const matches = useMemo(
-    () => (query.data?.matches ?? []) as GuestMatchupEntry[],
+    () => query.data?.matches ?? [],
     [query.data?.matches],
   );
   const regenerate = useMutation({
@@ -69,11 +54,27 @@ export function GuestMatchupList({ onSelect }: Props) {
       excludeGameIds: matches.filter(isRealMatch).flatMap((match) => [match.game_ids.A, match.game_ids.B]),
     }),
     onSuccess: (data) => {
+      preserveRotationNoteRef.current = true;
       queryClient.setQueryData(guestMatchupsQueryKey, data);
-      setActiveIndex(firstSelectableIndex(data.matches as GuestMatchupEntry[]));
+      setActiveIndex(firstSelectableIndex(data.matches));
       setSelectionError("");
+      setRotationNoteLabels(data.classes
+        .filter((ratingClass) => ratingClass.rotated === false)
+        .filter((ratingClass) => {
+          const row = data.matches.find((match) => match.rating_class.label === ratingClass.label);
+          return row !== undefined && isRealMatch(row);
+        })
+        .map((ratingClass) => ratingClass.label));
     },
   });
+
+  useEffect(() => {
+    if (preserveRotationNoteRef.current) {
+      preserveRotationNoteRef.current = false;
+      return;
+    }
+    setRotationNoteLabels([]);
+  }, [query.dataUpdatedAt]);
 
   useEffect(() => {
     if (!matches[activeIndex] || !isRealMatch(matches[activeIndex])) {
@@ -177,12 +178,25 @@ export function GuestMatchupList({ onSelect }: Props) {
               ))}
           </div>
           <div className="guest-matchup-list-tools">
-            <button type="button" className="guest-matchup-regenerate" disabled={regenerate.isPending || selecting} onClick={() => regenerate.mutate()}>{regenerate.isPending ? "Regenerating…" : "Regenerate list"}</button>
+            <button
+              type="button"
+              className="guest-matchup-regenerate"
+              disabled={regenerate.isPending || selecting}
+              onClick={() => {
+                setRotationNoteLabels([]);
+                regenerate.mutate();
+              }}
+            >{regenerate.isPending ? "Regenerating…" : "Regenerate list"}</button>
             <details className="guest-matchup-explainer">
               <summary>why is this the list of options</summary>
               <p data-copy-placeholder>[COPY-PLACEHOLDER] Three games, one per rating class.</p>
             </details>
           </div>
+          {rotationNoteLabels.length > 0 && (
+            <p className="guest-matchup-rotation-note" role="status" aria-live="polite" data-copy-placeholder>
+              [COPY-PLACEHOLDER] {rotationNoteLabels.join(", ")} · no other recent game yet
+            </p>
+          )}
         </div>
       )}
     </section>

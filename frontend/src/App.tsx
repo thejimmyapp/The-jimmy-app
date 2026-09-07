@@ -8,6 +8,7 @@ import { buildChessComConnectorPrompt } from "./chesscomConnectorPrompt";
 import { bmachoUrlFromChessComUrl } from "./chesscomGameUrl";
 import { isMoveAddress } from "./extractionInput";
 import { guestBoardPresentation } from "./guestBoardPresentation";
+import { isRealMatch } from "./guestMatchupEntries";
 import { guestMatchupsQuery } from "./guestMatchupsQuery";
 import { BoardPanel } from "./components/BoardPanel";
 import { AppShell } from "./components/AppShell";
@@ -250,7 +251,7 @@ export default function App() {
   const dockPlayerBottom = boardPlayers[dockSourceBoard][dockOrientation];
   const dockPlayerTop = boardPlayers[dockSourceBoard][oppositeColor(dockOrientation)];
   const dockBoardAvailable = dockSourceBoard === "A" || secondBoardAvailable;
-  const availableMomentMatches = momentMatchupsQuery.data?.matches ?? [];
+  const availableMomentMatches = (momentMatchupsQuery.data?.matches ?? []).filter(isRealMatch);
   const momentPlayers = Object.fromEntries(guestProgress.savedMoments.map((moment) => {
     const currentMatch = store.guestMatch?.game_ids.A === moment.matchIds.A && store.guestMatch.game_ids.B === moment.matchIds.B ? store.guestMatch : null;
     return [savedMomentKey(moment), playerNamesForMoment(currentMatch ?? matchForSavedMoment(availableMomentMatches, moment))];
@@ -537,7 +538,9 @@ export default function App() {
         return;
       }
       if (cancelled) return;
-      const matches = matchupList.matches.filter((match) => match.game_ids.A === bridgeGameId);
+      const matches = matchupList.matches
+        .filter(isRealMatch)
+        .filter((match) => match.game_ids.A === bridgeGameId);
       if (matches.length !== 1) {
         fail(`Moment address "${moveAddress}" could not resolve bridge game ${bridgeGameId} from the guest matchup list.`);
         return;
@@ -659,10 +662,13 @@ export default function App() {
   const openSavedMoment = async (moment: SavedMoment) => {
     const current = useCoachStore.getState();
     const currentMatch = current.guestMatch?.game_ids.A === moment.matchIds.A && current.guestMatch.game_ids.B === moment.matchIds.B ? current.guestMatch : null;
-    let match = currentMatch ?? matchForSavedMoment(momentMatchupsQuery.data?.matches ?? [], moment);
+    let match = currentMatch ?? matchForSavedMoment(
+      (momentMatchupsQuery.data?.matches ?? []).filter(isRealMatch),
+      moment,
+    );
     if (!match) {
       const matchupList = await queryClient.fetchQuery(guestMatchupsQuery);
-      match = matchForSavedMoment(matchupList.matches, moment);
+      match = matchForSavedMoment(matchupList.matches.filter(isRealMatch), moment);
     }
     if (!match) return false;
     if (!currentMatch || !current.game) await selectGuestMatch(match);
