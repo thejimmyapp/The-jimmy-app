@@ -4,7 +4,9 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import replayFixtures from "./fixtures/guest-match-replays.json";
-import { GUEST_PROGRESS_KEY } from "./guestProgress";
+import { GUEST_PROGRESS_KEY, loadGuestProgress } from "./guestProgress";
+import { SIGN_IN_NOTICE } from "./guestChrome";
+import { QUEST_DURATION_MS } from "./quest";
 import { useCoachStore } from "./store";
 import type { CallbackReplayBoard, GamePayload, NormalizedMatch } from "./types";
 
@@ -107,8 +109,19 @@ const renderApp = () => {
   return render(<QueryClientProvider client={queryClient}><App /></QueryClientProvider>);
 };
 
+const startFromLanding = async () => {
+  const carousel = screen.getByRole("region", { name: "Product introduction" });
+  fireEvent.keyDown(carousel, { key: "ArrowRight" });
+  fireEvent.keyDown(carousel, { key: "ArrowRight" });
+  fireEvent.keyDown(carousel, { key: "ArrowRight" });
+  fireEvent.click(screen.getByRole("button", { name: "Start" }));
+  return screen.findByRole("listbox", { name: "Guest matchups" });
+};
+
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
+  vi.useRealTimers();
   useCoachStore.setState({ username: "", game: null, guestMatch: null, games: [], roomId: null });
 });
 
@@ -160,7 +173,7 @@ describe("URL-first exact review", () => {
     apiMock.enrichChessCom.mockResolvedValue({ checked: 0, enriched: 0, remaining_without_second_board: 0, credentials_stored: false });
   });
 
-  it("locks ordinary RAIL chrome and DOCK while leaving the three active onboarding items accessible", () => {
+  it("keeps ordinary RAIL chrome and DOCK inert on the landing and matchup phases", async () => {
     const { container } = renderApp();
     const rail = container.querySelector(".app-rail");
     const lockedRailContent = container.querySelector(".app-rail-locked-content");
@@ -175,21 +188,25 @@ describe("URL-first exact review", () => {
     expect(screen.getByRole("link", { name: "Open mission" }).getAttribute("href")).toBe("/mission");
     expect(screen.getByRole("button", { name: "Open flashcard library" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Privacy" })).toBeNull();
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: /Click me\?/ }));
+    expect(container.querySelector(".guest-entry-node")).toBeNull();
+    expect(container.querySelector("#onboarding-username")).toBeNull();
+
+    await startFromLanding();
+    expect(lockedRailContent?.hasAttribute("inert")).toBe(true);
+    expect(dock?.hasAttribute("inert")).toBe(true);
   });
 
-  it("renders real guest counters and opens the keyboard-reachable countdown panel", async () => {
+  it("renders the landing carousel and disabled account actions without starting the quest", () => {
     renderApp();
-    expect(await screen.findByRole("heading", { name: "Salutations, SirGuest#13!" })).toBeTruthy();
-    expect(screen.getByText("— of 13 visitors have completed the three-for-five challenge to date. Fail to complete it in time and you will be returned to the landing page under your new name, SirGuest#14. Mwahaha! Kittens and cookies! Mwahaha, yessss.")).toBeTruthy();
-    const libraryButton = screen.getByRole("button", { name: "Open flashcard library" });
-    libraryButton.focus();
-    fireEvent.click(libraryButton);
-    expect(screen.getByRole("dialog", { name: "SirGuest#13 Flashcard library" })).toBeTruthy();
-    expect(screen.getByRole("timer", { name: "Session countdown" }).textContent).toMatch(/^(5:00|4:59)$/);
-    expect(await screen.findByText("No flashcards yet.")).toBeTruthy();
-    fireEvent.keyDown(screen.getByRole("dialog", { name: "SirGuest#13 Flashcard library" }), { key: "Escape" });
-    expect(screen.queryByRole("dialog", { name: "SirGuest#13 Flashcard library" })).toBeNull();
+    expect(screen.getByRole("region", { name: "Product introduction" })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /Go to slide/ })).toHaveLength(4);
+    const login = screen.getByRole("button", { name: "Log in" }) as HTMLButtonElement;
+    const signup = screen.getByRole("button", { name: "Sign up" }) as HTMLButtonElement;
+    expect(login.disabled).toBe(true);
+    expect(login.title).toBe(SIGN_IN_NOTICE);
+    expect(signup.disabled).toBe(true);
+    expect(signup.title).toBe(SIGN_IN_NOTICE);
+    expect(loadGuestProgress().questDeadline).toBeNull();
   });
 
   it("hydrates an existing account for a server-completed guest", async () => {
@@ -206,6 +223,7 @@ describe("URL-first exact review", () => {
     renderApp();
 
     await waitFor(() => expect(apiMock.accountMe).toHaveBeenCalledTimes(1));
+    expect((screen.getByRole("button", { name: "Sign up" }) as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Open flashcard library" }));
     expect(await screen.findByText("Claimed — Founder #7")).toBeTruthy();
     expect(screen.queryByRole("textbox", { name: "Email" })).toBeNull();
@@ -230,8 +248,7 @@ describe("URL-first exact review", () => {
     renderApp();
     const statistics = screen.getByRole("button", { name: "Statistics", hidden: true }) as HTMLButtonElement;
     expect(statistics.disabled).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: /Click me\?/ }));
-    const list = await screen.findByRole("listbox", { name: "Guest matchups" });
+    const list = await startFromLanding();
     fireEvent.keyDown(list, { key: "Enter" });
 
     await waitFor(() => expect(useCoachStore.getState().guestMatch).toEqual(guestMatch));
@@ -283,34 +300,17 @@ describe("URL-first exact review", () => {
     expect(screen.queryByRole("heading", { name: "Review the game you just played." })).toBeNull();
   });
 
-  it("uses the existing guest selection path when word vertigo unmute escapes", async () => {
-    const selectedMatch: NormalizedMatch = {
-      ...guestMatch,
-      game_ids: { A: guestMatch.game_ids.A + 2, B: guestMatch.game_ids.B + 2 },
-    };
-    const fixture = replayFixtures.matches[0].boards;
-    apiMock.chessComMatchReplay.mockResolvedValueOnce({
-      match: selectedMatch,
-      boards: {
-        A: { ...fixture.A, id: selectedMatch.game_ids.A } as CallbackReplayBoard,
-        B: { ...fixture.B, id: selectedMatch.game_ids.B } as CallbackReplayBoard,
-      },
-    });
-    const random = vi.spyOn(Math, "random").mockReturnValue(0.21);
-    const { container } = renderApp();
-    fireEvent.change(screen.getByRole("textbox", { name: /Sign in/ }), { target: { value: "x" } });
-    const unmute = await screen.findByRole("button", { name: "unmute" });
-    expect(container.querySelector(".app-shell")?.classList.contains("word-vertigo-sequence")).toBe(true);
-    expect(container.querySelector(".app-rail")?.hasAttribute("inert")).toBe(false);
-    expect(container.querySelector(".app-rail-locked-content")?.hasAttribute("inert")).toBe(true);
-    expect(container.querySelector(".app-dock")?.hasAttribute("inert")).toBe(false);
-    expect(container.querySelector(".app-dock-content")?.hasAttribute("inert")).toBe(true);
-    fireEvent.click(unmute);
+  it("sets the five-minute deadline only when Start is pressed", async () => {
+    const now = new Date("2026-09-07T18:00:00.000Z").getTime();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    renderApp();
+    expect(loadGuestProgress().questDeadline).toBeNull();
+    expect(screen.queryByRole("button", { name: "Start" })).toBeNull();
 
-    await waitFor(() => expect(useCoachStore.getState().guestMatch).toEqual(selectedMatch));
+    await startFromLanding();
+
+    expect(loadGuestProgress().questDeadline).toBe(now + QUEST_DURATION_MS);
     expect(apiMock.guestMatchups).toHaveBeenCalledOnce();
-    expect(apiMock.chessComMatchReplay).toHaveBeenCalledWith(selectedMatch.game_ids.A);
-    expect(screen.getByTestId("board-First Board")).toBeTruthy();
-    random.mockRestore();
+    clock.mockRestore();
   });
 });

@@ -45,6 +45,15 @@ const match: NormalizedMatch = {
 };
 const source: GuestMatchReplaySource = { match, boards: { A: boardA, B: boardB } };
 
+const startFromLanding = async () => {
+  const carousel = screen.getByRole("region", { name: "Product introduction" });
+  fireEvent.keyDown(carousel, { key: "ArrowRight" });
+  fireEvent.keyDown(carousel, { key: "ArrowRight" });
+  fireEvent.keyDown(carousel, { key: "ArrowRight" });
+  fireEvent.click(screen.getByRole("button", { name: "Start" }));
+  return screen.findByRole("listbox", { name: "Guest matchups" });
+};
+
 describe("guest replay workspace integration", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -74,8 +83,7 @@ describe("guest replay workspace integration", () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
     render(<QueryClientProvider client={client}><App /></QueryClientProvider>);
 
-    fireEvent.click(screen.getByRole("button", { name: /Click me\?/ }));
-    const list = await screen.findByRole("listbox", { name: "Guest matchups" });
+    const list = await startFromLanding();
     fireEvent.keyDown(list, { key: "Enter" });
 
     const stagedSecondBoard = await screen.findByLabelText("Second Board chessboard");
