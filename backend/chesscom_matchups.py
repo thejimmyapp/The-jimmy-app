@@ -17,7 +17,7 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from backend.config import Settings
+from backend.config import ChessComGuestRatingClass, Settings
 
 
 logger = logging.getLogger(__name__)
@@ -36,10 +36,7 @@ _ACTION_BY_LOSER_CODE = {
 _DRAW_CODES = {"agreed", "repetition", "stalemate", "insufficient", "50move", "timevsinsufficient"}
 _SEAT_ORDER = ("A-white", "A-black", "B-white", "B-black")
 _LEADERBOARD_FALLBACK_SIZE = 50
-_MAX_MATCHES_PER_SEED_PLAYER = 2
-_MIN_REPRESENTED_SEED_PLAYERS = 3
-_GUEST_MATCH_TARGET = 5
-_GUEST_FRESHNESS_WINDOWS_HOURS = (1, 3, 12, 48)
+_GUEST_FRESHNESS_WINDOWS_HOURS = (1, 3, 12, 48, 24 * 7)
 _GUEST_ASSEMBLY_BUDGET_SECONDS = 20.0
 
 
@@ -83,7 +80,6 @@ class _GuestCandidate:
 class _QualifiedGuestMatch:
     match: dict[str, Any]
     seed_username: str
-    was_currently_shown: bool
 
 
 class ChessComMatchupService:
@@ -91,6 +87,7 @@ class ChessComMatchupService:
 
     def __init__(self, settings: Settings, transport: httpx.AsyncBaseTransport | None = None) -> None:
         self.settings = settings
+        self._rating_classes = settings.chesscom_guest_rating_class_list
         self._transport = transport
         self._upstream_lock = asyncio.Lock()
         self._guest_build_lock = asyncio.Lock()
@@ -98,6 +95,9 @@ class ChessComMatchupService:
         self._guest_cache: _GuestListCacheEntry | None = None
         self._candidate_cache: dict[str, tuple[float, list[_GuestCandidate]]] = {}
         self._player_last_active: dict[str, int] = {}
+        self._roster: dict[str, dict[str, dict[str, Any]]] = {
+            rating_class.label: {} for rating_class in self._rating_classes
+        }
         self._client: httpx.AsyncClient | None = None
         self._client_loop: asyncio.AbstractEventLoop | None = None
         self._refresh_task: asyncio.Task[None] | None = None
@@ -152,7 +152,7 @@ class ChessComMatchupService:
         self._refresh_loop_task = asyncio.get_running_loop().create_task(self._refresh_loop())
 
     async def _refresh_loop(self) -> None:
-        ttl = self.settings.chesscom_match_cache_ttl_seconds
+        ttl = self.settings.chesscom_guest_list_ttl_seconds
         margin = self.settings.chesscom_guest_refresh_margin_seconds
         while True:
             entry = self._guest_cache
@@ -192,11 +192,15 @@ class ChessComMatchupService:
         if entry is None or path is None:
             return
         record = {
-            "version": 1,
+            "version": 2,
             "saved_at": time.time(),
             "payload": entry.payload,
             "pool": [{"match": item.match, "seed_username": item.seed_username} for item in entry.pool],
             "player_last_active": self._player_last_active,
+            "roster": {
+                label: list(members.values())
+                for label, members in self._roster.items()
+            },
         }
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -212,12 +216,14 @@ class ChessComMatchupService:
             return False
         try:
             record = json.loads(path.read_text(encoding="utf-8"))
+            if record.get("version", 1) not in {1, 2}:
+                return False
             age = time.time() - float(record["saved_at"])
             if age < 0 or age > self.settings.chesscom_guest_stale_max_seconds:
                 return False
             payload = record["payload"]
             pool = [
-                _QualifiedGuestMatch(match=item["match"], seed_username=str(item["seed_username"]), was_currently_shown=False)
+                _QualifiedGuestMatch(match=item["match"], seed_username=str(item["seed_username"]))
                 for item in record.get("pool", [])
                 if isinstance(item, dict) and isinstance(item.get("match"), dict)
             ]
@@ -231,6 +237,21 @@ class ChessComMatchupService:
             self._player_last_active.update(
                 {str(name).lower(): int(value) for name, value in activity.items() if isinstance(value, (int, float))}
             )
+        if record.get("version", 1) == 2:
+            roster = record.get("roster")
+            if isinstance(roster, dict):
+                for members in roster.values():
+                    if not isinstance(members, list):
+                        continue
+                    for member in members:
+                        if not isinstance(member, dict):
+                            continue
+                        username = member.get("username")
+                        rating = _strict_int(member.get("rating"))
+                        last_active = _strict_int(member.get("last_active"))
+                        if isinstance(username, str) and rating is not None and last_active is not None:
+                            self._record_roster_seat(username, rating, last_active)
+                self._prune_roster(int(time.time()))
         self._guest_cache = _GuestListCacheEntry(time.monotonic() - age, payload, pool)
         return True
 
@@ -246,24 +267,62 @@ class ChessComMatchupService:
         entry = self._guest_cache
         if entry is None or not entry.pool:
             return None
-        selected: list[_QualifiedGuestMatch] = []
-        per_player: dict[str, int] = {}
-        for item in entry.pool:
-            if excluded_ids & set(item.match["game_ids"].values()):
-                continue
-            player_key = item.seed_username.lower()
-            if per_player.get(player_key, 0) >= _MAX_MATCHES_PER_SEED_PLAYER:
-                continue
-            per_player[player_key] = per_player.get(player_key, 0) + 1
-            selected.append(item)
-            if len(selected) == _GUEST_MATCH_TARGET:
-                break
-        if len(selected) < _GUEST_MATCH_TARGET or len(per_player) < _MIN_REPRESENTED_SEED_PLAYERS:
-            return None
         payload = deepcopy(entry.payload)
-        payload["matches"] = [deepcopy(item.match) for item in selected]
-        payload["players_represented"] = list(dict.fromkeys(item.seed_username for item in selected))
-        payload["partial"] = False
+        current_by_class = {
+            item["rating_class"]["label"]: item
+            for item in payload.get("matches", [])
+            if isinstance(item, dict) and isinstance(item.get("rating_class"), dict)
+        }
+        if not current_by_class:
+            return None
+        rotated_matches: list[dict[str, Any]] = []
+        represented: list[str] = []
+        classes_payload: list[dict[str, Any]] = []
+        for rating_class in self._rating_classes:
+            current = current_by_class.get(rating_class.label)
+            current_ids = set(current.get("game_ids", {}).values()) if current else set()
+            alternatives = [
+                item for item in entry.pool
+                if item.match.get("rating_class", {}).get("label") == rating_class.label
+                and not (excluded_ids | current_ids).intersection(item.match.get("game_ids", {}).values())
+            ]
+            alternatives.sort(key=_qualified_sort_key, reverse=True)
+            if alternatives:
+                chosen = alternatives[0]
+                match = deepcopy(chosen.match)
+                represented.append(chosen.seed_username)
+            else:
+                if current is None:
+                    current = _placeholder_match(rating_class)
+                match = deepcopy(current)
+                if match.get("placeholder") is not True:
+                    retained = next(
+                        (
+                            item for item in entry.pool
+                            if set(item.match.get("game_ids", {}).values()) == current_ids
+                        ),
+                        None,
+                    )
+                    if retained is not None:
+                        represented.append(retained.seed_username)
+            rotated_matches.append(match)
+            if match.get("placeholder") is True:
+                status = "none"
+                window_hours = _GUEST_FRESHNESS_WINDOWS_HOURS[-1]
+            else:
+                age = int(match.get("finished_seconds_ago", 0))
+                status = "fresh" if age <= 3600 else "older"
+                window_hours = _window_for_age(age)
+            classes_payload.append({
+                **self._rating_class_payload(rating_class),
+                "status": status,
+                "window_hours": window_hours,
+            })
+        payload["matches"] = rotated_matches
+        payload["classes"] = classes_payload
+        payload["players_represented"] = list(dict.fromkeys(represented))
+        payload["selection_window_hours"] = max(item["window_hours"] for item in classes_payload)
+        payload["partial"] = any(item.get("placeholder") is True for item in rotated_matches)
         payload["cached"] = True
         payload["regenerated_from_pool"] = True
         payload["upstream_requests"] = 0
@@ -334,7 +393,7 @@ class ChessComMatchupService:
             value for value in exclude_game_ids
             if isinstance(value, int) and not isinstance(value, bool) and value > 0
         }
-        ttl = self.settings.chesscom_match_cache_ttl_seconds
+        ttl = self.settings.chesscom_guest_list_ttl_seconds
         if refresh:
             rotated = self._rotate_from_pool(excluded_ids)
             if rotated is not None:
@@ -375,6 +434,78 @@ class ChessComMatchupService:
             return None
         return cached
 
+    def _rating_class_for(self, rating: int) -> ChessComGuestRatingClass | None:
+        if rating < self.settings.chesscom_guest_min_top_rating:
+            return None
+        for rating_class in self._rating_classes:
+            if rating >= rating_class.minimum and (
+                rating_class.maximum is None or rating < rating_class.maximum
+            ):
+                return rating_class
+        return None
+
+    @staticmethod
+    def _rating_class_payload(rating_class: ChessComGuestRatingClass) -> dict[str, Any]:
+        return {
+            "label": rating_class.label,
+            "min": rating_class.minimum,
+            "max": rating_class.maximum,
+        }
+
+    def _record_roster_seat(self, username: str, rating: int, last_active: int) -> None:
+        rating_class = self._rating_class_for(rating)
+        if rating_class is None or not _USERNAME_RE.fullmatch(username):
+            return
+        key = username.lower()
+        if last_active < self._player_last_active.get(key, 0):
+            return
+        for members in self._roster.values():
+            members.pop(key, None)
+        self._roster[rating_class.label][key] = {
+            "username": username,
+            "rating": rating,
+            "last_active": last_active,
+        }
+        self._player_last_active[key] = max(last_active, self._player_last_active.get(key, 0))
+
+    def _record_match_roster(self, match: dict[str, Any]) -> None:
+        end_time = int(match["end_time"])
+        for seat in match["seats"].values():
+            self._record_roster_seat(str(seat["name"]), int(seat["rating"]), end_time)
+
+    def _prune_roster(self, now: int) -> None:
+        cutoff = now - self.settings.chesscom_guest_roster_active_days * 86_400
+        cap = self.settings.chesscom_guest_roster_max_per_class
+        for label, members in self._roster.items():
+            retained = [member for member in members.values() if int(member["last_active"]) >= cutoff]
+            retained.sort(key=lambda member: (-int(member["last_active"]), str(member["username"]).lower()))
+            self._roster[label] = {
+                str(member["username"]).lower(): member for member in retained[:cap]
+            }
+
+    def _configured_seed_usernames_for_class(self, rating_class: ChessComGuestRatingClass) -> list[str]:
+        if rating_class.maximum is None:
+            configured = self.settings.chesscom_players_of_interest_list
+            setting_name = "chesscom_players_of_interest"
+        elif (rating_class.minimum, rating_class.maximum) == (1900, 2300):
+            configured = self.settings.chesscom_seed_players_1900_2300_list
+            setting_name = "chesscom_seed_players_1900_2300"
+        elif (rating_class.minimum, rating_class.maximum) == (1400, 1900):
+            configured = self.settings.chesscom_seed_players_1400_1900_list
+            setting_name = "chesscom_seed_players_1400_1900"
+        else:
+            configured = []
+            setting_name = "configured class seeds"
+        usernames = _unique_valid_usernames(configured)
+        if len(usernames) != len(configured):
+            raise MatchUpstreamError(f"Configured Chess.com usernames in {setting_name} are invalid or duplicated")
+        return usernames
+
+    def _seeds_for_class(self, rating_class: ChessComGuestRatingClass) -> list[str]:
+        configured = self._configured_seed_usernames_for_class(rating_class)
+        roster = [str(member["username"]) for member in self._roster[rating_class.label].values()]
+        return self._order_by_recent_activity(_unique_valid_usernames([*configured, *roster]))
+
     async def _build_guest_matchups(
         self,
         currently_shown_ids: set[int] | None = None,
@@ -385,23 +516,33 @@ class ChessComMatchupService:
         now = int(time.time())
         started = time.monotonic()
         requests_before = self._upstream_requests
-        usernames = self._order_by_recent_activity(self._configured_seed_usernames())
-        configured_count = len(usernames)
-        seed_source = "players_of_interest" if usernames else "leaderboard_top_50"
+        self._prune_roster(now)
+        top_configured = self._configured_seed_usernames()
+        configured_count = len(top_configured)
+        seed_source = "players_of_interest" if configured_count else "leaderboard_top_50"
 
         candidates: list[_GuestCandidate] = []
-        qualified: list[_QualifiedGuestMatch] = []
+        qualified_by_class: dict[str, list[_QualifiedGuestMatch]] = {
+            rating_class.label: [] for rating_class in self._rating_classes
+        }
+        selected_by_class: dict[str, _QualifiedGuestMatch] = {}
+        class_windows = {rating_class.label: _GUEST_FRESHNESS_WINDOWS_HOURS[0] for rating_class in self._rating_classes}
         examined = 0
         excluded: dict[str, int] = {}
         seen_public_ids: set[int] = set()
         seen_pairs: set[frozenset[int]] = set()
         processed_public_ids: set[int] = set()
         players_sampled: list[str] = []
+        sampled_keys: set[str] = set()
 
         async def collect_candidates(username: str) -> None:
+            key = username.lower()
+            if key in sampled_keys:
+                return
+            sampled_keys.add(key)
             players_sampled.append(username)
             remembered = self._candidate_cache.get(username.lower())
-            if remembered and time.monotonic() - remembered[0] < self.settings.chesscom_match_cache_ttl_seconds:
+            if remembered and time.monotonic() - remembered[0] < self.settings.chesscom_guest_list_ttl_seconds:
                 for candidate in remembered[1]:
                     if candidate.numeric_id not in seen_public_ids:
                         seen_public_ids.add(candidate.numeric_id)
@@ -452,21 +593,16 @@ class ChessComMatchupService:
             if latest_end_time:
                 self._player_last_active[username.lower()] = latest_end_time
 
-        async def process_window(window_hours: int, *, include_known_current: bool = False) -> None:
+        async def process_window(window_hours: int) -> None:
             nonlocal examined
-            for candidate in candidates:
+            for candidate in sorted(candidates, key=lambda item: (item.end_time, item.numeric_id), reverse=True):
                 if examined >= self.settings.chesscom_guest_max_matches_examined:
                     break
-                if sum(
-                    item.seed_username.lower() == candidate.seed_username.lower()
-                    for item in qualified
-                ) >= _MAX_MATCHES_PER_SEED_PLAYER:
-                    continue
                 if candidate.numeric_id in processed_public_ids:
                     continue
                 if now - candidate.end_time > window_hours * 3600:
                     continue
-                if candidate.numeric_id in currently_shown_ids and not include_known_current:
+                if candidate.numeric_id in currently_shown_ids:
                     continue
                 processed_public_ids.add(candidate.numeric_id)
                 examined += 1
@@ -486,149 +622,149 @@ class ChessComMatchupService:
                 if min(match["ply_counts"].values()) < 20:
                     _count(excluded, "under_20_plies")
                     continue
-                qualified.append(_QualifiedGuestMatch(
-                    match=match,
-                    seed_username=candidate.seed_username,
-                    was_currently_shown=bool(pair & currently_shown_ids),
-                ))
-
-        def select_matches(*, include_current: bool = False) -> list[_QualifiedGuestMatch] | None:
-            eligible = [item for item in qualified if not item.was_currently_shown]
-            if include_current:
-                eligible.extend(item for item in qualified if item.was_currently_shown)
-            selected: list[_QualifiedGuestMatch] = []
-            per_player: dict[str, int] = {}
-            for item in eligible:
-                player_key = item.seed_username.lower()
-                if per_player.get(player_key, 0) >= _MAX_MATCHES_PER_SEED_PLAYER:
+                self._record_match_roster(match)
+                top_rating = max(int(seat["rating"]) for seat in match["seats"].values())
+                rating_class = self._rating_class_for(top_rating)
+                if rating_class is None:
+                    _count(excluded, "below_floor")
                     continue
-                per_player[player_key] = per_player.get(player_key, 0) + 1
-                selected.append(item)
-                if len(selected) == _GUEST_MATCH_TARGET:
-                    break
-            represented = {item.seed_username.lower() for item in selected}
-            return selected if len(selected) == _GUEST_MATCH_TARGET and len(represented) >= _MIN_REPRESENTED_SEED_PLAYERS else None
+                enriched = deepcopy(match)
+                enriched["rating_class"] = self._rating_class_payload(rating_class)
+                enriched["top_rating"] = top_rating
+                enriched["finished_seconds_ago"] = max(0, now - int(match["end_time"]))
+                qualified_by_class[rating_class.label].append(
+                    _QualifiedGuestMatch(match=enriched, seed_username=candidate.seed_username)
+                )
 
-        selected: list[_QualifiedGuestMatch] | None = None
-        selection_window_hours = _GUEST_FRESHNESS_WINDOWS_HOURS[0]
+        def freshest(rating_class: ChessComGuestRatingClass, window_hours: int) -> _QualifiedGuestMatch | None:
+            eligible = [
+                item for item in qualified_by_class[rating_class.label]
+                if now - int(item.match["end_time"]) <= window_hours * 3600
+            ]
+            return max(eligible, key=_qualified_sort_key) if eligible else None
+
+        async def search_class(
+            rating_class: ChessComGuestRatingClass,
+            usernames: list[str],
+        ) -> _QualifiedGuestMatch | None:
+            for window_hours in _GUEST_FRESHNESS_WINDOWS_HOURS:
+                class_windows[rating_class.label] = window_hours
+                await process_window(window_hours)
+                picked = freshest(rating_class, window_hours)
+                if picked is not None:
+                    return picked
+                if window_hours == _GUEST_FRESHNESS_WINDOWS_HOURS[0]:
+                    for username in usernames:
+                        await collect_candidates(username)
+                        await process_window(window_hours)
+                        picked = freshest(rating_class, window_hours)
+                        if picked is not None:
+                            return picked
+            return None
+
+        leaderboard_usernames: list[str] | None = None
         assembly_budget_exhausted = False
 
-        async def ladder(names: list[str]) -> bool:
-            # Collect each seed and stop as soon as the freshest window fills the list,
-            # then widen the window over everything collected so far before asking for
-            # more players. Widening is free; every extra player costs upstream requests.
-            nonlocal selected, selection_window_hours
-            selection_window_hours = _GUEST_FRESHNESS_WINDOWS_HOURS[0]
-            for username in names:
-                await collect_candidates(username)
-                await process_window(selection_window_hours)
-                selected = select_matches()
-                if selected:
-                    return True
-            for selection_window_hours in _GUEST_FRESHNESS_WINDOWS_HOURS:
-                await process_window(selection_window_hours)
-                selected = select_matches()
-                logger.info(
-                    "Guest matchup freshness window: hours=%d qualifying=%d selected=%d",
-                    selection_window_hours,
-                    len(qualified),
-                    len(selected or []),
-                )
-                if selected:
-                    return True
-            return False
-
         async def assemble() -> None:
-            nonlocal seed_source, selected, selection_window_hours
-            if await ladder(usernames):
-                return
-
-            leaderboard_usernames = await self._leaderboard_seed_usernames()
-            known = {username.lower() for username in usernames}
-            fallback_usernames = [username for username in leaderboard_usernames if username.lower() not in known]
-            usernames.extend(fallback_usernames)
-            seed_source = "players_of_interest_then_leaderboard_top_50" if configured_count else "leaderboard_top_50"
-            if await ladder(fallback_usernames):
-                return
-
-            if currently_shown_ids:
-                selection_window_hours = _GUEST_FRESHNESS_WINDOWS_HOURS[-1]
-                await process_window(selection_window_hours, include_known_current=True)
-                selected = select_matches(include_current=True)
+            nonlocal leaderboard_usernames, seed_source
+            for index, rating_class in enumerate(self._rating_classes):
+                picked = await search_class(rating_class, self._seeds_for_class(rating_class))
+                if picked is None and index == 0:
+                    try:
+                        leaderboard_usernames = await self._leaderboard_seed_usernames()
+                    except MatchUpstreamError:
+                        _count(excluded, "leaderboard_unavailable")
+                    else:
+                        known = {name.lower() for name in top_configured}
+                        fallback = [name for name in leaderboard_usernames if name.lower() not in known]
+                        if configured_count:
+                            seed_source = "players_of_interest_then_leaderboard_top_50"
+                        picked = await search_class(rating_class, fallback)
+                if picked is not None:
+                    selected_by_class[rating_class.label] = picked
 
         async def top_up() -> None:
-            # Background builds keep sampling inside the chosen window so "Regenerate"
-            # can rotate from this pool without new upstream requests.
             target = self.settings.chesscom_guest_pool_target
             limit = self.settings.chesscom_guest_max_matches_examined
-            sampled = {name.lower() for name in players_sampled}
-            for username in list(usernames):
-                if len(qualified) >= target or examined >= limit:
-                    return
-                if username.lower() not in sampled:
-                    sampled.add(username.lower())
-                    await collect_candidates(username)
-                await process_window(selection_window_hours)
-            # The displayed selection keeps its window; the spare pool may reach further back.
-            for hours in _GUEST_FRESHNESS_WINDOWS_HOURS:
-                if hours <= selection_window_hours:
-                    continue
-                if len(qualified) >= target or examined >= limit:
-                    return
-                await process_window(hours)
+            for index, rating_class in enumerate(self._rating_classes):
+                while len(qualified_by_class[rating_class.label]) < target and examined < limit:
+                    names = self._seeds_for_class(rating_class)
+                    if index == 0 and leaderboard_usernames:
+                        names = _unique_valid_usernames([*names, *leaderboard_usernames])
+                    next_name = next((name for name in names if name.lower() not in sampled_keys), None)
+                    if next_name is None:
+                        break
+                    await collect_candidates(next_name)
+                    await process_window(_GUEST_FRESHNESS_WINDOWS_HOURS[-1])
+            self._prune_roster(now)
 
         budget = self.settings.chesscom_guest_background_budget_seconds if background else _GUEST_ASSEMBLY_BUDGET_SECONDS
         try:
             async with asyncio.timeout(budget):
                 await assemble()
+                if background:
+                    await top_up()
         except TimeoutError:
             assembly_budget_exhausted = True
             logger.warning(
                 "Guest matchup assembly reached the %.1fs budget with %d validated matches",
                 budget,
-                len(qualified),
+                sum(len(items) for items in qualified_by_class.values()),
             )
-        if background and selected and not assembly_budget_exhausted:
-            remaining = budget - (time.monotonic() - started)
-            if remaining > 0:
-                try:
-                    async with asyncio.timeout(remaining):
-                        await top_up()
-                except TimeoutError:
-                    logger.info("Guest matchup pool top-up stopped at the budget with %d validated matches", len(qualified))
 
-        if selected is None and qualified:
-            partial_selection: list[_QualifiedGuestMatch] = []
-            per_player: dict[str, int] = {}
-            for item in qualified:
-                if item.was_currently_shown:
-                    continue
-                player_key = item.seed_username.lower()
-                if per_player.get(player_key, 0) >= _MAX_MATCHES_PER_SEED_PLAYER:
-                    continue
-                per_player[player_key] = per_player.get(player_key, 0) + 1
-                partial_selection.append(item)
-                if len(partial_selection) == _GUEST_MATCH_TARGET:
-                    break
-            selected = partial_selection or None
+        for rating_class in self._rating_classes:
+            picked = freshest(rating_class, _GUEST_FRESHNESS_WINDOWS_HOURS[-1])
+            if picked is not None:
+                selected_by_class[rating_class.label] = picked
 
         excluded_total = sum(excluded.values())
+        qualified_count = sum(len(items) for items in qualified_by_class.values())
+        selection_window_hours = max(class_windows.values())
         logger.info(
             "Guest matchup list assembled: examined=%d excluded=%d qualifying=%d window_hours=%d exclusions=%s",
             examined,
             excluded_total,
-            len(qualified),
+            qualified_count,
             selection_window_hours,
             excluded,
         )
-        if selected is None:
+        if not selected_by_class and qualified_count == 0:
             raise MatchUpstreamError(
-                "Guest matchup diversity target was unavailable "
-                f"(qualifying={len(qualified)}, examined={examined}, window_hours={selection_window_hours})"
+                "Guest matchup rating classes and pool were unavailable "
+                f"(qualifying={qualified_count}, examined={examined}, window_hours={selection_window_hours})"
             )
-        players_represented = list(dict.fromkeys(item.seed_username for item in selected))
+
+        matches: list[dict[str, Any]] = []
+        classes_payload: list[dict[str, Any]] = []
+        selected_items: list[_QualifiedGuestMatch] = []
+        for rating_class in self._rating_classes:
+            picked = selected_by_class.get(rating_class.label)
+            window_hours = class_windows[rating_class.label]
+            if picked is None:
+                matches.append(_placeholder_match(rating_class))
+                status = "none"
+            else:
+                selected_items.append(picked)
+                matches.append(deepcopy(picked.match))
+                status = "fresh" if int(picked.match["finished_seconds_ago"]) <= 3600 else "older"
+            classes_payload.append({
+                **self._rating_class_payload(rating_class),
+                "status": status,
+                "window_hours": window_hours,
+            })
+        players_represented = list(dict.fromkeys(item.seed_username for item in selected_items))
+        pool = [
+            item
+            for rating_class in self._rating_classes
+            for item in sorted(
+                qualified_by_class[rating_class.label],
+                key=_qualified_sort_key,
+                reverse=True,
+            )[:self.settings.chesscom_guest_pool_target]
+        ]
         payload = {
-            "matches": [item.match for item in selected],
+            "matches": matches,
+            "classes": classes_payload,
             "examined": examined,
             "excluded": excluded_total,
             "exclusion_counts": excluded,
@@ -636,22 +772,18 @@ class ChessComMatchupService:
             "players_represented": players_represented,
             "seed_source": seed_source,
             "selection_window_hours": selection_window_hours,
-            "partial": len(selected) < _GUEST_MATCH_TARGET,
+            "partial": any(item.get("placeholder") is True for item in matches),
             "assembly_budget_exhausted": assembly_budget_exhausted,
             "cached": False,
             "regenerated_from_pool": False,
-            "pool_size": len(qualified),
+            "pool_size": len(pool),
             "upstream_requests": self._upstream_requests - requests_before,
             "build_seconds": round(time.monotonic() - started, 3),
         }
-        return payload, list(qualified)
+        return payload, pool
 
     def _configured_seed_usernames(self) -> list[str]:
-        configured = self.settings.chesscom_players_of_interest_list
-        usernames = _unique_valid_usernames(configured)
-        if len(usernames) != len(configured):
-            raise MatchUpstreamError("Configured Chess.com players of interest are invalid or duplicated")
-        return usernames
+        return self._configured_seed_usernames_for_class(self._rating_classes[0])
 
     async def _leaderboard_seed_usernames(self) -> list[str]:
         leaderboard = await self._get_json(LEADERBOARD_URL)
@@ -663,8 +795,8 @@ class ChessComMatchupService:
             for entry in entries[:_LEADERBOARD_FALLBACK_SIZE]
             if isinstance(entry, dict)
         )
-        if len(usernames) < _MIN_REPRESENTED_SEED_PLAYERS:
-            raise MatchUpstreamError("Chess.com live bughouse leaderboard did not provide enough players")
+        if not usernames:
+            raise MatchUpstreamError("Chess.com live bughouse leaderboard did not provide players")
         return usernames
 
     async def _callback(self, identifier: str) -> dict[str, Any]:
@@ -977,6 +1109,32 @@ def _recent_archive_urls(values: list[Any], username: str, limit: int) -> list[s
     dated.sort(reverse=True)
     newest = dated[0][0]
     return [value for ordinal, value in dated if newest - ordinal <= 1][:limit]
+
+
+def _qualified_sort_key(item: _QualifiedGuestMatch) -> tuple[int, int]:
+    return (
+        int(item.match["end_time"]),
+        sum(int(value) for value in item.match["ply_counts"].values()),
+    )
+
+
+def _window_for_age(age_seconds: int) -> int:
+    for hours in _GUEST_FRESHNESS_WINDOWS_HOURS:
+        if age_seconds <= hours * 3600:
+            return hours
+    return _GUEST_FRESHNESS_WINDOWS_HOURS[-1]
+
+
+def _placeholder_match(rating_class: ChessComGuestRatingClass) -> dict[str, Any]:
+    return {
+        "rating_class": {
+            "label": rating_class.label,
+            "min": rating_class.minimum,
+            "max": rating_class.maximum,
+        },
+        "placeholder": True,
+        "reason": "no_game_in_7_days",
+    }
 
 
 def _count(counts: dict[str, int], reason: str) -> None:

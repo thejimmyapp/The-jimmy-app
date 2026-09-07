@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { api } from "../api";
 import { formatRelativeAge } from "../guestMatchAge";
 import { guestMatchupsQuery, guestMatchupsQueryKey } from "../guestMatchupsQuery";
@@ -9,10 +9,46 @@ interface Props {
   onSelect: (match: NormalizedMatch) => void | Promise<void>;
 }
 
-const cardText = (match: NormalizedMatch) => {
+interface RatingClass {
+  label: string;
+  min: number;
+  max: number | null;
+}
+
+type ClassifiedMatch = NormalizedMatch & {
+  rating_class: RatingClass;
+  top_rating: number;
+  finished_seconds_ago: number;
+};
+
+interface MatchPlaceholder {
+  rating_class: RatingClass;
+  placeholder: true;
+  reason: "no_game_in_7_days";
+}
+
+type GuestMatchupEntry = ClassifiedMatch | MatchPlaceholder;
+
+const isRealMatch = (match: GuestMatchupEntry): match is ClassifiedMatch => !("placeholder" in match);
+
+const firstSelectableIndex = (matches: GuestMatchupEntry[]) => {
+  const index = matches.findIndex(isRealMatch);
+  return index < 0 ? 0 : index;
+};
+
+const nextSelectableIndex = (matches: GuestMatchupEntry[], current: number, direction: 1 | -1) => {
+  for (let offset = 1; offset <= matches.length; offset += 1) {
+    const index = (current + direction * offset + matches.length) % matches.length;
+    if (isRealMatch(matches[index])) return index;
+  }
+  return current;
+};
+
+const cardText = (match: ClassifiedMatch) => {
   const highest = match.highest_rated;
   const relative = match.loser_relative_to_highest ? `${match.loser_relative_to_highest} ` : "";
-  return `${highest.name}(${highest.rating}) ${highest.outcome} — ${relative}${match.action}`;
+  const classPrefix = match.rating_class?.label ? `${match.rating_class.label} · ` : "";
+  return `${classPrefix}${highest.name}(${highest.rating}) ${highest.outcome} — ${relative}${match.action}`;
 };
 
 export function GuestMatchupList({ onSelect }: Props) {
@@ -23,18 +59,27 @@ export function GuestMatchupList({ onSelect }: Props) {
   const [selectionError, setSelectionError] = useState("");
   const queryClient = useQueryClient();
   const query = useQuery({ ...guestMatchupsQuery, retry: false });
-  const matches = query.data?.matches ?? [];
+  const matches = useMemo(
+    () => (query.data?.matches ?? []) as GuestMatchupEntry[],
+    [query.data?.matches],
+  );
   const regenerate = useMutation({
     mutationFn: () => api.guestMatchups({
       refresh: true,
-      excludeGameIds: matches.flatMap((match) => [match.game_ids.A, match.game_ids.B]),
+      excludeGameIds: matches.filter(isRealMatch).flatMap((match) => [match.game_ids.A, match.game_ids.B]),
     }),
     onSuccess: (data) => {
       queryClient.setQueryData(guestMatchupsQueryKey, data);
-      setActiveIndex(0);
+      setActiveIndex(firstSelectableIndex(data.matches as GuestMatchupEntry[]));
       setSelectionError("");
     },
   });
+
+  useEffect(() => {
+    if (!matches[activeIndex] || !isRealMatch(matches[activeIndex])) {
+      setActiveIndex(firstSelectableIndex(matches));
+    }
+  }, [activeIndex, matches]);
 
   useLayoutEffect(() => {
     (matches.length ? listRef.current : surfaceRef.current)?.focus();
@@ -53,14 +98,15 @@ export function GuestMatchupList({ onSelect }: Props) {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       const direction = event.key === "ArrowDown" ? 1 : -1;
-      setActiveIndex((current) => (current + direction + matches.length) % matches.length);
+      setActiveIndex((current) => nextSelectableIndex(matches, current, direction));
       return;
     }
-    if (event.key === "Enter" && matches[activeIndex] && !selecting) {
+    const selectedMatch = matches[activeIndex];
+    if (event.key === "Enter" && selectedMatch && isRealMatch(selectedMatch) && !selecting) {
       event.preventDefault();
       setSelecting(true);
       setSelectionError("");
-      void Promise.resolve(onSelect(matches[activeIndex])).catch((error: unknown) => {
+      void Promise.resolve(onSelect(selectedMatch)).catch((error: unknown) => {
         const typedDecoderFailure = error instanceof Error && (error.name === "MoveListDecodeError" || error.name === "MatchReconstructionError");
         setSelectionError(typedDecoderFailure
           ? "This match uses replay data the decoder cannot verify. It was refused."
@@ -105,24 +151,36 @@ export function GuestMatchupList({ onSelect }: Props) {
             tabIndex={0}
             onKeyDown={handleListKeyDown}
           >
-            {matches.map((match, index) => (
-              <article
-                id={`guest-matchup-${index}`}
-                key={`${match.game_ids.A}-${match.game_ids.B}`}
-                role="option"
-                aria-selected={index === activeIndex}
-                className={`guest-matchup-card ${index === activeIndex ? "active" : ""}`}
-              >
-                <strong>{cardText(match)}</strong>
-                <small>Boards {match.game_ids.A} / {match.game_ids.B} · {match.ply_counts.A}/{match.ply_counts.B} plies · {formatRelativeAge(match.end_time)}</small>
-              </article>
-            ))}
+            {matches.map((match, index) => isRealMatch(match) ? (
+                <article
+                  id={`guest-matchup-${index}`}
+                  key={`${match.game_ids.A}-${match.game_ids.B}`}
+                  role="option"
+                  aria-selected={index === activeIndex}
+                  className={`guest-matchup-card ${index === activeIndex ? "active" : ""}`}
+                >
+                  <strong>{cardText(match)}</strong>
+                  <small>Boards {match.game_ids.A} / {match.game_ids.B} · {match.ply_counts.A}/{match.ply_counts.B} plies · {formatRelativeAge(match.end_time)}</small>
+                </article>
+              ) : (
+                <article
+                  id={`guest-matchup-${index}`}
+                  key={`placeholder-${match.rating_class.label}`}
+                  role="option"
+                  aria-selected={false}
+                  aria-disabled="true"
+                  className="guest-matchup-card"
+                  data-copy-placeholder
+                >
+                  <strong>[COPY-PLACEHOLDER] {match.rating_class.label} · no finished game in the last 7 days</strong>
+                </article>
+              ))}
           </div>
           <div className="guest-matchup-list-tools">
             <button type="button" className="guest-matchup-regenerate" disabled={regenerate.isPending || selecting} onClick={() => regenerate.mutate()}>{regenerate.isPending ? "Regenerating…" : "Regenerate list"}</button>
             <details className="guest-matchup-explainer">
               <summary>why is this the list of options</summary>
-              <p>Because it's a quest. Five fresh games from strong and interesting bughouse players, played recently. More options does not mean more good.</p>
+              <p data-copy-placeholder>[COPY-PLACEHOLDER] Three games, one per rating class.</p>
             </details>
           </div>
         </div>

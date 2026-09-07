@@ -137,11 +137,16 @@ describe("URL-first exact review", () => {
     apiMock.listPublicMoments.mockResolvedValue({ moments: [] });
     apiMock.games.mockResolvedValue({ games: [] });
     apiMock.guestMatchups.mockResolvedValue({
-      matches: Array.from({ length: 5 }, (_, index) => ({
+      matches: Array.from({ length: 3 }, (_, index) => ({
         ...guestMatch,
         game_ids: { A: guestMatch.game_ids.A + index * 2, B: guestMatch.game_ids.B + index * 2 },
+        rating_class: [
+          { label: "2300+", min: 2300, max: null },
+          { label: "1900–2300", min: 1900, max: 2300 },
+          { label: "1400–1900", min: 1400, max: 1900 },
+        ][index],
       })),
-      examined: 5,
+      examined: 3,
       excluded: 0,
       exclusion_counts: {},
       players_sampled: ["vjbaker", "nochewycandy"],
