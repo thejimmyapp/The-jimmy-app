@@ -34,7 +34,7 @@ starting on page render.
 | A4 | `questDeadline` is `null` until Start is clicked; Start sets it to now + 5 min and routes to the matchup list | read `localStorage` before/after; listbox "Guest matchups" appears |
 | A5 | During the quest a top bar shows the countdown and `n/3` from the server's `saved_moment_count` | save a moment → bar reads `1/3` without reload tricks |
 | A6 | After the third save: bar reads `3/3`, countdown stops, Sign up enabled and opens the claim form | `POST /api/guests` → `completed=true`; claim form reachable by mouse |
-| A7 | Timer expiry still resets the guest (R58) and returns to the landing carousel | let a fresh guest expire |
+| A7 | Timer expiry still resets the guest (R58) and returns to the landing carousel; the carousel does NOT restart the timer, so an idle tab fires at most one /api/guests/reset per expiry and none while idle | let a fresh guest expire; wait 6 min on the carousel; guest_number unchanged, no further POST /api/guests/reset |
 | A8 | Rail + dock stay inert on landing and during the quest exactly as today | `[inert]` on `.app-rail-locked-content` and `.app-dock` |
 | A9 | Golden build green; every deleted/edited test listed in the executor's report and diffed by the gate | CI + gate's own clone |
 
