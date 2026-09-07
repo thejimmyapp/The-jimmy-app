@@ -1783,11 +1783,23 @@ body { background: #050910; }
 .landing-topbar { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 18px; border-bottom: 1px solid #23334a; background: #090f19e8; }
 .landing-brand { display: flex; align-items: center; gap: 10px; color: #e8f1fb; font-size: 12px; letter-spacing: .04em; }
 .landing-brand .brand-mark { width: 30px; height: 30px; font-size: 12px; }
-.landing-account-actions { display: flex; gap: 8px; }
-.landing-account-actions button,
+.account-actions { display: flex; gap: 8px; }
+.account-actions button,
 .landing-carousel-controls > button { min-height: 36px; padding: 0 14px; border: 1px solid #32465f; border-radius: 3px; background: #101b2a; color: #c6d5e5; font-size: 10px; font-weight: 900; cursor: pointer; }
-.landing-account-actions button:disabled,
+.account-actions button:disabled,
 .landing-carousel-controls > button:disabled { color: #65768b; cursor: not-allowed; opacity: .55; }
+.quest-topbar-stage { display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.quest-topbar-stage > .app-stage-content { min-height: 0; height: auto; }
+.quest-topbar { min-width: 0; min-height: 46px; max-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 5px 12px 5px 16px; border-bottom: 1px solid #2b3e56; background: #090f19f2; }
+.quest-topbar-state { min-width: 0; display: flex; align-items: center; gap: 14px; }
+.quest-topbar-state > strong { color: #ffae72; font: 900 18px/1 "SFMono-Regular", Consolas, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.quest-topbar-state > strong[data-copy-placeholder] { color: #91e6b9; font-size: 11px; }
+.quest-topbar-state > span { overflow: hidden; color: #b7c7d8; font-size: 10px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.quest-topbar .account-actions button { min-height: 30px; padding: 0 11px; }
+.quest-account-claim-backdrop { position: absolute; inset: 0; z-index: 20; display: grid; place-items: start center; padding: 64px 24px 24px; background: #03070dd9; backdrop-filter: blur(5px); pointer-events: auto; }
+.quest-account-claim-panel { position: relative; width: min(440px, 100%); padding: 22px; border: 1px solid #30445f; border-top: 2px solid var(--cyan); border-radius: 5px; background: #0d1724; box-shadow: 0 24px 70px #000b; }
+.quest-account-claim-close { position: absolute; z-index: 1; top: 7px; right: 7px; width: 32px; height: 32px; display: grid; place-items: center; border: 0; background: transparent; color: #7f91aa; cursor: pointer; }
+.quest-account-claim-close:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 .landing-carousel { min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 18px; padding: clamp(24px, 4vw, 54px); outline: 0; }
 .landing-carousel:focus-visible { box-shadow: inset 0 0 0 2px var(--cyan); }
 .landing-slide { min-width: 0; min-height: 0; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: clamp(20px, 4vw, 56px); align-items: center; }

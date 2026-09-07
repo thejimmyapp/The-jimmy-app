@@ -19,6 +19,7 @@ import { LiveEvalCard, type EngineLineMomentCandidate } from "./components/LiveE
 import { GuestMatchupList } from "./components/GuestMatchupList";
 import { GuestFlashcardPanel } from "./components/GuestFlashcardPanel";
 import { LandingPage } from "./components/LandingPage";
+import { QuestTopBar } from "./components/QuestTopBar";
 import { NotesBoard } from "./components/NotesBoard";
 import { ReviewLesson } from "./components/ReviewLesson";
 import { ReplayLimitationsExpander } from "./components/ReplayLimitationsExpander";
@@ -258,6 +259,7 @@ export default function App() {
   const momentCount = guestSession.saved_moment_count;
   const questProgress = Math.min(QUEST_TARGET_MOMENTS, momentCount);
   const questRemaining = questRemainingSeconds(guestProgress.questDeadline, questNow);
+  const questTopBarVisible = (guestProgress.questDeadline !== null && !guestProgress.questCompleted) || guestProgress.questCompleted;
   const roomQuestDeadline = store.roomQuestDeadline;
   const sharedQuestDeadline = roomQuestDeadline ?? (store.guestMatch ? guestProgress.questDeadline : null);
   const roomQuestRemaining = questRemainingSeconds(sharedQuestDeadline, questNow);
@@ -749,6 +751,7 @@ export default function App() {
       pieceSize={pieceSize}
       onboardingLocked={showOnboarding}
       dockOverlayActive={false}
+      topbar={questTopBarVisible ? <QuestTopBar questDeadline={guestProgress.questDeadline} questCompleted={guestProgress.questCompleted} questRemaining={questRemaining} guestSession={guestSession} account={accountQuery.data?.account ?? null} accountLoading={accountQuery.isPending} onClaimAccount={api.claimAccount} onAccountClaimed={(account) => queryClient.setQueryData(["account"], { account })} /> : undefined}
       railUnlockedAction={<div className="rail-unlocked-actions">
         <a className="rail-active-item" data-onboarding-active-rail href="/mission" aria-label="Open mission" title="Mission"><Flag size={17} /></a>
         <button className="rail-active-item" data-onboarding-active-rail type="button" aria-label="Open flashcard library" title="Flashcard library" onClick={() => setGuestLibraryOpen(true)}><BookOpen size={17} /></button>

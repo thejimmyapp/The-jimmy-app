@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent } from "react";
-import { SIGN_IN_NOTICE } from "../guestChrome";
+import { AccountActions } from "./AccountActions";
 
 interface LandingPageProps {
   completed: boolean;
@@ -58,10 +58,7 @@ export function LandingPage({ completed, onStart }: LandingPageProps) {
           <span className="brand-mark" aria-hidden="true">J</span>
           <strong>The Jimmy App</strong>
         </div>
-        <div className="landing-account-actions">
-          <button type="button" aria-label="Log in" title={SIGN_IN_NOTICE} disabled>Log in</button>
-          <button type="button" aria-label="Sign up" title={SIGN_IN_NOTICE} disabled={!completed}>Sign up</button>
-        </div>
+        <AccountActions completed={completed} />
       </header>
 
       <div

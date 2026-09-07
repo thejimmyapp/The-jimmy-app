@@ -4,6 +4,7 @@ interface AppShellProps {
   rail: ReactNode;
   railUnlockedAction?: ReactNode;
   stage: ReactNode;
+  topbar?: ReactNode;
   dock?: ReactNode;
   className?: string;
   boardTheme: string;
@@ -13,7 +14,7 @@ interface AppShellProps {
   dockOverlayActive?: boolean;
 }
 
-export function AppShell({ rail, railUnlockedAction, stage, dock, className = "", boardTheme, pieceStyle, pieceSize, onboardingLocked = false, dockOverlayActive = false }: AppShellProps) {
+export function AppShell({ rail, railUnlockedAction, stage, topbar, dock, className = "", boardTheme, pieceStyle, pieceSize, onboardingLocked = false, dockOverlayActive = false }: AppShellProps) {
   const wholeDockLocked = onboardingLocked && !dockOverlayActive;
   // Internal QA reference: the board layout was originally evaluated at 175% browser zoom.
   return (
@@ -23,7 +24,7 @@ export function AppShell({ rail, railUnlockedAction, stage, dock, className = ""
         <div className="app-rail-locked-content" inert={onboardingLocked || undefined} aria-hidden={onboardingLocked || undefined}>{rail}</div>
         {railUnlockedAction}
       </aside>
-      <section className="app-stage" aria-label="Primary task"><div className="app-stage-content">{stage}</div><div id="app-stage-panel" /></section>
+      <section className={`app-stage ${topbar ? "quest-topbar-stage" : ""}`} aria-label="Primary task">{topbar}<div className="app-stage-content">{stage}</div><div id="app-stage-panel" /></section>
       {dock && <aside className="app-dock" aria-label="Task tools" inert={wholeDockLocked || undefined} aria-hidden={wholeDockLocked || undefined}><div className="app-dock-content" inert={dockOverlayActive || undefined} aria-hidden={dockOverlayActive || undefined}>{dock}</div><div id="app-dock-panel" /></aside>}
     </main>
   );
