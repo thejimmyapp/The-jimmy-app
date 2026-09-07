@@ -31,11 +31,13 @@ deployment -> Backup/domain -> Private UI library
 - [x] LAND-02: the landing carousel replaces the entry phase; the five-minute
   guest quest starts only from the final-slide Start action and expiry returns
   to an idle landing without re-arming the deadline.
+- [x] LAND-03: quest top bar (countdown + n/3 from the server count), completion state, Sign up → the existing claim form (merge 6c0b94a). A5, A6 verified on production 2026-09-07 by the gate as guest #542.
+- [x] LAND-04: scrapped entry surface deleted (OnboardingMap, Word Vertigo, entry copy, 55 selectors + 3 keyframes), DEV-RUN entry paragraph updated, exactly one Log in/Sign up pair in every state (merge bc6f967). A9 plus A1–A3/A8 regression verified on production 2026-09-07 (guests #542, #548).
 
 ## 🚧 Active
 
-- [ ] Separate the UI library from the public application bundle.
-  - Evidence at 8845e81: frontend/src/blocks.tsx is a Vite entry (vite.config.ts:46); frontend/public/blocks/ ships index.html + 3 specimens; production /blocks/index.html returns 200.
+- [x] Separate the UI library from the public application bundle.
+  - Evidence at bc6f967: no frontend/src/blocks.tsx, no frontend/public/blocks/, no blocks entry in vite.config.ts; production /blocks/index.html returns the SPA shell (UILIB-02, merge 5565276). Verified by the gate 2026-09-07.
 - [x] Reproduced the handoff's backend/frontend test counts from a clean worktree:
   179 backend tests and 42 files / 202 frontend tests passed.
 - [x] Reproduced ESLint and the production Vite build.
@@ -85,7 +87,7 @@ deployment -> Backup/domain -> Private UI library
 
 ## 🔭 Next benchmark
 
-**A7 — Landing rebuild.** Owner scratch notes 2026-09-05 → `docs/SPEC-landing-2026-09.md`:
+**A7 — Landing rebuild — COMPLETE 2026-09-07.** Owner scratch notes 2026-09-05 → `docs/SPEC-landing-2026-09.md`:
 real landing page (carousel, Log in / Sign up top-right, massive Start), timer
 starts on Start, quest top bar with countdown + 0/3 checklist, then the matchup
 list. Chunks LAND-00…06; Lane 3 builds, Lane 4 owns Log in after the
@@ -95,11 +97,15 @@ GUEST-STORM (2026-09-07, Lane 2 railway logs + gate code read): guest counter 53
 
 LAND-02 production acceptance (2026-09-07, gate walk as guest #529 on www after merge a3422f6): A1, A2, A3, A4, A7, A8 pass — carousel replaces the entry card, Log in / Sign up disabled with SIGN_IN_NOTICE, Start only on slide 4/4 and mouse-reachable, questDeadline null until Start then now+5 min, expiry fired exactly one POST /api/guests/reset and twelve idle minutes on the carousel fired none, rail + dock inert in both phases. Remaining for A7 closure: A5, A6 (LAND-03) and A9 (LAND-04).
 
+LAND-03 and LAND-04 production acceptance (2026-09-07, gate walks on www): A5 — after the first save the bar read 1/3 from the refreshed server session with no reload; A6 — after the third save 3/3, countdown removed, questDeadline null, POST /api/guests completed=true (completion_ordinal 2), Sign up enabled and the claim form (#guest-account-email) reachable by mouse inside #app-stage-panel (backdrop pointer-events auto); A9 — golden green, deleted tests listed and diffed; regression after LAND-04 as guest #548: A1–A3, A8, matchup heading styled by .guest-matchup-copy, .onboarding-map-shell intact; completed guest #542 sees exactly one Log in/Sign up pair. A1–A9 all pass. Still open under the landing: carousel copy and imagery (owner) and LAND-06 Log in (after the credential ruling). Gate walks consumed founder completion ordinals #1 (guest #50, 2026-09-05) and #2 (guest #542, 2026-09-07); founder_eligible is ordinal ≤ 10 (backend/main.py:153) — owner call whether test completions count.
+
 **A6 — Return path.** A new user can now land, load a game in under a second,
 save three moments, grade them, and reach the claim form with a mouse. What is
 missing is the way back (credential intake, held P0) and a definition of what an
 account unlocks (see `docs/GATE-4-HANDOFF.md` §4). Nothing to build until the
 owner rules.
+
+LAND-05 memo merged 8396a08 (docs/MEMO-credential-intake-2026-09.md): magic link · email + password · Chess.com OAuth, each with the Privacy Policy and Terms edits it requires. Finding: the live claim form already collects an email and sets an account cookie while LegalPage.tsx:66 and :110 state the service has no user accounts — the policy needs that disclosure before any option, including the existing claim. Owner ruling pending.
 
 ## Update format
 
