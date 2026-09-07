@@ -18,7 +18,7 @@ import { LegalLinks } from "./components/LegalLinks";
 import { LiveEvalCard, type EngineLineMomentCandidate } from "./components/LiveEvalCard";
 import { GuestMatchupList } from "./components/GuestMatchupList";
 import { GuestFlashcardPanel } from "./components/GuestFlashcardPanel";
-import { OnboardingMap } from "./components/OnboardingMap";
+import { LandingPage } from "./components/LandingPage";
 import { NotesBoard } from "./components/NotesBoard";
 import { ReviewLesson } from "./components/ReviewLesson";
 import { ReplayLimitationsExpander } from "./components/ReplayLimitationsExpander";
@@ -113,8 +113,7 @@ export default function App() {
   const [shareCopied, setShareCopied] = useState(false);
   const [guestProgress, setGuestProgress] = useState<GuestProgress>(loadGuestProgress);
   const [acknowledgementOpen, setAcknowledgementOpen] = useState(false);
-  const [onboardingPhase, setOnboardingPhase] = useState<"entry" | "matchups">("entry");
-  const [wordVertigoActive, setWordVertigoActive] = useState(false);
+  const [onboardingPhase, setOnboardingPhase] = useState<"landing" | "matchups">("landing");
   const [boardsSwapped, setBoardsSwapped] = useState(false);
   const [momentCapture, setMomentCapture] = useState<MomentCapture | null>(null);
   const [momentEngineCandidate, setMomentEngineCandidate] = useState<{ notation: string; engineIdentity: string; depth: number } | null>(null);
@@ -307,11 +306,6 @@ export default function App() {
   const lessonSaved = Boolean(currentLessonId && guestProgress.savedLessons.some((item) => item.id === currentLessonId));
 
   useEffect(() => {
-    if (!showOnboarding || guestProgress.questCompleted || guestProgress.questDeadline !== null) return;
-    updateGuestProgress((current) => startGuestQuest(current));
-  }, [guestProgress.questCompleted, guestProgress.questDeadline, showOnboarding, updateGuestProgress]);
-
-  useEffect(() => {
     setActiveReviewBoard("A");
     setBoardsSwapped(false);
     setMomentCapture(null);
@@ -341,8 +335,7 @@ export default function App() {
       messages: [],
       roomQuestDeadline: null,
     });
-    setOnboardingPhase("entry");
-    setWordVertigoActive(false);
+    setOnboardingPhase("landing");
     setArchiveOpen(false);
     setConnectOpen(false);
     setCoachOpen(false);
@@ -465,9 +458,10 @@ export default function App() {
     return () => window.removeEventListener("keydown", openFromKeyboard);
   }, [momentCapture, openMomentEditor]);
 
-  const onGuestSpawn = useCallback(() => {
+  const startFromLanding = useCallback(() => {
+    updateGuestProgress((current) => startGuestQuest(current));
     setOnboardingPhase("matchups");
-  }, []);
+  }, [updateGuestProgress]);
 
   const activateGuestReplay = useCallback((match: NormalizedMatch, game: GamePayload) => {
     setGuestReplay(match, game);
@@ -667,13 +661,6 @@ export default function App() {
     await navigator.clipboard.writeText(new URL(path, location.origin).toString());
   };
 
-  const escapeWordVertigo = useCallback(async () => {
-    const matchupList = await queryClient.fetchQuery(guestMatchupsQuery);
-    if (!matchupList.matches.length) return;
-    const randomIndex = Math.floor(Math.random() * matchupList.matches.length);
-    await selectGuestMatch(matchupList.matches[randomIndex]);
-  }, [queryClient, selectGuestMatch]);
-
   const toggleCurrentLesson = () => {
     if (!store.game || !store.game.lesson) return;
     const saved = savedLessonFrom(store.game.game.id, store.game.lesson);
@@ -702,8 +689,7 @@ export default function App() {
   const goToMap = () => {
     disconnectRoomSocket();
     useCoachStore.setState({ game: null, guestMatch: null, roomId: null, participants: [], globalPly: 0, roomQuestDeadline: null });
-    setOnboardingPhase("entry");
-    setWordVertigoActive(false);
+    setOnboardingPhase("landing");
     setArchiveOpen(false);
     setView("review");
     setReviewGameId(null);
@@ -757,12 +743,12 @@ export default function App() {
   return (
     <>
     <AppShell
-      className={`${view === "stats" ? "stats-view" : ""} ${showOnboarding ? "review-entry-shell" : ""} ${wordVertigoActive ? "word-vertigo-sequence" : ""}`}
+      className={`${view === "stats" ? "stats-view" : ""} ${showOnboarding ? "review-entry-shell" : ""}`}
       boardTheme={boardTheme}
       pieceStyle={pieceStyle}
       pieceSize={pieceSize}
       onboardingLocked={showOnboarding}
-      dockOverlayActive={showOnboarding && wordVertigoActive}
+      dockOverlayActive={false}
       railUnlockedAction={<div className="rail-unlocked-actions">
         <a className="rail-active-item" data-onboarding-active-rail href="/mission" aria-label="Open mission" title="Mission"><Flag size={17} /></a>
         <button className="rail-active-item" data-onboarding-active-rail type="button" aria-label="Open flashcard library" title="Flashcard library" onClick={() => setGuestLibraryOpen(true)}><BookOpen size={17} /></button>
@@ -780,7 +766,7 @@ export default function App() {
           <button disabled={capabilityLocked("rail_chesscom")} className={capabilityLocked("rail_chesscom") ? "capability-locked" : ""} aria-label="Connect Chess.com" title="Connect Chess.com" onClick={() => setConnectOpen(true)}><Radio size={17} />{capabilityLocked("rail_chesscom") && <LockKeyhole className="capability-lock-badge" size={10} aria-hidden="true" />}</button>
         </div>
       </>}
-      stage={showOnboarding ? (onboardingPhase === "entry" ? <OnboardingMap {...guestSession} onGuestSpawn={onGuestSpawn} onWordVertigoActiveChange={setWordVertigoActive} onWordVertigoUnmute={escapeWordVertigo} /> : <GuestMatchupList onSelect={selectGuestMatch} />) : view === "review" ? <section className="workspace">
+      stage={showOnboarding ? (onboardingPhase === "landing" ? <LandingPage completed={guestSession.completed} onStart={startFromLanding} /> : <GuestMatchupList onSelect={selectGuestMatch} />) : view === "review" ? <section className="workspace">
         <div className={`boards-zone ${store.game ? "has-game" : ""}`}>
           {store.mode === "exploration" && <div className="stage-actions"><button title="Undo exploration move" onClick={store.undoExploration}><Undo2 size={16} /></button>{store.explorationFuture.length > 0 && <button title="Redo exploration move" onClick={store.redoExploration}><Redo2 size={16} /></button>}<button title="Return to game" onClick={() => { store.returnToGame(); sendRoomEvent("variation.return_to_game", {}); }}><RotateCcw size={16} /></button></div>}
           {store.game ? <div className="boards-grid"><BoardPanel boardId={stagedSourceBoard} position={stagedPosition} orientation={stagedOrientation} pieceStyle={pieceStyle} layout="primary" beforeAnalyze={beforeAnalyze} analysisLocked={guestAnalysisLocked} keyboardFocused={Boolean(store.guestMatch) && activeReviewBoard === "A"} title={stagedBoardName} showTitle={false} onCaptureMoment={store.guestMatch ? openMomentEditor : undefined} captureMomentDisabled={!captureMomentContext(store.guestMatch, store.game, store.globalPly)} playerTop={stagedPlayerTop} playerBottom={stagedPlayerBottom} /></div> : <div className="empty-workspace"><strong>Select a Bughouse game</strong><span>Choose a game from the Games tab.</span></div>}

@@ -28,6 +28,9 @@ deployment -> Backup/domain -> Private UI library
   controls without modifying frozen public moments.
 - [x] UILIB-02: the UI building-block catalog is out of the repository (merge
   `5565276`); the only copy is the owner's offline archive.
+- [x] LAND-02: the landing carousel replaces the entry phase; the five-minute
+  guest quest starts only from the final-slide Start action and expiry returns
+  to an idle landing without re-arming the deadline.
 
 ## 🚧 Active
 
