@@ -33,9 +33,14 @@ deployment -> Backup/domain -> Private UI library
   to an idle landing without re-arming the deadline.
 - [x] LAND-03: quest top bar (countdown + n/3 from the server count), completion state, Sign up → the existing claim form (merge 6c0b94a). A5, A6 verified on production 2026-09-07 by the gate as guest #542.
 - [x] LAND-04: scrapped entry surface deleted (OnboardingMap, Word Vertigo, entry copy, 55 selectors + 3 keyframes), DEV-RUN entry paragraph updated, exactly one Log in/Sign up pair in every state (merge bc6f967). A9 plus A1–A3/A8 regression verified on production 2026-09-07 (guests #542, #548).
+- [x] UX-01: dock Moves sub-tab unmounted, Map button removed, "Droppers" label removed (pocket rails named "White pocket" / "Black pocket"); merge b132655; verified on production 2026-09-07 by the gate (tabs Info · Second Board, no Map, four pocket labels, ←/→ stepping intact).
+- [x] DOCS-01: every docs/ file classified; 20 superseded files carry a one-line banner; START-HERE.md is the CURRENT/HISTORICAL index (merge 6cd4ffc).
 
 ## 🚧 Active
 
+- [ ] SHELL-01 (Lane 3): two-column review workspace around the existing BoardPanel — main board dominant, persistent secondary rail, replay controls beneath the main board; viewport-math CSS removed. Layout layer only.
+- [ ] LIST-01 (Lane 4): guest game list → three rows, one per rating class (2300+ · 1900–2300 · 1400–1900; games whose highest-rated seat is below 1400 excluded), freshest per class, 5-minute rebuild, per-class seeds + self-filling roster. Owner ruling 2026-09-07.
+- [ ] OBS-01 (Lane 2): read-only Railway log pass since the LAND-02 deploy — reset frequency per hour, deploy markers, 5xx.
 - [x] Separate the UI library from the public application bundle.
   - Evidence at bc6f967: no frontend/src/blocks.tsx, no frontend/public/blocks/, no blocks entry in vite.config.ts; production /blocks/index.html returns the SPA shell (UILIB-02, merge 5565276). Verified by the gate 2026-09-07.
 - [x] Reproduced the handoff's backend/frontend test counts from a clean worktree:
@@ -106,6 +111,8 @@ account unlocks (see `docs/GATE-4-HANDOFF.md` §4). Nothing to build until the
 owner rules.
 
 LAND-05 memo merged 8396a08 (docs/MEMO-credential-intake-2026-09.md): magic link · email + password · Chess.com OAuth, each with the Privacy Policy and Terms edits it requires. Finding: the live claim form already collects an email and sets an account cookie while LegalPage.tsx:66 and :110 state the service has no user accounts — the policy needs that disclosure before any option, including the existing claim. Owner ruling pending.
+
+LEGAL-01 memo (docs/MEMO-legal-delta-2026-09.md, merge pending): exact Privacy Policy and Terms replacement text for the live claim flow (guest-identity paragraph, corrected storage paragraph, cookies item, claimed-identity terms clause, effective-date eyebrows, claim-form disclosure line). Owner approval pending; LEGAL-02 applies the approved text, adds the claim-form line, and rewrites operations/data-deletion-runbook.md as a current procedure.
 
 ## Update format
 
