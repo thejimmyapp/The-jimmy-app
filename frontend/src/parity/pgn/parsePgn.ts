@@ -15,6 +15,7 @@ export interface PgnNode {
   ply: number;
   moveNumber: number;
   sideToMove: PgnSide;
+  boardTag?: "A" | "B";
   san: string;
   glyphs: PgnGlyph[];
   comments: string[];

@@ -17,6 +17,7 @@
 .parity-tree move.ellipsis { color: rgb(107, 107, 107); cursor: default; }
 .parity-tree move.empty { cursor: default; }
 .parity-tree move glyph { margin-left: 1px; font-weight: 700; }
+.parity-tree .parity-board-tag { display: inline-block; min-width: 14px; margin-right: 4px; border-radius: 2px; background: rgb(65, 62, 58); color: rgb(148, 148, 148); font: 700 10px/14px "Noto Sans", sans-serif; text-align: center; vertical-align: 1px; }
 .parity-tree move.glyph-good:not(.active), .parity-tree glyph.good { color: rgb(98, 153, 36); }
 .parity-tree move.glyph-brilliant:not(.active), .parity-tree glyph.brilliant { color: rgb(33, 196, 58); }
 .parity-tree move.glyph-inaccuracy:not(.active), .parity-tree glyph.inaccuracy { color: rgb(83, 178, 234); }
