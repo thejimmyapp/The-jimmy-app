@@ -1,0 +1,18 @@
+[Event "bug puzzles & insights: why is playing for Rc1+ (with Pd2 helper) SO strong?"]
+[Date "2026.01.23"]
+[Result "*"]
+[Variant "Crazyhouse"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "bug puzzles & insights"]
+[ChapterName "why is playing for Rc1+ (with Pd2 helper) SO strong?"]
+[ChapterURL "https://lichess.org/study/Ma9vcnpu/4lZqSffp"]
+[Annotator "https://lichess.org/@/RyanTime"]
+[FEN "5qk1/p1p1bp1p/4bP2/3pNnP1/3Pn3/8/PPPp1PPP/R2Q1K1R/PPNNBRQpppnbrrr b - - 0 1"]
+[SetUp "1"]
+[UTCDate "2026.01.23"]
+[UTCTime "08:34:57"]
+[Orientation "black"]
+
+{ https://is.gd/s3jKkY }
+1... P@e2+! (1... R@e1+?! 2. Qxe1 dxe1=Q+ 3. Rxe1 P@d2! (3... B@b5+!? 4. P@d3 P@d2 5. Q@d1 dxe1=Q+ 6. Kxe1! P@e3 7. N@g4 P@d2+ 8. Kf1 R@e1+?! (8... R@c1!! { [%csl Gh6][%cal Gg4h6] } 9. N@h6+ Nxh6 (9... Kh8?! 10. P@g7+ Nxg7 11. Ke2 N@f4+ 12. Kxe3 { [%csl Gf4] } 12... R@e2+? (12... Rxd1! 13. Rxd1 R@e1+ 14. Kf3 Nfh5 15. B@e3 Bxf6 16. Nxf6 Rxd1 17. Nxe4 dxe4+ 18. Ke2 Rb1 19. Bxd2 exd3+ 20. cxd3 Rxb2) 13. Kxf4!! (13. Qxe2? Nxg2+ 14. Kf3 Nh4+ 15. Ke3 P@f4+ 16. Kxf4 Nh5+ 17. Ke3 P@f4#) 13... Nh5+ 14. Kf3 Bxf6 15. Kxe2 $10)) 9. Qxe1 dxe1=Q+ 10. Kxe1 Bb4+ $17) (3... P@e2+!? 4. Rxe2 R@a1+ 5. R@e1) 4. Q@d1 (4. Q@f4? P@e2+! 5. Rxe2 R@d1+?! (5... R@a1+ 6. N@e1? dxe1=Q+ 7. Rxe1 P@e2+ 8. Kxe2 Nxd4+ 9. Ke3 N@f5+ 10. Kd3 N@b4#) 6. N@e1) 4... dxe1=Q+ 5. Kxe1 P@e3 $17) 2. Qxe2 R@c1+ 3. R@d1? { the fact that this DOESN'T work is very telling. } (3. Rxc1! { [%csl Gd2] } 3... dxc1=Q+ 4. Q@d1 Ne3+!! { [%csl Gg3] } (4... N@e3+ 5. fxe3) 5. fxe3 R@f2+ 6. Qxf2 Qxd1+ 7. R@e1 P@e2+ 8. Kg1 { [%cal Gd1e1] } 8... Qxe1+ 9. Qxe1 P@f2+ 10. Qxf2 R@d1+ 11. N@e1 R@f1+ 12. Qxf1 exf1=Q+ 13. Kxf1 Q@f2#) 3... R@e1+ 4. Rxe1 dxe1=Q+ 5. Qxe1 P@e2+ 6. Kxe2 Nxd4+ 7. Kd3 (7. Kf1 P@e2+ 8. Kg1 R@f1+ 9. Qxf1 exf1=R#) 7... N@f4+ 8. Ke3 Rxe1+ 9. Rhxe1 B@d2+ 10. Kxd4 Bc5# *

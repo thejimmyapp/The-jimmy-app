@@ -43,6 +43,7 @@ THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
 ```
 
 - **Wood Classic board texture** · Original work by The Jimmy App project; it is not sourced from Lichess or another third party.
+- **Parity Wood board texture** · Original work by The Jimmy App project; it uses project-authored procedural grain and no Lichess image assets.
 - **Fairy-Stockfish** · `GPL-3.0-or-later` · Fairy-Stockfish contributors · [Source](https://github.com/fairy-stockfish/Fairy-Stockfish). Fairy-Stockfish runs server-side. Its binary is not conveyed to users or bundled in an artifact produced by this repository.
 - **Stockfish** · `GPL-3.0-or-later` · Stockfish developers · [Source](https://github.com/official-stockfish/Stockfish). Fairy-Stockfish derives from the Stockfish engine lineage.
 - **lichess / lila** · `AGPL-3.0` · lichess.org and contributors · [Source](https://github.com/lichess-org/lila). lila was used only as a pattern reference; no lila code was copied, and this service does not run lila.

@@ -1,0 +1,71 @@
+{
+  "S0": {
+    "position": {
+      "board": [
+        ["", "", "", "", "", "q", "k", ""],
+        ["p", "", "p", "", "b", "p", "", "p"],
+        ["", "", "", "", "b", "P", "", ""],
+        ["", "", "", "p", "N", "n", "P", ""],
+        ["", "", "", "P", "n", "", "", ""],
+        ["", "", "", "", "", "", "", ""],
+        ["P", "P", "P", "p", "", "P", "P", "P"],
+        ["R", "", "", "Q", "", "K", "", "R"]
+      ],
+      "white_pocket": "QRBNNPP",
+      "black_pocket": "rrrbnppp",
+      "side_to_move": "Black"
+    },
+    "orientation": "black",
+    "lastMove": null,
+    "check": null,
+    "glyphs": [],
+    "shapes": []
+  },
+  "S1": {
+    "position": {
+      "board": [
+        ["", "", "", "", "", "q", "k", ""],
+        ["p", "", "p", "", "b", "p", "", "p"],
+        ["", "", "", "", "b", "P", "", ""],
+        ["", "", "", "p", "N", "n", "P", ""],
+        ["", "", "", "P", "n", "", "", ""],
+        ["", "", "", "", "", "", "", ""],
+        ["P", "P", "P", "p", "p", "P", "P", "P"],
+        ["R", "", "", "Q", "", "K", "", "R"]
+      ],
+      "white_pocket": "QRBNNPP",
+      "black_pocket": "rrrbnpp",
+      "side_to_move": "White"
+    },
+    "orientation": "black",
+    "lastMove": { "from": null, "to": "e2" },
+    "check": "f1",
+    "glyphs": [{ "square": "e2", "glyph": "!", "kind": "good" }],
+    "shapes": []
+  },
+  "S2": {
+    "position": {
+      "board": [
+        ["", "", "", "", "", "q", "k", ""],
+        ["p", "", "p", "", "b", "p", "", "p"],
+        ["", "", "", "", "b", "P", "", ""],
+        ["", "b", "", "p", "N", "n", "P", ""],
+        ["", "", "", "P", "n", "", "N", ""],
+        ["", "", "", "P", "p", "", "", ""],
+        ["P", "P", "P", "p", "", "P", "P", "P"],
+        ["", "", "r", "Q", "", "K", "", "R"]
+      ],
+      "white_pocket": "RRBNPPP",
+      "black_pocket": "qrrn",
+      "side_to_move": "White"
+    },
+    "orientation": "black",
+    "lastMove": { "from": null, "to": "c1" },
+    "check": null,
+    "glyphs": [{ "square": "c1", "glyph": "!!", "kind": "brilliant" }],
+    "shapes": [
+      { "brush": "green", "orig": "g4", "dest": "h6" },
+      { "brush": "green", "orig": "h6" }
+    ]
+  }
+}
