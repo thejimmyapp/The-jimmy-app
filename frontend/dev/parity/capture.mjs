@@ -273,6 +273,14 @@ function compareAll() {
     const pockets = { top: {}, bottom: {} };
     const pocketCrops = { top: { x: 1071, y: 83, width: 354, height: 60 }, bottom: { x: 1071, y: 705, width: 354, height: 60 } };
     for (const [position, cropBox] of Object.entries(pocketCrops)) for (const threshold of [0.1, 0.3]) pockets[position][threshold] = compareCrop(reference, candidate, cropBox, stateId, `pocket-${position}`, threshold);
+    const moves = {};
+    const movesCrop = { x: 1071, y: 143, width: 355, height: 563 };
+    for (const threshold of [0.1, 0.3]) moves[threshold] = compareCrop(reference, candidate, movesCrop, stateId, "moves", threshold);
+    const fork = {};
+    if (stateId === "S0") {
+      const forkCrop = { x: 1071, y: 680, width: 355, height: 26 };
+      for (const threshold of [0.1, 0.3]) fork[threshold] = compareCrop(reference, candidate, forkCrop, stateId, "fork", threshold);
+    }
     const means = nearestEmptySquares(states[stateId].position.board).map(({ square, displayX, displayY }) => {
       const x = boardCrop.x + displayX * 85;
       const y = boardCrop.y + displayY * 85;
@@ -280,8 +288,8 @@ function compareAll() {
       const actual = squareMean(candidate, x, y, 85);
       return { square, reference: expected, candidate: actual, deltaE: Number(deltaE(expected, actual).toFixed(2)) };
     });
-    results[stateId] = { board, coords, pockets, means };
-    console.log(`${stateId}: board ${board[0.1].toFixed(3)}% @0.1 · ${board[0.3].toFixed(3)}% @0.3; coords ${coords[0.1].toFixed(3)}% @0.1 · ${coords[0.3].toFixed(3)}% @0.3; pocket-top ${pockets.top[0.1].toFixed(3)}% · ${pockets.top[0.3].toFixed(3)}%; pocket-bottom ${pockets.bottom[0.1].toFixed(3)}% · ${pockets.bottom[0.3].toFixed(3)}%`);
+    results[stateId] = { board, coords, pockets, moves, fork, means };
+    console.log(`${stateId}: board ${board[0.1].toFixed(3)}% @0.1 · ${board[0.3].toFixed(3)}% @0.3; coords ${coords[0.1].toFixed(3)}% @0.1 · ${coords[0.3].toFixed(3)}% @0.3; pocket-top ${pockets.top[0.1].toFixed(3)}% · ${pockets.top[0.3].toFixed(3)}%; pocket-bottom ${pockets.bottom[0.1].toFixed(3)}% · ${pockets.bottom[0.3].toFixed(3)}%; moves ${moves[0.1].toFixed(3)}% · ${moves[0.3].toFixed(3)}%${stateId === "S0" ? `; fork ${fork[0.1].toFixed(3)}% · ${fork[0.3].toFixed(3)}%` : ""}`);
     console.table(means.map((item) => ({ state: stateId, square: item.square, reference: item.reference.join(","), candidate: item.candidate.join(","), deltaE: item.deltaE })));
   }
   writeFileSync(join(outDir, "results.json"), `${JSON.stringify(results, null, 2)}\n`);

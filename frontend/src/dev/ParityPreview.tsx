@@ -1,25 +1,63 @@
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createRoot } from "react-dom/client";
-import type { CSSProperties } from "react";
-import { ParityBoard, type ParityBoardProps } from "../parity/board/ParityBoard";
+import { ParityBoard, type ParityGlyph, type ParityShape } from "../parity/board/ParityBoard";
 import { parityBoardTheme } from "../parity/board/themes";
+import pgnText from "../parity/fixtures/Ma9vcnpu-4lZqSffp.pgn?raw";
+import positionsJson from "../parity/fixtures/Ma9vcnpu-4lZqSffp.positions.json";
 import { parityLayout } from "../parity/layout";
+import { parsePgn, type PgnGlyph, type PgnNode } from "../parity/pgn/parsePgn";
 import { ParityPocket } from "../parity/pocket/ParityPocket";
-import statesJson from "../parity/fixtures/Ma9vcnpu-4lZqSffp.states.json";
+import type { CrazyhousePosition } from "../parity/rules/crazyhouse";
+import { ParityFork, ParityTree } from "../parity/tree/ParityTree";
+import { pgnNodeById, treeKeyboardTarget } from "../parity/tree/treeNavigation";
 import "./parityPreview.css";
 
-const states = statesJson as Record<string, Omit<ParityBoardProps, "layout" | "theme" | "showCoords">>;
+const tree = parsePgn(pgnText);
+const positions = positionsJson as unknown as Record<string, CrazyhousePosition>;
 const params = new URLSearchParams(location.search);
 const requestedState = params.get("state") ?? "S0";
-const stateId = Object.hasOwn(states, requestedState) ? requestedState : "S0";
+const mainlinePlyOne = tree.root.children[0];
+const rookDrop = tree.nodes.find((node) => node.san === "R@c1" && node.glyphs[0]?.symbol === "!!");
+if (!mainlinePlyOne || !rookDrop) throw new Error("Parity fixture nodes are incomplete");
+const stateNodeIds: Record<string, string> = { S0: "root", S1: mainlinePlyOne.id, S2: rookDrop.id };
+const initialActiveId = stateNodeIds[requestedState] ?? "root";
 const layout = parityLayout(params.get("layout"));
 const theme = parityBoardTheme(params.get("theme"));
 
+const rootForkShapes: ParityShape[] = [
+  { brush: "paleBlue", orig: "P@", dest: "e2", below: true, geometry: { x1: 20.5, y1: 11.5, x2: -0.36999214150971194, y2: -2.413328094339808 }, fork: { highlight: "#3291ff", clip: { x: -1, y: -3, width: 22, height: 15 } } },
+  { brush: "paleGrey", orig: "R@", dest: "e1", below: true, geometry: { x1: 18.5, y1: 11.5, x2: -0.37736206788540216, y2: -3.403180579909528 }, fork: { highlight: "#aaa", clip: { x: -1, y: -4, width: 20, height: 16 } } },
+];
+
+function badgeGlyph(glyph: PgnGlyph | undefined, node: PgnNode | undefined, position: CrazyhousePosition): ParityGlyph[] {
+  if (!glyph || !node || glyph.kind === "other" || !position.lastMove) return [];
+  return [{ square: position.lastMove.to, glyph: glyph.symbol as ParityGlyph["glyph"], kind: glyph.kind }];
+}
+
 export function ParityPreview() {
-  const state = states[stateId];
-  const topColor = state.orientation === "black" ? "white" : "black";
-  const bottomColor = state.orientation;
-  const pocketFor = (color: "white" | "black") => color === "white" ? state.position.white_pocket : state.position.black_pocket;
-  const isUsable = (color: "white" | "black") => state.position.side_to_move.toLowerCase() === color;
+  const [activeId, setActiveId] = useState(initialActiveId);
+  const active = pgnNodeById(tree, activeId);
+  const activeNode = active && "parentId" in active ? active : undefined;
+  const position = positions[activeId];
+  if (!position) throw new Error(`Missing generated parity position for ${activeId}`);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const key = event.key;
+      if (key !== "ArrowLeft" && key !== "ArrowRight") return;
+      event.preventDefault();
+      setActiveId((current) => treeKeyboardTarget(tree, current, key));
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  const topColor = "white" as const;
+  const bottomColor = "black" as const;
+  const pocketFor = (color: "white" | "black") => color === "white" ? position.white_pocket : position.black_pocket;
+  const isUsable = (color: "white" | "black") => position.side_to_move.toLowerCase() === color;
+  const glyphs = useMemo(() => badgeGlyph(activeNode?.glyphs[0], activeNode, position), [activeNode, position]);
+  const shapes = [...(activeNode?.shapes ?? []), ...(activeId === "root" && (active?.children.length ?? 0) >= 2 ? rootForkShapes : [])];
   const frameStyle = {
     "--parity-frame-board-x": `${layout.board.x}px`,
     "--parity-frame-board-y": `${layout.board.y}px`,
@@ -34,15 +72,15 @@ export function ParityPreview() {
     "--parity-frame-controls-height": `${layout.tools.controlsHeight}px`,
   } as CSSProperties;
   return (
-    <main className="parity-frame" data-state={stateId} data-layout={layout.id} data-theme={theme.id} style={frameStyle}>
+    <main className="parity-frame" data-state={requestedState} data-active-id={activeId} data-layout={layout.id} data-theme={theme.id} style={frameStyle}>
       <header className="parity-header" />
       <aside className="parity-side" />
-      <section className="parity-board-block"><ParityBoard {...state} layout={layout} theme={theme} showCoords /></section>
+      <section className="parity-board-block"><ParityBoard position={position} orientation="black" layout={layout} theme={theme} lastMove={position.lastMove} check={position.check} glyphs={glyphs} shapes={shapes} showCoords /></section>
       <aside className="parity-tools-column">
-        <ParityPocket color={topColor} pocket={pocketFor(topColor)} position="top" usable={isUsable(topColor)} orientation={state.orientation} layout={layout} />
-        <div className="parity-moves" />
-        <div className="parity-fork" />
-        <ParityPocket color={bottomColor} pocket={pocketFor(bottomColor)} position="bottom" usable={isUsable(bottomColor)} orientation={state.orientation} layout={layout} />
+        <ParityPocket color={topColor} pocket={pocketFor(topColor)} position="top" usable={isUsable(topColor)} orientation="black" layout={layout} />
+        <div className="parity-moves"><ParityTree tree={tree} activeId={activeId} onSelect={setActiveId} /></div>
+        <div className="parity-fork"><ParityFork node={active} onSelect={setActiveId} /></div>
+        <ParityPocket color={bottomColor} pocket={pocketFor(bottomColor)} position="bottom" usable={isUsable(bottomColor)} orientation="black" layout={layout} />
         <div className="parity-controls" />
       </aside>
       <section className="parity-underboard" />

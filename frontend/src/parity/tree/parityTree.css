@@ -1,0 +1,42 @@
+.parity-tree {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  color: rgb(186, 186, 186);
+  scrollbar-width: thin;
+  scrollbar-color: rgb(80, 78, 74) transparent;
+}
+
+.parity-tree comment { display: block; padding: 4px 10px; color: rgb(186, 186, 186); font: 13.3px/18px "Noto Sans", sans-serif; }
+.parity-tree comment.root-comment { height: 26px; padding: 3px 10px; background: rgb(51, 49, 46); }
+.parity-tree comment.root-comment a { color: rgb(54, 146, 231); text-decoration: none; }
+.parity-column-row { display: grid; grid-template-columns: 46.0625px 154.171875px 154.171875px; min-height: 29.03125px; }
+.parity-column-row > index { display: block; height: 29.03125px; padding-right: 10px; background: rgb(51, 49, 46); color: rgb(107, 107, 107); font: 14px/28.98px "Noto Sans", sans-serif; text-align: right; }
+.parity-tree move { cursor: pointer; }
+.parity-tree move.column-move { display: block; height: 29.03125px; padding: 0 11px; overflow: hidden; font: 16.59px/29.0325px "Noto Sans", "Noto Sans Symbols 2", sans-serif; white-space: nowrap; }
+.parity-tree move.ellipsis { color: rgb(107, 107, 107); cursor: default; }
+.parity-tree move.empty { cursor: default; }
+.parity-tree move glyph { margin-left: 1px; font-weight: 700; }
+.parity-tree move.glyph-good:not(.active), .parity-tree glyph.good { color: rgb(98, 153, 36); }
+.parity-tree move.glyph-brilliant:not(.active), .parity-tree glyph.brilliant { color: rgb(33, 196, 58); }
+.parity-tree move.glyph-inaccuracy:not(.active), .parity-tree glyph.inaccuracy { color: rgb(83, 178, 234); }
+.parity-tree move.glyph-interesting:not(.active), .parity-tree glyph.interesting { color: rgb(240, 117, 225); }
+.parity-tree move.glyph-mistake:not(.active), .parity-tree glyph.mistake { color: rgb(230, 157, 0); }
+.parity-tree move.glyph-blunder:not(.active), .parity-tree glyph.blunder { color: hsl(0 69% 60%); }
+.parity-tree move.active { background: rgba(54, 146, 231, .85); color: #fff; font-weight: 700; }
+.parity-tree move.active.glyph-good { background: rgba(98, 153, 36, .85); }
+.parity-tree move.active.glyph-brilliant { background: rgba(33, 196, 58, .85); }
+.parity-tree move.active.glyph-inaccuracy { background: rgba(83, 178, 234, .85); }
+.parity-tree move.active.glyph-interesting { background: rgba(240, 117, 225, .85); }
+.parity-tree move.active.glyph-mistake { background: rgba(230, 157, 0, .85); }
+.parity-tree move.active.glyph-blunder { background: hsl(0 69% 60% / .85); }
+.parity-tree interrupt { display: block; padding-left: 11px; }
+.parity-tree lines { position: relative; display: block; padding-left: 2px; border-left: 2px solid rgb(82, 80, 76); }
+.parity-tree line { display: block; padding-left: 7px; }
+.parity-tree move.inline-move { display: inline-block; min-height: 24px; margin: 0 2px; color: rgb(186, 186, 186); font: 14.5236px/24px "Noto Sans", "Noto Sans Symbols 2", sans-serif; }
+.parity-tree move.inline-move index { margin-right: 2px; color: rgb(148, 148, 148); font-size: 13.0712px; }
+.parity-tree move.inline-move.active { padding: 0 3px; color: #fff; }
+
+.parity-fork-options { display: grid; width: 100%; height: 25.59375px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.parity-fork-options button { min-width: 0; border: 0; padding: 0 15px; overflow: hidden; background: rgb(47, 62, 78); color: rgb(204, 204, 204); font: 14px/25.59375px "Noto Sans", "Noto Sans Symbols 2", sans-serif; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.parity-fork-options button.selected { background: rgb(54, 146, 231); color: #fff; }

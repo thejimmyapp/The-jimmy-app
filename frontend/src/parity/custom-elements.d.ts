@@ -11,6 +11,13 @@ declare module "react" {
       piece: CustomElementProps;
       coords: CustomElementProps;
       coord: CustomElementProps;
+      comment: CustomElementProps;
+      glyph: CustomElementProps;
+      index: CustomElementProps;
+      interrupt: CustomElementProps;
+      lines: CustomElementProps;
+      move: CustomElementProps;
+      san: CustomElementProps;
     }
   }
 }
