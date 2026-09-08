@@ -5,7 +5,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../api";
 import { MoveListDecodeError } from "../bughouseDecoder";
 import { formatRelativeAge } from "../guestMatchAge";
-import type { GuestMatchupList as GuestMatchupListPayload, NormalizedMatch } from "../types";
+import type {
+  GuestMatchupClass,
+  GuestMatchupClassifiedMatch,
+  GuestMatchupEntry,
+  GuestMatchupList as GuestMatchupListPayload,
+  GuestMatchupPlaceholder,
+} from "../types";
 import { GuestMatchupList } from "./GuestMatchupList";
 
 vi.mock("../api", () => ({ api: { guestMatchups: vi.fn() } }));
@@ -34,16 +40,28 @@ const matches = classSpecs.map((ratingClass, index) => ({
   rating_class: { label: ratingClass.label, min: ratingClass.min, max: ratingClass.max },
   top_rating: ratingClass.rating,
   finished_seconds_ago: 120 + index * 3600,
-})) satisfies Array<NormalizedMatch & { rating_class: { label: string; min: number; max: number | null }; top_rating: number; finished_seconds_ago: number }>;
+})) satisfies GuestMatchupClassifiedMatch[];
 
-const placeholder = {
+const placeholder: GuestMatchupPlaceholder = {
   rating_class: { label: "1900–2300", min: 1900, max: 2300 },
   placeholder: true,
   reason: "no_game_in_7_days",
 };
 
-const matchupPayload = (items = matches) => ({
+const classes: GuestMatchupClass[] = classSpecs.map((ratingClass, index) => ({
+  label: ratingClass.label,
+  min: ratingClass.min,
+  max: ratingClass.max,
+  status: index === 0 ? "fresh" : "older",
+  window_hours: index === 0 ? 1 : 12,
+}));
+
+const matchupPayload = (
+  items: GuestMatchupEntry[] = matches,
+  ratingClasses: GuestMatchupClass[] = classes,
+): GuestMatchupListPayload => ({
   matches: items,
+  classes: ratingClasses,
   examined: 7,
   excluded: 2,
   exclusion_counts: { under_20_plies: 2 },
@@ -51,8 +69,9 @@ const matchupPayload = (items = matches) => ({
   players_represented: ["one", "two", "three"],
   seed_source: "leaderboard_top_50" as const,
   selection_window_hours: 12 as const,
+  partial: items.some((item) => "placeholder" in item),
   cached: false,
-}) as unknown as GuestMatchupListPayload;
+});
 
 const renderList = (children: ReactNode) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -133,7 +152,7 @@ describe("guest matchup list", () => {
   });
 
   it("renders a disabled placeholder and skips it for arrows and Enter", async () => {
-    vi.mocked(api.guestMatchups).mockResolvedValue(matchupPayload([matches[0], placeholder, matches[2]] as never));
+    vi.mocked(api.guestMatchups).mockResolvedValue(matchupPayload([matches[0], placeholder, matches[2]]));
     const onSelect = vi.fn();
     renderList(<GuestMatchupList onSelect={onSelect} />);
     const list = await screen.findByRole("listbox", { name: "Guest matchups" });
@@ -150,5 +169,27 @@ describe("guest matchup list", () => {
     expect(options[0].getAttribute("aria-selected")).toBe("true");
     fireEvent.keyDown(list, { key: "Enter" });
     expect(onSelect).toHaveBeenCalledWith(matches[0]);
+  });
+
+  it("reports retained real classes after regenerate and clears the note on the next regenerate", async () => {
+    const retainedClasses = classes.map((ratingClass, index) => ({
+      ...ratingClass,
+      rotated: index !== 1,
+    }));
+    const rotatedClasses = classes.map((ratingClass) => ({ ...ratingClass, rotated: true }));
+    vi.mocked(api.guestMatchups)
+      .mockResolvedValueOnce(matchupPayload())
+      .mockResolvedValueOnce(matchupPayload(matches, retainedClasses))
+      .mockResolvedValueOnce(matchupPayload(matches, rotatedClasses));
+    renderList(<GuestMatchupList onSelect={vi.fn()} />);
+    await screen.findByRole("listbox", { name: "Guest matchups" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Regenerate list" }));
+    const note = await screen.findByRole("status");
+    expect(note.textContent).toBe("[COPY-PLACEHOLDER] 1900–2300 · no other recent game yet");
+
+    fireEvent.click(screen.getByRole("button", { name: "Regenerate list" }));
+    await screen.findByRole("button", { name: "Regenerate list" });
+    await waitFor(() => expect(screen.queryByText(/no other recent game yet/)).toBeNull());
   });
 });

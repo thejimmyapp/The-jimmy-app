@@ -464,7 +464,7 @@ def test_each_class_ladder_reaches_seven_days_and_counts_older_games(monkeypatch
         "window_hours": 168,
     }
     assert payload["selection_window_hours"] == 168
-    assert payload["exclusion_counts"]["outside_48h"] == 1
+    assert payload["exclusion_counts"]["outside_7d"] == 1
 
 
 @pytest.mark.parametrize(
@@ -536,7 +536,7 @@ def test_default_guest_list_ttl_drives_refresh_loop(monkeypatch: pytest.MonkeyPa
     assert sleeps[0] == pytest.approx(210, abs=0.1)
 
 
-def test_guest_refresh_bypasses_list_cache_and_prefers_non_current_pairs(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_guest_refresh_rotates_from_pool_without_upstream_requests(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("backend.chesscom_matchups.time.time", lambda: NOW)
     players = {
         "alpha": [201, 202],
@@ -621,6 +621,30 @@ def test_guest_refresh_bypasses_list_cache_and_prefers_non_current_pairs(monkeyp
     assert refreshed["cached"] is True
     assert refreshed["regenerated_from_pool"] is True
     assert refreshed["selection_window_hours"] == 1
+
+
+def test_guest_refresh_marks_rotated_classes_and_retained_game_ids(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("backend.chesscom_matchups.time.time", lambda: NOW)
+    service, _requests = rating_class_fixture(
+        {"topseed": [501, 502], "midseed": [503, 504], "lowseed": [505]},
+        {
+            501: (2500, NOW - 600, 40),
+            502: (2500, NOW - 500, 40),
+            503: (2200, NOW - 600, 40),
+            504: (2200, NOW - 500, 40),
+            505: (1800, NOW - 500, 40),
+        },
+        chesscom_players_of_interest="TopSeed",
+        chesscom_seed_players_1900_2300="MidSeed",
+        chesscom_seed_players_1400_1900="LowSeed",
+    )
+    first = asyncio.run(service.guest_matchups())
+    third_game_ids = first["matches"][2]["game_ids"]
+
+    payload = asyncio.run(service.guest_matchups(refresh=True))
+
+    assert [rating_class["rotated"] for rating_class in payload["classes"]] == [True, True, False]
+    assert payload["matches"][2]["game_ids"] == third_game_ids
 
 
 def test_kill_switch_disables_match_and_guest_routes_before_network_access() -> None:
