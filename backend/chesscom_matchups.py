@@ -723,10 +723,13 @@ class ChessComMatchupService:
 
         async def top_up() -> None:
             target = self.settings.chesscom_guest_pool_target
+            limit = self.settings.chesscom_guest_max_matches_examined
             for index, rating_class in enumerate(self._rating_classes):
                 while len(qualified_by_class[rating_class.label]) < target:
                     await process_window(_GUEST_FRESHNESS_WINDOWS_HOURS[-1])
                     if len(qualified_by_class[rating_class.label]) >= target:
+                        break
+                    if examined_upstream >= limit:
                         break
                     names = self._seeds_for_class(rating_class)
                     if index == 0 and leaderboard_usernames:
@@ -736,6 +739,8 @@ class ChessComMatchupService:
                         break
                     await collect_candidates(next_name)
                     await process_window(_GUEST_FRESHNESS_WINDOWS_HOURS[-1])
+                    if examined_upstream >= limit:
+                        break
             self._prune_roster(now)
 
         budget = self.settings.chesscom_guest_background_budget_seconds if background else _GUEST_ASSEMBLY_BUDGET_SECONDS

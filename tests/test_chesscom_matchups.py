@@ -569,6 +569,40 @@ def test_assemble_enforces_per_class_share_and_rolls_unused_budget(monkeypatch: 
     assert rollover_counts == [1, 3, 2]
 
 
+def test_background_top_up_stops_archive_collection_at_the_upstream_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("backend.chesscom_matchups.time.time", lambda: NOW)
+    service, requests = rating_class_fixture(
+        {
+            "topseed": [861],
+            "middleseed": [862],
+            "lowseed": [863],
+            "extratop": [864],
+            "extramiddle": [865],
+        },
+        {
+            861: (2500, NOW - 600, 40),
+            862: (2200, NOW - 500, 40),
+            863: (1800, NOW - 400, 40),
+            864: (2500, NOW - 300, 40),
+            865: (2200, NOW - 200, 40),
+        },
+        chesscom_players_of_interest="TopSeed",
+        chesscom_seed_players_1900_2300="MiddleSeed",
+        chesscom_seed_players_1400_1900="LowSeed",
+        chesscom_guest_max_matches_examined=5,
+    )
+    service.settings.chesscom_guest_max_matches_examined = 3
+    service._record_roster_seat("ExtraTop", 2500, NOW - 1)
+    service._record_roster_seat("ExtraMiddle", 2200, NOW - 1)
+    service._player_last_active.update({"topseed": NOW, "middleseed": NOW, "lowseed": NOW})
+
+    payload, _pool = asyncio.run(service._build_guest_matchups(set(), background=True))
+
+    assert payload["examined_upstream"] == 3
+    assert not any("/player/extratop/games/" in request for request in requests)
+    assert not any("/player/extramiddle/games/" in request for request in requests)
+
+
 @pytest.mark.parametrize(
     ("classes", "floor", "message"),
     [
