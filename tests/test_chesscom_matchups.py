@@ -122,11 +122,12 @@ def rating_class_fixture(
             payload = callbacks[path.rsplit("/", 1)[-1]]
         return httpx.Response(200, json=payload, request=request)
 
-    settings = Settings(
-        chesscom_guest_max_archives_per_player=1,
-        chesscom_guest_max_matches_examined=100,
+    setting_values = {
+        "chesscom_guest_max_archives_per_player": 1,
+        "chesscom_guest_max_matches_examined": 100,
         **setting_overrides,
-    )
+    }
+    settings = Settings(**setting_values)
     return ChessComMatchupService(settings, transport=httpx.MockTransport(handler)), requests
 
 
@@ -465,6 +466,141 @@ def test_each_class_ladder_reaches_seven_days_and_counts_older_games(monkeypatch
     }
     assert payload["selection_window_hours"] == 168
     assert payload["exclusion_counts"]["outside_7d"] == 1
+
+
+def test_top_class_ladder_survives_fresh_middle_class_candidate_pressure(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("backend.chesscom_matchups.time.time", lambda: NOW)
+    middle_ids = list(range(720, 740))
+    service, _requests = rating_class_fixture(
+        {"topseed": [701], "middleseed": middle_ids},
+        {
+            701: (2500, NOW - 2 * 3600, 40),
+            **{
+                game_id: (2200, NOW - 600 - offset, 40)
+                for offset, game_id in enumerate(middle_ids)
+            },
+        },
+        chesscom_players_of_interest="TopSeed",
+        chesscom_seed_players_1900_2300="MiddleSeed",
+        chesscom_guest_max_matches_examined=10,
+    )
+
+    payload = asyncio.run(service.guest_matchups())
+
+    assert payload["matches"][0]["game_ids"]["A"] == 701
+    assert payload["classes"][0]["window_hours"] == 3
+    assert payload["classes"][0]["status"] == "older"
+    assert payload["examined_upstream"] <= 10
+
+
+def test_cached_matches_do_not_consume_the_examination_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("backend.chesscom_matchups.time.time", lambda: NOW)
+    service, _requests = rating_class_fixture(
+        {"topseed": [741], "middleseed": [742], "lowseed": [743]},
+        {
+            741: (2500, NOW - 600, 40),
+            742: (2200, NOW - 500, 40),
+            743: (1800, NOW - 400, 40),
+        },
+        chesscom_players_of_interest="TopSeed",
+        chesscom_seed_players_1900_2300="MiddleSeed",
+        chesscom_seed_players_1400_1900="LowSeed",
+        chesscom_guest_max_matches_examined=6,
+    )
+    first = asyncio.run(service.guest_matchups())
+    service._guest_cache = None
+
+    second = asyncio.run(service.guest_matchups())
+
+    assert first["examined_upstream"] == 3
+    assert second["examined"] == 3
+    assert second["examined_upstream"] == 0
+    assert second["matches"] == first["matches"]
+
+
+def test_assemble_enforces_per_class_share_and_rolls_unused_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("backend.chesscom_matchups.time.time", lambda: NOW)
+
+    def build(
+        games_by_player: dict[str, list[int]],
+        specs: dict[int, tuple[int, int, int]],
+    ) -> tuple[dict[str, Any], list[str]]:
+        service, requests = rating_class_fixture(
+            games_by_player,
+            specs,
+            chesscom_players_of_interest="TopSeed",
+            chesscom_seed_players_1900_2300="MiddleSeed",
+            chesscom_seed_players_1400_1900="LowSeed",
+            chesscom_guest_max_matches_examined=6,
+        )
+        return asyncio.run(service.guest_matchups()), requests
+
+    balanced_groups = ([801, 802, 803], [811, 812, 813], [821, 822, 823])
+    balanced, balanced_requests = build(
+        {"topseed": balanced_groups[0], "middleseed": balanced_groups[1], "lowseed": balanced_groups[2]},
+        {
+            game_id: (rating, NOW - 600 - offset, 40)
+            for group, rating in zip(balanced_groups, (2500, 2200, 1800), strict=True)
+            for offset, game_id in enumerate(group)
+        },
+    )
+    balanced_counts = [
+        sum(request.endswith(f"/{game_id}") for request in balanced_requests for game_id in group)
+        for group in balanced_groups
+    ]
+
+    rollover_groups = ([831], [841, 842, 843], [851, 852])
+    rollover, rollover_requests = build(
+        {"topseed": rollover_groups[0], "middleseed": rollover_groups[1], "lowseed": rollover_groups[2]},
+        {
+            game_id: (rating, NOW - 600 - offset, 40)
+            for group, rating in zip(rollover_groups, (2500, 2200, 1800), strict=True)
+            for offset, game_id in enumerate(group)
+        },
+    )
+    rollover_counts = [
+        sum(request.endswith(f"/{game_id}") for request in rollover_requests for game_id in group)
+        for group in rollover_groups
+    ]
+
+    assert balanced["examined_upstream"] == 6
+    assert balanced_counts == [2, 2, 2]
+    assert rollover["examined_upstream"] == 6
+    assert rollover_counts == [1, 3, 2]
+
+
+def test_background_top_up_stops_archive_collection_at_the_upstream_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("backend.chesscom_matchups.time.time", lambda: NOW)
+    service, requests = rating_class_fixture(
+        {
+            "topseed": [861],
+            "middleseed": [862],
+            "lowseed": [863],
+            "extratop": [864],
+            "extramiddle": [865],
+        },
+        {
+            861: (2500, NOW - 600, 40),
+            862: (2200, NOW - 500, 40),
+            863: (1800, NOW - 400, 40),
+            864: (2500, NOW - 300, 40),
+            865: (2200, NOW - 200, 40),
+        },
+        chesscom_players_of_interest="TopSeed",
+        chesscom_seed_players_1900_2300="MiddleSeed",
+        chesscom_seed_players_1400_1900="LowSeed",
+        chesscom_guest_max_matches_examined=5,
+    )
+    service.settings.chesscom_guest_max_matches_examined = 3
+    service._record_roster_seat("ExtraTop", 2500, NOW - 1)
+    service._record_roster_seat("ExtraMiddle", 2200, NOW - 1)
+    service._player_last_active.update({"topseed": NOW, "middleseed": NOW, "lowseed": NOW})
+
+    payload, _pool = asyncio.run(service._build_guest_matchups(set(), background=True))
+
+    assert payload["examined_upstream"] == 3
+    assert not any("/player/extratop/games/" in request for request in requests)
+    assert not any("/player/extramiddle/games/" in request for request in requests)
 
 
 @pytest.mark.parametrize(
