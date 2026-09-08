@@ -19,7 +19,24 @@
     "lastMove": null,
     "check": null,
     "glyphs": [],
-    "shapes": []
+    "shapes": [
+      {
+        "brush": "paleBlue",
+        "orig": "P@",
+        "dest": "e2",
+        "below": true,
+        "geometry": { "x1": 20.5, "y1": 11.5, "x2": -0.36999214150971194, "y2": -2.413328094339808 },
+        "fork": { "highlight": "#3291ff", "clip": { "x": -1, "y": -3, "width": 22, "height": 15 } }
+      },
+      {
+        "brush": "paleGrey",
+        "orig": "R@",
+        "dest": "e1",
+        "below": true,
+        "geometry": { "x1": 18.5, "y1": 11.5, "x2": -0.37736206788540216, "y2": -3.403180579909528 },
+        "fork": { "highlight": "#aaa", "clip": { "x": -1, "y": -4, "width": 20, "height": 16 } }
+      }
+    ]
   },
   "S1": {
     "position": {
@@ -64,7 +81,7 @@
     "check": null,
     "glyphs": [{ "square": "c1", "glyph": "!!", "kind": "brilliant" }],
     "shapes": [
-      { "brush": "green", "orig": "g4", "dest": "h6" },
+      { "brush": "green", "orig": "g4", "dest": "h6", "geometry": { "x1": -2.5, "y1": -0.5, "x2": -3.4301228757031317, "y2": 1.3602457514062631 } },
       { "brush": "green", "orig": "h6" }
     ]
   }

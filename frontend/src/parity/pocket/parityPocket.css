@@ -1,0 +1,44 @@
+.pocket {
+  display: flex;
+  width: var(--parity-pocket-width);
+  height: var(--parity-pocket-height);
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 7px;
+  background: rgb(136, 136, 136);
+}
+
+.pocket piece {
+  position: relative;
+  display: block;
+  width: var(--parity-pocket-slot-size);
+  height: var(--parity-pocket-slot-size);
+  flex: 0 0 var(--parity-pocket-slot-size);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.pocket.usable piece { cursor: pointer; }
+.pocket piece[data-nb="0"] { opacity: .1; }
+
+.pocket piece::after {
+  content: attr(data-nb);
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  width: var(--parity-pocket-badge-width);
+  height: var(--parity-pocket-badge-height);
+  place-items: center;
+  border-radius: var(--parity-pocket-badge-radius);
+  background: rgb(214, 79, 0);
+  box-shadow: inset 0 3px 4px rgba(0, 0, 0, .15);
+  color: #fff;
+  font: 700 var(--parity-pocket-badge-font-size)/var(--parity-pocket-badge-line-height) "Noto Sans", sans-serif;
+  text-align: center;
+}
+
+.pocket piece.empty::after { display: none; content: none; }
