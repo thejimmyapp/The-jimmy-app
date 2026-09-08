@@ -15,6 +15,17 @@ describe("original PGN tree parser", () => {
     expect(tree.nodes[0].glyphs.map(({ kind }) => kind)).toEqual(["interesting", "mistake"]);
   });
 
+  it("renders the standard Lichess symbols for positional NAGs and preserves unknown NAGs", () => {
+    const source = '[Result "*"]\n\n1... Kxe2 $10 Bb4+ $17 2. Kf3 $146 Kf5 $999 *';
+    const glyphs = parsePgn(source).nodes.map((node) => node.glyphs[0]);
+    expect(glyphs).toEqual([
+      { symbol: "=", kind: "other", nag: 10 },
+      { symbol: "∓", kind: "other", nag: 17 },
+      { symbol: "N", kind: "other", nag: 146 },
+      { symbol: "$999", kind: "other", nag: 999 },
+    ]);
+  });
+
   it("extracts the R@c1 circle and arrow while removing directives from comment text", () => {
     const parsed = extractCommentShapes("[%csl Gh6][%cal Gg4h6]");
     expect(parsed.text).toBe("");
