@@ -1650,5 +1650,129 @@
         "children": []
       }
     }
-  }
+  },
+  "responsive": {
+    "1200x800": {
+      "cgBoard": {
+        "x": 105.109375,
+        "y": 82.1875,
+        "width": 592,
+        "height": 592
+      },
+      "tools": {
+        "x": 701.109375,
+        "y": 142.1875,
+        "width": 400,
+        "height": 478.21875
+      },
+      "pockets": [
+        {
+          "x": 701.109375,
+          "y": 82.1875,
+          "width": 400,
+          "height": 60
+        },
+        {
+          "x": 701.109375,
+          "y": 620.40625,
+          "width": 400,
+          "height": 60
+        }
+      ],
+      "controls": {
+        "x": 701.109375,
+        "y": 680.40625,
+        "width": 400,
+        "height": 42
+      }
+    },
+    "1024x768": {
+      "cgBoard": {
+        "x": 27.953125,
+        "y": 81.53125,
+        "width": 568,
+        "height": 568
+      },
+      "tools": {
+        "x": 599.953125,
+        "y": 141.53125,
+        "width": 400,
+        "height": 451.921875
+      },
+      "pockets": [
+        {
+          "x": 599.953125,
+          "y": 81.53125,
+          "width": 400,
+          "height": 60
+        },
+        {
+          "x": 599.953125,
+          "y": 593.453125,
+          "width": 400,
+          "height": 60
+        }
+      ],
+      "controls": {
+        "x": 599.953125,
+        "y": 653.453125,
+        "width": 400,
+        "height": 40.8125
+      }
+    }
+  },
+  "keyboardGrammar": {
+    "ArrowLeft": "parent node (one ply)",
+    "ArrowRight": "first child (one ply)",
+    "ArrowUp": "root",
+    "ArrowDown": "end of current first-child line",
+    "Shift+ArrowLeft": "ten parents, clamped at root",
+    "Shift+ArrowRight": "ten first children, clamped at line end",
+    "Home": "root",
+    "End": "end of current first-child line",
+    "f": "flip board without changing active node"
+  },
+  "controlActions": {
+    "first": "root",
+    "prev": "parent node",
+    "next": "first child",
+    "last": "end of current first-child line"
+  },
+  "controlStyles": {
+    "default": {
+      "color": "rgb(148, 148, 148)",
+      "background": "rgba(0, 0, 0, 0)",
+      "transform": "none"
+    },
+    "hover": {
+      "color": "rgb(186, 186, 186)",
+      "background": "rgba(0, 0, 0, 0)",
+      "transform": "none"
+    },
+    "active": {
+      "color": "rgb(186, 186, 186)",
+      "background": "rgba(0, 0, 0, 0)",
+      "transform": "none"
+    }
+  },
+  "activeMoveAutoscroll": [
+    {
+      "node": "8...R@c1!!",
+      "scrollTop": 0,
+      "rowOffsetTop": 0,
+      "contentOffset": 328.03125
+    },
+    {
+      "node": "13.Kxf4!!",
+      "scrollTop": 0,
+      "rowOffsetTop": 0,
+      "contentOffset": 438.03125
+    },
+    {
+      "node": "@f4#",
+      "scrollTop": 0,
+      "rowOffsetTop": 26,
+      "contentOffset": 490.03125
+    }
+  ]
 }

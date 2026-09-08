@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { createRoot } from "react-dom/client";
 import { ParityBoard, type ParityGlyph, type ParityShape } from "../parity/board/ParityBoard";
 import { parityBoardTheme } from "../parity/board/themes";
+import { ParityControls } from "../parity/controls/ParityControls";
 import pgnText from "../parity/fixtures/Ma9vcnpu-4lZqSffp.pgn?raw";
 import positionsJson from "../parity/fixtures/Ma9vcnpu-4lZqSffp.positions.json";
 import { parityLayout } from "../parity/layout";
@@ -9,7 +10,7 @@ import { parsePgn, type PgnGlyph, type PgnNode } from "../parity/pgn/parsePgn";
 import { ParityPocket } from "../parity/pocket/ParityPocket";
 import type { CrazyhousePosition } from "../parity/rules/crazyhouse";
 import { ParityFork, ParityTree } from "../parity/tree/ParityTree";
-import { pgnNodeById, treeKeyboardTarget } from "../parity/tree/treeNavigation";
+import { parityKeyboardAction, pgnNodeById, treeControlTarget, treeNavigationTarget } from "../parity/tree/treeNavigation";
 import "./parityPreview.css";
 
 const tree = parsePgn(pgnText);
@@ -35,25 +36,30 @@ function badgeGlyph(glyph: PgnGlyph | undefined, node: PgnNode | undefined, posi
 }
 
 export function ParityPreview() {
+  const frameRef = useRef<HTMLElement>(null);
   const [activeId, setActiveId] = useState(initialActiveId);
+  const [orientation, setOrientation] = useState<"black" | "white">("black");
   const active = pgnNodeById(tree, activeId);
   const activeNode = active && "parentId" in active ? active : undefined;
   const position = positions[activeId];
   if (!position) throw new Error(`Missing generated parity position for ${activeId}`);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const key = event.key;
-      if (key !== "ArrowLeft" && key !== "ArrowRight") return;
-      event.preventDefault();
-      setActiveId((current) => treeKeyboardTarget(tree, current, key));
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  useEffect(() => frameRef.current?.focus(), []);
 
-  const topColor = "white" as const;
-  const bottomColor = "black" as const;
+  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    const action = parityKeyboardAction(event.key);
+    if (!action) return;
+    if (action.type === "flip") {
+      event.preventDefault();
+      setOrientation((current) => current === "black" ? "white" : "black");
+      return;
+    }
+    event.preventDefault();
+    setActiveId((current) => treeNavigationTarget(tree, current, action.key, event.shiftKey));
+  };
+
+  const topColor = orientation === "black" ? "white" : "black";
+  const bottomColor = orientation === "black" ? "black" : "white";
   const pocketFor = (color: "white" | "black") => color === "white" ? position.white_pocket : position.black_pocket;
   const isUsable = (color: "white" | "black") => position.side_to_move.toLowerCase() === color;
   const glyphs = useMemo(() => badgeGlyph(activeNode?.glyphs[0], activeNode, position), [activeNode, position]);
@@ -70,18 +76,20 @@ export function ParityPreview() {
     "--parity-frame-moves-height": `${layout.tools.movesBottom - layout.tools.movesTop}px`,
     "--parity-frame-controls-y": `${layout.tools.controlsY}px`,
     "--parity-frame-controls-height": `${layout.tools.controlsHeight}px`,
+    "--parity-frame-width": `${layout.viewport.width}px`,
+    "--parity-frame-height": `${layout.viewport.height}px`,
   } as CSSProperties;
   return (
-    <main className="parity-frame" data-state={requestedState} data-active-id={activeId} data-layout={layout.id} data-theme={theme.id} style={frameStyle}>
+    <main ref={frameRef} className="parity-frame" data-state={requestedState} data-active-id={activeId} data-layout={layout.id} data-theme={theme.id} data-orientation={orientation} style={frameStyle} tabIndex={0} onKeyDown={onKeyDown}>
       <header className="parity-header" />
       <aside className="parity-side" />
-      <section className="parity-board-block"><ParityBoard position={position} orientation="black" layout={layout} theme={theme} lastMove={position.lastMove} check={position.check} glyphs={glyphs} shapes={shapes} showCoords /></section>
+      <section className="parity-board-block"><ParityBoard position={position} orientation={orientation} layout={layout} theme={theme} lastMove={position.lastMove} check={position.check} glyphs={glyphs} shapes={shapes} showCoords /></section>
       <aside className="parity-tools-column">
-        <ParityPocket color={topColor} pocket={pocketFor(topColor)} position="top" usable={isUsable(topColor)} orientation="black" layout={layout} />
+        <ParityPocket color={topColor} pocket={pocketFor(topColor)} position="top" usable={isUsable(topColor)} orientation={orientation} layout={layout} />
         <div className="parity-moves"><ParityTree tree={tree} activeId={activeId} onSelect={setActiveId} /></div>
         <div className="parity-fork"><ParityFork node={active} onSelect={setActiveId} /></div>
-        <ParityPocket color={bottomColor} pocket={pocketFor(bottomColor)} position="bottom" usable={isUsable(bottomColor)} orientation="black" layout={layout} />
-        <div className="parity-controls" />
+        <ParityPocket color={bottomColor} pocket={pocketFor(bottomColor)} position="bottom" usable={isUsable(bottomColor)} orientation={orientation} layout={layout} />
+        <div className="parity-controls"><ParityControls onNavigate={(action) => setActiveId((current) => treeControlTarget(tree, current, action))} /></div>
       </aside>
       <section className="parity-underboard" />
     </main>

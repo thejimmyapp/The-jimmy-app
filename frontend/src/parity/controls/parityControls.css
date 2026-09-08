@@ -1,0 +1,16 @@
+.parity-control-row { display: flex; align-items: stretch; width: 100%; height: 100%; color: rgb(148, 148, 148); }
+.parity-control-row button { border: 0; padding: 0; background: transparent; color: inherit; cursor: pointer; }
+.parity-control-row button:hover, .parity-control-row button:active { color: rgb(186, 186, 186); }
+.parity-control-row .placeholder { width: 35px; height: 100%; cursor: default; }
+.parity-control-row .practice { margin-left: 35px; }
+.parity-control-row .menu { margin-left: 4px; }
+.parity-move-controls { display: grid; flex: 1; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: center; margin-left: 4px; }
+.parity-move-controls .move { display: grid; height: 34px; place-items: center; }
+.parity-move-controls svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2.2; }
+.parity-move-controls svg.outer { width: 13.65px; height: 13.65px; }
+.parity-move-controls svg.inner { width: 18.2px; height: 18.2px; }
+[data-layout="reference1024"] .parity-control-row .placeholder { width: 34.015625px; }
+[data-layout="reference1024"] .parity-control-row .practice { margin-left: 34.015625px; }
+[data-layout="reference1024"] .parity-control-row .menu,
+[data-layout="reference1024"] .parity-move-controls { margin-left: 3.890625px; }
+[data-layout="reference1024"] .parity-move-controls .move { height: 32.8125px; }

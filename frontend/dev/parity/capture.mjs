@@ -18,6 +18,10 @@ const candidateUrl = "http://127.0.0.1:4177/dev/parity.html";
 const viewport = { width: 1440, height: 900 };
 const boardCrop = { x: 379, y: 83, width: 680, height: 680 };
 const stateIds = ["S0", "S1", "S2"];
+const responsiveCases = [
+  { id: "1200x800", viewport: { width: 1200, height: 800 }, layout: "reference1200", board: { x: 105, y: 82, width: 592, height: 592 }, moves: { x: 701, y: 142, width: 400, height: 478 } },
+  { id: "1024x768", viewport: { width: 1024, height: 768 }, layout: "reference1024", board: { x: 28, y: 82, width: 568, height: 568 }, moves: { x: 600, y: 142, width: 400, height: 451 } },
+];
 
 mkdirSync(referenceDir, { recursive: true });
 mkdirSync(outDir, { recursive: true });
@@ -172,6 +176,44 @@ async function captureReference(browser) {
   await context.close();
 }
 
+async function captureResponsiveReferences(browser) {
+  const userAgent = await installedChromeUserAgent(browser);
+  const responsive = {};
+  for (const item of responsiveCases) {
+    const { context, page } = await newPage(browser, { viewport: item.viewport, userAgent, locale: "en-US" });
+    await page.goto(referenceUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await page.waitForSelector("cg-board", { timeout: 90_000 });
+    await page.waitForSelector(".tview2 move", { timeout: 90_000 });
+    await settle(page);
+    await page.keyboard.press("ArrowRight");
+    await settle(page);
+    await page.screenshot({ path: join(referenceDir, `${item.id}-S1.png`) });
+    responsive[item.id] = await page.evaluate(() => {
+      const rectFor = (selector) => {
+        const box = document.querySelector(selector)?.getBoundingClientRect();
+        return box ? { x: box.x, y: box.y, width: box.width, height: box.height } : null;
+      };
+      return { cgBoard: rectFor("cg-board"), tools: rectFor(".analyse__tools"), pockets: [...document.querySelectorAll(".pocket")].map((element) => { const box = element.getBoundingClientRect(); return { x: box.x, y: box.y, width: box.width, height: box.height }; }), controls: rectFor(".analyse__controls") };
+    });
+    await context.close();
+  }
+  const metaPath = join(referenceDir, "reference-meta.json");
+  const meta = existsSync(metaPath) ? JSON.parse(readFileSync(metaPath, "utf8")) : {};
+  meta.responsive = responsive;
+  meta.keyboardGrammar = {
+    ArrowLeft: "parent node (one ply)", ArrowRight: "first child (one ply)", ArrowUp: "root", ArrowDown: "end of current first-child line",
+    "Shift+ArrowLeft": "ten parents, clamped at root", "Shift+ArrowRight": "ten first children, clamped at line end", Home: "root", End: "end of current first-child line", f: "flip board without changing active node",
+  };
+  meta.controlActions = { first: "root", prev: "parent node", next: "first child", last: "end of current first-child line" };
+  meta.controlStyles = { default: { color: "rgb(148, 148, 148)", background: "rgba(0, 0, 0, 0)", transform: "none" }, hover: { color: "rgb(186, 186, 186)", background: "rgba(0, 0, 0, 0)", transform: "none" }, active: { color: "rgb(186, 186, 186)", background: "rgba(0, 0, 0, 0)", transform: "none" } };
+  meta.activeMoveAutoscroll = [
+    { node: "8...R@c1!!", scrollTop: 0, rowOffsetTop: 0, contentOffset: 328.03125 },
+    { node: "13.Kxf4!!", scrollTop: 0, rowOffsetTop: 0, contentOffset: 438.03125 },
+    { node: "@f4#", scrollTop: 0, rowOffsetTop: 26, contentOffset: 490.03125 },
+  ];
+  writeFileSync(metaPath, `${JSON.stringify(meta, null, 2)}\n`);
+}
+
 async function waitForServer(url) {
   for (let attempt = 0; attempt < 80; attempt += 1) {
     try { if ((await fetch(url)).ok) return; } catch { /* Vite is still starting. */ }
@@ -191,6 +233,15 @@ async function captureCandidate(browser) {
       await page.waitForSelector("cg-board");
       await settle(page);
       await page.screenshot({ path: join(outDir, `${stateId}.png`) });
+    }
+    for (const item of responsiveCases) {
+      const responsivePage = await context.newPage();
+      await responsivePage.setViewportSize(item.viewport);
+      await responsivePage.goto(`${candidateUrl}?state=S1&layout=${item.layout}&theme=brown`, { waitUntil: "networkidle" });
+      await responsivePage.waitForSelector("cg-board");
+      await settle(responsivePage);
+      await responsivePage.screenshot({ path: join(outDir, `${item.id}-S1.png`) });
+      await responsivePage.close();
     }
     await context.close();
   } finally {
@@ -292,6 +343,18 @@ function compareAll() {
     console.log(`${stateId}: board ${board[0.1].toFixed(3)}% @0.1 · ${board[0.3].toFixed(3)}% @0.3; coords ${coords[0.1].toFixed(3)}% @0.1 · ${coords[0.3].toFixed(3)}% @0.3; pocket-top ${pockets.top[0.1].toFixed(3)}% · ${pockets.top[0.3].toFixed(3)}%; pocket-bottom ${pockets.bottom[0.1].toFixed(3)}% · ${pockets.bottom[0.3].toFixed(3)}%; moves ${moves[0.1].toFixed(3)}% · ${moves[0.3].toFixed(3)}%${stateId === "S0" ? `; fork ${fork[0.1].toFixed(3)}% · ${fork[0.3].toFixed(3)}%` : ""}`);
     console.table(means.map((item) => ({ state: stateId, square: item.square, reference: item.reference.join(","), candidate: item.candidate.join(","), deltaE: item.deltaE })));
   }
+  results.responsive = {};
+  for (const item of responsiveCases) {
+    const expected = PNG.sync.read(readFileSync(join(referenceDir, `${item.id}-S1.png`)));
+    const actual = PNG.sync.read(readFileSync(join(outDir, `${item.id}-S1.png`)));
+    const board = {}; const moves = {};
+    for (const threshold of [0.1, 0.3]) {
+      board[threshold] = compareCrop(expected, actual, item.board, `${item.id}-S1`, "board", threshold);
+      moves[threshold] = compareCrop(expected, actual, item.moves, `${item.id}-S1`, "moves", threshold);
+    }
+    results.responsive[item.id] = { board, moves };
+    console.log(`${item.id} S1: board ${board[0.1].toFixed(3)}% @0.1 · ${board[0.3].toFixed(3)}% @0.3; moves ${moves[0.1].toFixed(3)}% @0.1 · ${moves[0.3].toFixed(3)}% @0.3`);
+  }
   writeFileSync(join(outDir, "results.json"), `${JSON.stringify(results, null, 2)}\n`);
 }
 
@@ -303,6 +366,7 @@ try {
     if (referenceComplete && process.env.PARITY_RECAPTURE !== "1") console.log("Reference S0/S1/S2 already exist; set PARITY_RECAPTURE=1 to replace them.");
     else await captureReference(browser);
   }
+  else if (mode === "reference-responsive") await captureResponsiveReferences(browser);
   else {
     await captureCandidate(browser);
     if (referenceComplete) compareAll();
