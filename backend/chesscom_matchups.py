@@ -528,6 +528,7 @@ class ChessComMatchupService:
         selected_by_class: dict[str, _QualifiedGuestMatch] = {}
         class_windows = {rating_class.label: _GUEST_FRESHNESS_WINDOWS_HOURS[0] for rating_class in self._rating_classes}
         examined = 0
+        examined_upstream = 0
         excluded: dict[str, int] = {}
         seen_public_ids: set[int] = set()
         seen_pairs: set[frozenset[int]] = set()
@@ -593,19 +594,30 @@ class ChessComMatchupService:
             if latest_end_time:
                 self._player_last_active[username.lower()] = latest_end_time
 
-        async def process_window(window_hours: int) -> None:
-            nonlocal examined
+        async def process_window(
+            window_hours: int,
+            *,
+            seed_usernames: set[str] | None = None,
+            upstream_limit: int | None = None,
+        ) -> None:
+            nonlocal examined, examined_upstream
+            if upstream_limit is None:
+                upstream_limit = self.settings.chesscom_guest_max_matches_examined
             for candidate in sorted(candidates, key=lambda item: (item.end_time, item.numeric_id), reverse=True):
-                if examined >= self.settings.chesscom_guest_max_matches_examined:
-                    break
                 if candidate.numeric_id in processed_public_ids:
+                    continue
+                if seed_usernames is not None and candidate.seed_username.lower() not in seed_usernames:
                     continue
                 if now - candidate.end_time > window_hours * 3600:
                     continue
                 if candidate.numeric_id in currently_shown_ids:
                     continue
+                cached = self._fresh_match_cache(candidate.numeric_id) is not None
+                if not cached and examined_upstream >= upstream_limit:
+                    continue
                 processed_public_ids.add(candidate.numeric_id)
                 examined += 1
+                requests_before_match = self._upstream_requests
                 try:
                     match = await self.normalized_match(candidate.numeric_id, end_time=candidate.end_time)
                 except MatchExcludedError as exc:
@@ -614,6 +626,9 @@ class ChessComMatchupService:
                 except MatchUpstreamError:
                     _count(excluded, "callback_unavailable")
                     continue
+                finally:
+                    if self._upstream_requests > requests_before_match:
+                        examined_upstream += 1
                 pair = frozenset(match["game_ids"].values())
                 if pair in seen_pairs:
                     _count(excluded, "duplicate_match")
@@ -646,17 +661,27 @@ class ChessComMatchupService:
         async def search_class(
             rating_class: ChessComGuestRatingClass,
             usernames: list[str],
+            upstream_limit: int,
         ) -> _QualifiedGuestMatch | None:
+            seed_usernames = {username.lower() for username in usernames}
             for window_hours in _GUEST_FRESHNESS_WINDOWS_HOURS:
                 class_windows[rating_class.label] = window_hours
-                await process_window(window_hours)
+                await process_window(
+                    window_hours,
+                    seed_usernames=seed_usernames,
+                    upstream_limit=upstream_limit,
+                )
                 picked = freshest(rating_class, window_hours)
                 if picked is not None:
                     return picked
                 if window_hours == _GUEST_FRESHNESS_WINDOWS_HOURS[0]:
                     for username in usernames:
                         await collect_candidates(username)
-                        await process_window(window_hours)
+                        await process_window(
+                            window_hours,
+                            seed_usernames=seed_usernames,
+                            upstream_limit=upstream_limit,
+                        )
                         picked = freshest(rating_class, window_hours)
                         if picked is not None:
                             return picked
@@ -667,8 +692,20 @@ class ChessComMatchupService:
 
         async def assemble() -> None:
             nonlocal leaderboard_usernames, seed_source
+            class_share = math.ceil(
+                self.settings.chesscom_guest_max_matches_examined / len(self._rating_classes)
+            )
+            rollover = 0
             for index, rating_class in enumerate(self._rating_classes):
-                picked = await search_class(rating_class, self._seeds_for_class(rating_class))
+                available = self.settings.chesscom_guest_max_matches_examined - examined_upstream
+                class_budget = min(class_share + rollover, available)
+                class_start = examined_upstream
+                class_limit = class_start + class_budget
+                picked = await search_class(
+                    rating_class,
+                    self._seeds_for_class(rating_class),
+                    class_limit,
+                )
                 if picked is None and index == 0:
                     try:
                         leaderboard_usernames = await self._leaderboard_seed_usernames()
@@ -679,15 +716,18 @@ class ChessComMatchupService:
                         fallback = [name for name in leaderboard_usernames if name.lower() not in known]
                         if configured_count:
                             seed_source = "players_of_interest_then_leaderboard_top_50"
-                        picked = await search_class(rating_class, fallback)
+                        picked = await search_class(rating_class, fallback, class_limit)
                 if picked is not None:
                     selected_by_class[rating_class.label] = picked
+                rollover = class_budget - (examined_upstream - class_start)
 
         async def top_up() -> None:
             target = self.settings.chesscom_guest_pool_target
-            limit = self.settings.chesscom_guest_max_matches_examined
             for index, rating_class in enumerate(self._rating_classes):
-                while len(qualified_by_class[rating_class.label]) < target and examined < limit:
+                while len(qualified_by_class[rating_class.label]) < target:
+                    await process_window(_GUEST_FRESHNESS_WINDOWS_HOURS[-1])
+                    if len(qualified_by_class[rating_class.label]) >= target:
+                        break
                     names = self._seeds_for_class(rating_class)
                     if index == 0 and leaderboard_usernames:
                         names = _unique_valid_usernames([*names, *leaderboard_usernames])
@@ -721,8 +761,10 @@ class ChessComMatchupService:
         qualified_count = sum(len(items) for items in qualified_by_class.values())
         selection_window_hours = max(class_windows.values())
         logger.info(
-            "Guest matchup list assembled: examined=%d excluded=%d qualifying=%d window_hours=%d exclusions=%s",
+            "Guest matchup list assembled: examined=%d examined_upstream=%d excluded=%d "
+            "qualifying=%d window_hours=%d exclusions=%s",
             examined,
+            examined_upstream,
             excluded_total,
             qualified_count,
             selection_window_hours,
@@ -766,6 +808,7 @@ class ChessComMatchupService:
             "matches": matches,
             "classes": classes_payload,
             "examined": examined,
+            "examined_upstream": examined_upstream,
             "excluded": excluded_total,
             "exclusion_counts": excluded,
             "players_sampled": players_sampled,
