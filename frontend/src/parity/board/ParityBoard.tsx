@@ -12,7 +12,7 @@ export interface ParityPosition {
 }
 
 export interface ParityLastMove { from: string | null; to: string }
-export interface ParityGlyph { square: string; glyph: string; kind: "brilliant" | "good" | "inaccuracy" | "interesting" | "mistake" | "blunder" }
+export interface ParityGlyph { square: string; glyph: "!" | "!!" | "?!" | "!?" | "?" | "??"; kind: "brilliant" | "good" | "inaccuracy" | "interesting" | "mistake" | "blunder" }
 export type ParityBrush = "green" | "red" | "blue" | "yellow" | "paleBlue" | "paleGreen" | "paleRed" | "paleGrey";
 export interface ParityArrowGeometry { x1: number; y1: number; x2: number; y2: number }
 export interface ParityForkArrow { highlight: string; clip: { x: number; y: number; width: number; height: number } }
@@ -50,9 +50,13 @@ const PARITY_BRUSHES: Record<ParityBrush, { key: string; color: string; opacity:
 
 const pieceNames: Record<string, string> = { K: "king", Q: "queen", R: "rook", B: "bishop", N: "knight", P: "pawn" };
 const boardSquares = Array.from({ length: 64 }, (_, index) => ({ x: index % 8, y: Math.floor(index / 8) }));
-const glyphPaths: Record<string, string> = {
-  "!": "M54.967 62.349h-9.75l-2.049-39.083h13.847zM43.004 76.032q0-3.77 2.049-5.244 2.048-1.557 4.998-1.557 2.867 0 4.916 1.557 2.048 1.475 2.048 5.244 0 3.605-2.048 5.244-2.049 1.556-4.916 1.556-2.95 0-4.998-1.556-2.049-1.64-2.049-5.244z",
-  "!!": "M71.967 62.349h-9.75l-2.049-39.083h13.847zM60.004 76.032q0-3.77 2.049-5.244 2.048-1.557 4.998-1.557 2.867 0 4.916 1.557 2.048 1.475 2.048 5.244 0 3.605-2.048 5.244-2.049 1.556-4.916 1.556-2.95 0-4.998-1.556-2.049-1.64-2.049-5.244zM37.967 62.349h-9.75l-2.049-39.083h13.847zM26.004 76.032q0-3.77 2.049-5.244 2.048-1.557 4.998-1.557 2.867 0 4.916 1.557 2.048 1.475 2.048 5.244 0 3.605-2.048 5.244-2.049 1.556-4.916 1.556-2.95 0-4.998-1.556-2.049-1.64-2.049-5.244z",
+const glyphColors: Record<ParityGlyph["kind"], string> = {
+  brilliant: "#168226",
+  good: "#22ac38",
+  inaccuracy: "#53b2ea",
+  interesting: "#f075e1",
+  mistake: "#e69d00",
+  blunder: "hsl(0 69% 60%)",
 };
 
 function squareCoordinates(square: string, orientation: "black" | "white") {
@@ -120,11 +124,14 @@ function GlyphLayer({ glyphs, orientation }: { glyphs: ParityGlyph[]; orientatio
   return <svg className="cg-custom-svgs" viewBox="-3.5 -3.5 8 8" preserveAspectRatio="xMidYMid slice" aria-label="Move assessment glyphs"><g>{glyphs.map((glyph, index) => {
     const point = shapePoint(glyph.square, orientation);
     const filterId = `parity-glyph-shadow-${index}`;
-    const fill = glyph.kind === "brilliant" ? "#168226" : "#22ac38";
+    const fontSize = glyph.glyph.length === 1 ? 74 : 60;
     return <g key={`${glyph.square}-${glyph.glyph}`} className={`glyph-badge ${glyph.kind}`} data-square={glyph.square} transform={`translate(${point.x},${point.y})`}>
       <svg width="1" height="1" viewBox="0 0 100 100">
         <defs><filter id={filterId}><feDropShadow dx="4" dy="7" floodOpacity=".5" stdDeviation="5" /></filter></defs>
-        <g transform="matrix(.4 0 0 .4 71 -12)"><circle cx="50" cy="50" r="50" fill={fill} filter={`url(#${filterId})`} /><path fill="#fff" d={glyphPaths[glyph.glyph]} vectorEffect="non-scaling-stroke" /></g>
+        <g transform="matrix(.4 0 0 .4 71 -12)">
+          <circle cx="50" cy="50" r="50" fill={glyphColors[glyph.kind]} filter={`url(#${filterId})`} />
+          <text x="50" y="50" fill="#fff" fontFamily="Noto Sans, sans-serif" fontSize={fontSize} fontWeight="700" textAnchor="middle" dominantBaseline="central">{glyph.glyph}</text>
+        </g>
       </svg>
     </g>;
   })}</g></svg>;
