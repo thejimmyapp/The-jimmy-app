@@ -1,7 +1,7 @@
 .pocket {
   display: flex;
-  width: 283.5px;
-  height: 56.7px;
+  width: var(--parity-pocket-width);
+  height: var(--parity-pocket-height);
   justify-content: center;
   gap: 0;
   padding: 0;
@@ -13,9 +13,9 @@
 .pocket piece {
   position: relative;
   display: block;
-  width: 56.7px;
-  height: 56.7px;
-  flex: 0 0 56.7px;
+  width: var(--parity-pocket-slot-size);
+  height: var(--parity-pocket-slot-size);
+  flex: 0 0 var(--parity-pocket-slot-size);
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
@@ -30,13 +30,14 @@
   right: 0;
   bottom: 0;
   display: grid;
-  width: 18.03px;
-  height: 19.86px;
+  width: var(--parity-pocket-badge-width);
+  height: var(--parity-pocket-badge-height);
   place-items: center;
-  border-radius: 7px;
+  border-radius: var(--parity-pocket-badge-radius);
   background: rgb(214, 79, 0);
+  box-shadow: inset 0 3px 4px rgba(0, 0, 0, .15);
   color: #fff;
-  font: 700 15.4px/13.86px "Noto Sans", sans-serif;
+  font: 700 var(--parity-pocket-badge-font-size)/var(--parity-pocket-badge-line-height) "Noto Sans", sans-serif;
   text-align: center;
 }
 

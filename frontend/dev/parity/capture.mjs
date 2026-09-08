@@ -16,7 +16,7 @@ const referenceUrl = process.env.PARITY_REFERENCE_URL ?? defaultStudyUrl;
 const referenceChapter = process.env.PARITY_REFERENCE_CHAPTER ?? "4lZqSffp";
 const candidateUrl = "http://127.0.0.1:4177/dev/parity.html";
 const viewport = { width: 1440, height: 900 };
-const boardCrop = { x: 323, y: 83, width: 800, height: 800 };
+const boardCrop = { x: 379, y: 83, width: 680, height: 680 };
 const stateIds = ["S0", "S1", "S2"];
 
 mkdirSync(referenceDir, { recursive: true });
@@ -38,6 +38,63 @@ async function installedChromeUserAgent(browser) {
 async function settle(page) {
   await page.waitForTimeout(900);
   await page.evaluate(() => document.fonts.ready);
+}
+
+async function referenceStateMeta(page) {
+  return page.evaluate(() => {
+    const rectFor = (element) => {
+      if (!element) return null;
+      const box = element.getBoundingClientRect();
+      return { x: box.x, y: box.y, width: box.width, height: box.height, top: box.top, right: box.right, bottom: box.bottom, left: box.left };
+    };
+    const styleFor = (element, pseudo = null) => {
+      if (!element) return null;
+      const style = getComputedStyle(element, pseudo);
+      return {
+        rect: rectFor(element),
+        width: style.width,
+        height: style.height,
+        backgroundSize: style.backgroundSize,
+        backgroundColor: style.backgroundColor,
+        opacity: style.opacity,
+        content: style.content,
+        right: style.right,
+        bottom: style.bottom,
+        font: style.font,
+        color: style.color,
+        borderRadius: style.borderRadius,
+        boxShadow: style.boxShadow,
+      };
+    };
+    const textCell = (element) => {
+      if (!element) return null;
+      const style = getComputedStyle(element);
+      return { text: element.textContent, rect: rectFor(element), font: style.font, color: style.color, backgroundColor: style.backgroundColor };
+    };
+    const pockets = [...document.querySelectorAll(".pocket")].map((pocket) => {
+      const piece = pocket.querySelector("piece");
+      return { rect: rectFor(pocket), piece: styleFor(piece), badge: styleFor(piece, "::after") };
+    });
+    return {
+      shapesInnerHtml: document.querySelector(".cg-shapes")?.innerHTML ?? null,
+      shapesBelowInnerHtml: document.querySelector(".cg-shapes-below")?.innerHTML ?? null,
+      customSvgsInnerHtml: document.querySelector(".cg-custom-svgs")?.innerHTML ?? null,
+      customBelowInnerHtml: document.querySelector(".cg-custom-below")?.innerHTML ?? null,
+      pockets,
+      coords: [...document.querySelectorAll("coords")].map((strip) => ({
+        className: strip.className,
+        rect: rectFor(strip),
+        entries: [...strip.querySelectorAll("coord")].slice(0, 2).map((coord) => textCell(coord)),
+      })),
+      tools: styleFor(document.querySelector(".analyse__tools")),
+      controlButtons: [...document.querySelectorAll(".analyse__controls button")].map((button) => textCell(button)),
+      moveCells: [...document.querySelectorAll(".tview2 index, .tview2 move")].slice(0, 8).map((cell) => ({ tagName: cell.tagName.toLowerCase(), ...textCell(cell) })),
+      fork: (() => {
+        const fork = document.querySelector(".analyse__fork");
+        return { rect: rectFor(fork), children: fork ? [...fork.children].map((child) => textCell(child)) : [] };
+      })(),
+    };
+  });
 }
 
 async function captureReference(browser) {
@@ -72,10 +129,12 @@ async function captureReference(browser) {
   await page.waitForSelector(".tview2 move", { timeout: 90_000 });
   await settle(page);
   await page.screenshot({ path: join(referenceDir, "S0.png") });
+  const stateMeta = { S0: await referenceStateMeta(page) };
 
   await page.keyboard.press("ArrowRight");
   await settle(page);
   await page.screenshot({ path: join(referenceDir, "S1.png") });
+  stateMeta.S1 = await referenceStateMeta(page);
 
   const moves = page.locator(".tview2 move");
   let target = null;
@@ -88,6 +147,7 @@ async function captureReference(browser) {
   await target.click();
   await settle(page);
   await page.screenshot({ path: join(referenceDir, "S2.png") });
+  stateMeta.S2 = await referenceStateMeta(page);
 
   const meta = await page.evaluate(() => {
     const rectFor = (element) => {
@@ -108,7 +168,7 @@ async function captureReference(browser) {
       bodyFont: getComputedStyle(document.body).font,
     };
   });
-  writeFileSync(join(referenceDir, "reference-meta.json"), `${JSON.stringify({ ...meta, navigation }, null, 2)}\n`);
+  writeFileSync(join(referenceDir, "reference-meta.json"), `${JSON.stringify({ ...meta, navigation, states: stateMeta }, null, 2)}\n`);
   await context.close();
 }
 
@@ -127,7 +187,7 @@ async function captureCandidate(browser) {
     await waitForServer(candidateUrl);
     const { context, page } = await newPage(browser);
     for (const stateId of stateIds) {
-      await page.goto(`${candidateUrl}?state=${stateId}`, { waitUntil: "networkidle" });
+      await page.goto(`${candidateUrl}?state=${stateId}&layout=reference&theme=brown`, { waitUntil: "networkidle" });
       await page.waitForSelector("cg-board");
       await settle(page);
       await page.screenshot({ path: join(outDir, `${stateId}.png`) });
@@ -171,11 +231,11 @@ function deltaE(first, second) {
   return Math.sqrt(a.reduce((sum, value, index) => sum + (value - b[index]) ** 2, 0));
 }
 
-function squareMean(image, x, y) {
+function squareMean(image, x, y, size) {
   const inset = 8;
   const sums = [0, 0, 0];
   let count = 0;
-  for (let py = y + inset; py < y + 100 - inset; py += 1) for (let px = x + inset; px < x + 100 - inset; px += 1) {
+  for (let py = y + inset; py < y + size - inset; py += 1) for (let px = x + inset; px < x + size - inset; px += 1) {
     const index = (py * image.width + px) * 4;
     sums[0] += image.data[index]; sums[1] += image.data[index + 1]; sums[2] += image.data[index + 2]; count += 1;
   }
@@ -202,8 +262,8 @@ function compareAll() {
     const candidate = PNG.sync.read(readFileSync(join(outDir, `${stateId}.png`)));
     const board = {};
     for (const threshold of [0.1, 0.3]) board[threshold] = compareCrop(reference, candidate, boardCrop, stateId, "board", threshold);
-    const ranksCrop = { x: 1112, y: 83, width: 11, height: 800 };
-    const filesCrop = { x: 323, y: 865, width: 800, height: 18 };
+    const ranksCrop = { x: 1049, y: 83, width: 10, height: 680 };
+    const filesCrop = { x: 379, y: 746, width: 680, height: 17 };
     const coords = {};
     for (const threshold of [0.1, 0.3]) {
       const rankMismatch = compareCrop(reference, candidate, ranksCrop, stateId, "ranks", threshold);
@@ -211,13 +271,13 @@ function compareAll() {
       coords[threshold] = (rankMismatch * ranksCrop.width * ranksCrop.height + fileMismatch * filesCrop.width * filesCrop.height) / (ranksCrop.width * ranksCrop.height + filesCrop.width * filesCrop.height);
     }
     const pockets = { top: {}, bottom: {} };
-    const pocketCrops = { top: { x: 1135, y: 84, width: 284, height: 57 }, bottom: { x: 1135, y: 828, width: 284, height: 57 } };
+    const pocketCrops = { top: { x: 1071, y: 83, width: 354, height: 60 }, bottom: { x: 1071, y: 705, width: 354, height: 60 } };
     for (const [position, cropBox] of Object.entries(pocketCrops)) for (const threshold of [0.1, 0.3]) pockets[position][threshold] = compareCrop(reference, candidate, cropBox, stateId, `pocket-${position}`, threshold);
     const means = nearestEmptySquares(states[stateId].position.board).map(({ square, displayX, displayY }) => {
-      const x = boardCrop.x + displayX * 100;
-      const y = boardCrop.y + displayY * 100;
-      const expected = squareMean(reference, x, y);
-      const actual = squareMean(candidate, x, y);
+      const x = boardCrop.x + displayX * 85;
+      const y = boardCrop.y + displayY * 85;
+      const expected = squareMean(reference, x, y, 85);
+      const actual = squareMean(candidate, x, y, 85);
       return { square, reference: expected, candidate: actual, deltaE: Number(deltaE(expected, actual).toFixed(2)) };
     });
     results[stateId] = { board, coords, pockets, means };

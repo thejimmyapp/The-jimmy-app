@@ -1,6 +1,6 @@
 {
   "url": "https://lichess.org/study/Ma9vcnpu/4lZqSffp",
-  "capturedAt": "2026-09-08T21:27:18.288Z",
+  "capturedAt": "2026-09-08T21:57:56.614Z",
   "cgBoard": {
     "x": 379.1875,
     "y": 82.6875,
@@ -94,5 +94,1561 @@
     "requestUserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
     "boardPresent": true,
     "title": "bug puzzles & insights • lichess.org"
+  },
+  "states": {
+    "S0": {
+      "shapesInnerHtml": "<defs><filter id=\"cg-filter-blur\"><feGaussianBlur stdDeviation=\"0.013\"></feGaussianBlur></filter></defs><g></g>",
+      "shapesBelowInnerHtml": "<defs><filter id=\"cg-filter-blur\"><feGaussianBlur stdDeviation=\"0.013\"></feGaussianBlur></filter><marker id=\"arrowhead-hilite-3291ff\" orient=\"auto\" overflow=\"visible\" markerWidth=\"4\" markerHeight=\"4\" refX=\"1.86\" refY=\"2\" cgKey=\"hilite-3291ff\"><path d=\"M0,0 V4 L3,2 Z\" fill=\"#3291ff\"></path></marker><marker id=\"arrowhead-variation\" orient=\"auto\" overflow=\"visible\" markerWidth=\"4\" markerHeight=\"4\" refX=\"2.05\" refY=\"2\" cgKey=\"variation\"><path d=\"M0,0 V4 L3,2 Z\" fill=\"white\"></path></marker><marker id=\"arrowhead-hilite-aaa\" orient=\"auto\" overflow=\"visible\" markerWidth=\"4\" markerHeight=\"4\" refX=\"1.86\" refY=\"2\" cgKey=\"hilite-aaa\"><path d=\"M0,0 V4 L3,2 Z\" fill=\"#aaa\"></path></marker></defs><g><g cgHash=\"680,680,1,P@,e2,variation,#3291ff,below\"><g opacity=\"0.5\"><g filter=\"url(#cg-filter-blur)\"><rect x=\"-1\" y=\"-3\" width=\"22\" height=\"15\" fill=\"none\" stroke=\"none\"></rect><line stroke=\"#3291ff\" stroke-width=\"0.21375\" stroke-linecap=\"round\" marker-end=\"url(#arrowhead-hilite-3291ff)\" opacity=\"1\" x1=\"20.5\" y1=\"11.5\" x2=\"-0.36999214150971194\" y2=\"-2.413328094339808\"></line></g><line stroke=\"white\" stroke-width=\"0.1875\" stroke-linecap=\"round\" marker-end=\"url(#arrowhead-variation)\" opacity=\"1\" x1=\"20.5\" y1=\"11.5\" x2=\"-0.36999214150971194\" y2=\"-2.413328094339808\"></line></g></g><g cgHash=\"680,680,1,R@,e1,variation,#aaa,below\"><g opacity=\"0.5\"><g filter=\"url(#cg-filter-blur)\"><rect x=\"-1\" y=\"-4\" width=\"20\" height=\"16\" fill=\"none\" stroke=\"none\"></rect><line stroke=\"#aaa\" stroke-width=\"0.21375\" stroke-linecap=\"round\" marker-end=\"url(#arrowhead-hilite-aaa)\" opacity=\"1\" x1=\"18.5\" y1=\"11.5\" x2=\"-0.37736206788540216\" y2=\"-3.403180579909528\"></line></g><line stroke=\"white\" stroke-width=\"0.1875\" stroke-linecap=\"round\" marker-end=\"url(#arrowhead-variation)\" opacity=\"1\" x1=\"18.5\" y1=\"11.5\" x2=\"-0.37736206788540216\" y2=\"-3.403180579909528\"></line></g></g></g>",
+      "customSvgsInnerHtml": "<g></g>",
+      "customBelowInnerHtml": "<g></g>",
+      "pockets": [
+        {
+          "rect": {
+            "x": 1071.1875,
+            "y": 82.6875,
+            "width": 354.421875,
+            "height": 60,
+            "top": 82.6875,
+            "right": 1425.609375,
+            "bottom": 142.6875,
+            "left": 1071.1875
+          },
+          "piece": {
+            "rect": {
+              "x": 1098.390625,
+              "y": 82.6875,
+              "width": 60,
+              "height": 60,
+              "top": 82.6875,
+              "right": 1158.390625,
+              "bottom": 142.6875,
+              "left": 1098.390625
+            },
+            "width": "60px",
+            "height": "60px",
+            "backgroundSize": "cover",
+            "backgroundColor": "rgba(0, 0, 0, 0)",
+            "opacity": "1",
+            "content": "normal",
+            "right": "0px",
+            "bottom": "0px",
+            "font": "14px \"Noto Sans\", sans-serif",
+            "color": "rgb(186, 186, 186)",
+            "borderRadius": "0px",
+            "boxShadow": "none"
+          },
+          "badge": {
+            "rect": {
+              "x": 1098.390625,
+              "y": 82.6875,
+              "width": 60,
+              "height": 60,
+              "top": 82.6875,
+              "right": 1158.390625,
+              "bottom": 142.6875,
+              "left": 1098.390625
+            },
+            "width": "18.0312px",
+            "height": "19.8594px",
+            "backgroundSize": "auto",
+            "backgroundColor": "rgb(214, 79, 0)",
+            "opacity": "1",
+            "content": "\"2\"",
+            "right": "0px",
+            "bottom": "0px",
+            "font": "700 15.4px / 13.86px \"Noto Sans\", sans-serif",
+            "color": "rgb(255, 255, 255)",
+            "borderRadius": "7px",
+            "boxShadow": "rgba(0, 0, 0, 0.15) 0px 3px 4px 0px inset"
+          }
+        },
+        {
+          "rect": {
+            "x": 1071.1875,
+            "y": 705.484375,
+            "width": 354.421875,
+            "height": 60,
+            "top": 705.484375,
+            "right": 1425.609375,
+            "bottom": 765.484375,
+            "left": 1071.1875
+          },
+          "piece": {
+            "rect": {
+              "x": 1098.390625,
+              "y": 705.484375,
+              "width": 60,
+              "height": 60,
+              "top": 705.484375,
+              "right": 1158.390625,
+              "bottom": 765.484375,
+              "left": 1098.390625
+            },
+            "width": "60px",
+            "height": "60px",
+            "backgroundSize": "cover",
+            "backgroundColor": "rgba(0, 0, 0, 0)",
+            "opacity": "1",
+            "content": "normal",
+            "right": "0px",
+            "bottom": "0px",
+            "font": "14px \"Noto Sans\", sans-serif",
+            "color": "rgb(186, 186, 186)",
+            "borderRadius": "0px",
+            "boxShadow": "none"
+          },
+          "badge": {
+            "rect": {
+              "x": 1098.390625,
+              "y": 705.484375,
+              "width": 60,
+              "height": 60,
+              "top": 705.484375,
+              "right": 1158.390625,
+              "bottom": 765.484375,
+              "left": 1098.390625
+            },
+            "width": "18.0312px",
+            "height": "19.8594px",
+            "backgroundSize": "auto",
+            "backgroundColor": "rgb(214, 79, 0)",
+            "opacity": "1",
+            "content": "\"3\"",
+            "right": "0px",
+            "bottom": "0px",
+            "font": "700 15.4px / 13.86px \"Noto Sans\", sans-serif",
+            "color": "rgb(255, 255, 255)",
+            "borderRadius": "7px",
+            "boxShadow": "rgba(0, 0, 0, 0.15) 0px 3px 4px 0px inset"
+          }
+        }
+      ],
+      "coords": [
+        {
+          "className": "ranks black",
+          "rect": {
+            "x": 1049.59375,
+            "y": 83.6875,
+            "width": 9.59375,
+            "height": 680,
+            "top": 83.6875,
+            "right": 1059.1875,
+            "bottom": 763.6875,
+            "left": 1049.59375
+          },
+          "entries": [
+            {
+              "text": "1",
+              "rect": {
+                "x": 1049.59375,
+                "y": 83.6875,
+                "width": 9.59375,
+                "height": 85,
+                "top": 83.6875,
+                "right": 1059.1875,
+                "bottom": 168.6875,
+                "left": 1049.59375
+              },
+              "font": "700 12px \"Noto Sans\", sans-serif",
+              "color": "rgb(240, 217, 181)",
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "2",
+              "rect": {
+                "x": 1049.59375,
+                "y": 168.6875,
+                "width": 9.59375,
+                "height": 85,
+                "top": 168.6875,
+                "right": 1059.1875,
+                "bottom": 253.6875,
+                "left": 1049.59375
+              },
+              "font": "700 12px \"Noto Sans\", sans-serif",
+              "color": "rgb(148, 111, 81)",
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            }
+          ]
+        },
+        {
+          "className": "files black",
+          "rect": {
+            "x": 379.1875,
+            "y": 745.890625,
+            "width": 680,
+            "height": 16.796875,
+            "top": 745.890625,
+            "right": 1059.1875,
+            "bottom": 762.6875,
+            "left": 379.1875
+          },
+          "entries": [
+            {
+              "text": "a",
+              "rect": {
+                "x": 973.984375,
+                "y": 745.890625,
+                "width": 85.203125,
+                "height": 16.796875,
+                "top": 745.890625,
+                "right": 1059.1875,
+                "bottom": 762.6875,
+                "left": 973.984375
+              },
+              "font": "700 12px \"Noto Sans\", sans-serif",
+              "color": "rgb(148, 111, 81)",
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "b",
+              "rect": {
+                "x": 888.359375,
+                "y": 745.890625,
+                "width": 85.625,
+                "height": 16.796875,
+                "top": 745.890625,
+                "right": 973.984375,
+                "bottom": 762.6875,
+                "left": 888.359375
+              },
+              "font": "700 12px \"Noto Sans\", sans-serif",
+              "color": "rgb(240, 217, 181)",
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            }
+          ]
+        }
+      ],
+      "tools": {
+        "rect": {
+          "x": 1071.1875,
+          "y": 142.6875,
+          "width": 354.421875,
+          "height": 562.796875,
+          "top": 142.6875,
+          "right": 1425.609375,
+          "bottom": 705.484375,
+          "left": 1071.1875
+        },
+        "width": "354.422px",
+        "height": "562.797px",
+        "backgroundSize": "auto",
+        "backgroundColor": "rgb(38, 36, 33)",
+        "opacity": "1",
+        "content": "normal",
+        "right": "0px",
+        "bottom": "0px",
+        "font": "14px \"Noto Sans\", sans-serif",
+        "color": "rgb(186, 186, 186)",
+        "borderRadius": "7px",
+        "boxShadow": "rgba(0, 0, 0, 0.08) 0px 2px 2px 0px, rgba(0, 0, 0, 0.18) 0px 3px 1px -2px, rgba(0, 0, 0, 0.1) 0px 1px 5px 0px"
+      },
+      "controlButtons": [
+        {
+          "text": "",
+          "rect": {
+            "x": 1145.1875,
+            "y": 769.484375,
+            "width": 60.34375,
+            "height": 34,
+            "top": 769.484375,
+            "right": 1205.53125,
+            "bottom": 803.484375,
+            "left": 1145.1875
+          },
+          "font": "13.65px / 20.475px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "rect": {
+            "x": 1205.53125,
+            "y": 769.484375,
+            "width": 60.359375,
+            "height": 34,
+            "top": 769.484375,
+            "right": 1265.890625,
+            "bottom": 803.484375,
+            "left": 1205.53125
+          },
+          "font": "18.2px / 27.3px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "rect": {
+            "x": 1265.890625,
+            "y": 769.484375,
+            "width": 60.359375,
+            "height": 34,
+            "top": 769.484375,
+            "right": 1326.25,
+            "bottom": 803.484375,
+            "left": 1265.890625
+          },
+          "font": "18.2px / 27.3px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "rect": {
+            "x": 1326.25,
+            "y": 769.484375,
+            "width": 60.359375,
+            "height": 34,
+            "top": 769.484375,
+            "right": 1386.609375,
+            "bottom": 803.484375,
+            "left": 1326.25
+          },
+          "font": "13.65px / 20.475px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "rect": {
+            "x": 1071.1875,
+            "y": 765.484375,
+            "width": 35,
+            "height": 42,
+            "top": 765.484375,
+            "right": 1106.1875,
+            "bottom": 807.484375,
+            "left": 1071.1875
+          },
+          "font": "14px / 21px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "rect": {
+            "x": 1106.1875,
+            "y": 765.484375,
+            "width": 35,
+            "height": 42,
+            "top": 765.484375,
+            "right": 1141.1875,
+            "bottom": 807.484375,
+            "left": 1106.1875
+          },
+          "font": "14px / 21px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "rect": {
+            "x": 1390.609375,
+            "y": 765.484375,
+            "width": 35,
+            "height": 42,
+            "top": 765.484375,
+            "right": 1425.609375,
+            "bottom": 807.484375,
+            "left": 1390.609375
+          },
+          "font": "14px / 21px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        }
+      ],
+      "moveCells": [
+        {
+          "tagName": "index",
+          "text": "1",
+          "rect": {
+            "x": 1071.1875,
+            "y": 168.6875,
+            "width": 46.0625,
+            "height": 29.03125,
+            "top": 168.6875,
+            "right": 1117.25,
+            "bottom": 197.71875,
+            "left": 1071.1875
+          },
+          "font": "14px / 28.98px \"Noto Sans\", sans-serif",
+          "color": "color(srgb 0.42 0.42 0.42)",
+          "backgroundColor": "rgb(51, 49, 46)"
+        },
+        {
+          "tagName": "move",
+          "text": "...",
+          "rect": {
+            "x": 1117.25,
+            "y": 168.6875,
+            "width": 154.171875,
+            "height": 29.03125,
+            "top": 168.6875,
+            "right": 1271.421875,
+            "bottom": 197.71875,
+            "left": 1117.25
+          },
+          "font": "16.59px / 29.0325px \"Noto Chess\", \"Noto Sans\"",
+          "color": "color(srgb 0.42 0.42 0.42)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "tagName": "move",
+          "text": "@e2+!",
+          "rect": {
+            "x": 1271.421875,
+            "y": 168.6875,
+            "width": 154.171875,
+            "height": 29.03125,
+            "top": 168.6875,
+            "right": 1425.59375,
+            "bottom": 197.71875,
+            "left": 1271.421875
+          },
+          "font": "16.59px / 29.0325px \"Noto Chess\", \"Noto Sans\"",
+          "color": "rgb(98, 153, 36)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "tagName": "move",
+          "text": "1...R@e1+?!",
+          "rect": {
+            "x": 1082.1875,
+            "y": 200.71875,
+            "width": 81.203125,
+            "height": 24,
+            "top": 200.71875,
+            "right": 1163.390625,
+            "bottom": 224.71875,
+            "left": 1082.1875
+          },
+          "font": "14.5236px \"Noto Chess\", \"Noto Sans\"",
+          "color": "rgb(83, 178, 234)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "tagName": "index",
+          "text": "1...",
+          "rect": {
+            "x": 1084.1875,
+            "y": 204.71875,
+            "width": 17.71875,
+            "height": 18,
+            "top": 204.71875,
+            "right": 1101.90625,
+            "bottom": 222.71875,
+            "left": 1084.1875
+          },
+          "font": "13.0712px \"Noto Chess\", \"Noto Sans\"",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "tagName": "move",
+          "text": "2.Qxe1",
+          "rect": {
+            "x": 1165.390625,
+            "y": 200.71875,
+            "width": 49.453125,
+            "height": 24,
+            "top": 200.71875,
+            "right": 1214.84375,
+            "bottom": 224.71875,
+            "left": 1165.390625
+          },
+          "font": "14.5236px \"Noto Chess\", \"Noto Sans\"",
+          "color": "rgb(186, 186, 186)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "tagName": "index",
+          "text": "2.",
+          "rect": {
+            "x": 1167.390625,
+            "y": 204.71875,
+            "width": 10.703125,
+            "height": 18,
+            "top": 204.71875,
+            "right": 1178.09375,
+            "bottom": 222.71875,
+            "left": 1167.390625
+          },
+          "font": "13.0712px \"Noto Chess\", \"Noto Sans\"",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "tagName": "move",
+          "text": "dxe1=Q+",
+          "rect": {
+            "x": 1216.84375,
+            "y": 200.71875,
+            "width": 63.671875,
+            "height": 24,
+            "top": 200.71875,
+            "right": 1280.515625,
+            "bottom": 224.71875,
+            "left": 1216.84375
+          },
+          "font": "14.5236px \"Noto Chess\", \"Noto Sans\"",
+          "color": "rgb(186, 186, 186)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        }
+      ],
+      "fork": {
+        "rect": {
+          "x": 1071.1875,
+          "y": 679.890625,
+          "width": 354.421875,
+          "height": 25.59375,
+          "top": 679.890625,
+          "right": 1425.609375,
+          "bottom": 705.484375,
+          "left": 1071.1875
+        },
+        "children": [
+          {
+            "text": "1...@e2+!",
+            "rect": {
+              "x": 1071.1875,
+              "y": 679.890625,
+              "width": 177.203125,
+              "height": 25.59375,
+              "top": 679.890625,
+              "right": 1248.390625,
+              "bottom": 705.484375,
+              "left": 1071.1875
+            },
+            "font": "14px \"Noto Chess\", \"Noto Sans\"",
+            "color": "rgb(255, 255, 255)",
+            "backgroundColor": "rgb(54, 146, 231)"
+          },
+          {
+            "text": "1...R@e1+?!",
+            "rect": {
+              "x": 1248.390625,
+              "y": 679.890625,
+              "width": 177.203125,
+              "height": 25.59375,
+              "top": 679.890625,
+              "right": 1425.59375,
+              "bottom": 705.484375,
+              "left": 1248.390625
+            },
+            "font": "14px \"Noto Chess\", \"Noto Sans\"",
+            "color": "color(srgb 0.8 0.8 0.8)",
+            "backgroundColor": "oklab(0.358422 -0.0120976 -0.0316137)"
+          }
+        ]
+      }
+    },
+    "S1": {
+      "shapesInnerHtml": "<defs><filter id=\"cg-filter-blur\"><feGaussianBlur stdDeviation=\"0.013\"></feGaussianBlur></filter></defs><g></g>",
+      "shapesBelowInnerHtml": "<defs><filter id=\"cg-filter-blur\"><feGaussianBlur stdDeviation=\"0.013\"></feGaussianBlur></filter><marker id=\"arrowhead-hilite-3291ff\" orient=\"auto\" overflow=\"visible\" markerWidth=\"4\" markerHeight=\"4\" refX=\"1.86\" refY=\"2\" cgKey=\"hilite-3291ff\"><path d=\"M0,0 V4 L3,2 Z\" fill=\"#3291ff\"></path></marker><marker id=\"arrowhead-variation\" orient=\"auto\" overflow=\"visible\" markerWidth=\"4\" markerHeight=\"4\" refX=\"2.05\" refY=\"2\" cgKey=\"variation\"><path d=\"M0,0 V4 L3,2 Z\" fill=\"white\"></path></marker><marker id=\"arrowhead-hilite-aaa\" orient=\"auto\" overflow=\"visible\" markerWidth=\"4\" markerHeight=\"4\" refX=\"1.86\" refY=\"2\" cgKey=\"hilite-aaa\"><path d=\"M0,0 V4 L3,2 Z\" fill=\"#aaa\"></path></marker></defs><g></g>",
+      "customSvgsInnerHtml": "<g><g transform=\"translate(-0.5,-2.5)\" cgHash=\"680,680,e2,custom-348050080,o\"><svg width=\"1\" height=\"1\" viewBox=\"0 0 100 100\"><defs><filter id=\"a\"><feDropShadow dx=\"4\" dy=\"7\" flood-opacity=\".5\" stdDeviation=\"5\"></feDropShadow></filter></defs><g transform=\"matrix(.4 0 0 .4 71 -12)\"><circle cx=\"50\" cy=\"50\" r=\"50\" fill=\"#22ac38\" filter=\"url(#a)\"></circle><path fill=\"#fff\" d=\"M54.967 62.349h-9.75l-2.049-39.083h13.847zM43.004 76.032q0-3.77 2.049-5.244 2.048-1.557 4.998-1.557 2.867 0 4.916 1.557 2.048 1.475 2.048 5.244 0 3.605-2.048 5.244-2.049 1.556-4.916 1.556-2.95 0-4.998-1.556-2.049-1.64-2.049-5.244z\" vector-effect=\"non-scaling-stroke\"></path></g></svg></g></g>",
+      "customBelowInnerHtml": "<g></g>",
+      "pockets": [
+        {
+          "rect": {
+            "x": 1071.1875,
+            "y": 82.6875,
+            "width": 354.421875,
+            "height": 60,
+            "top": 82.6875,
+            "right": 1425.609375,
+            "bottom": 142.6875,
+            "left": 1071.1875
+          },
+          "piece": {
+            "rect": {
+              "x": 1098.390625,
+              "y": 82.6875,
+              "width": 60,
+              "height": 60,
+              "top": 82.6875,
+              "right": 1158.390625,
+              "bottom": 142.6875,
+              "left": 1098.390625
+            },
+            "width": "60px",
+            "height": "60px",
+            "backgroundSize": "cover",
+            "backgroundColor": "rgba(0, 0, 0, 0)",
+            "opacity": "1",
+            "content": "normal",
+            "right": "0px",
+            "bottom": "0px",
+            "font": "14px \"Noto Sans\", sans-serif",
+            "color": "rgb(186, 186, 186)",
+            "borderRadius": "0px",
+            "boxShadow": "none"
+          },
+          "badge": {
+            "rect": {
+              "x": 1098.390625,
+              "y": 82.6875,
+              "width": 60,
+              "height": 60,
+              "top": 82.6875,
+              "right": 1158.390625,
+              "bottom": 142.6875,
+              "left": 1098.390625
+            },
+            "width": "18.0312px",
+            "height": "19.8594px",
+            "backgroundSize": "auto",
+            "backgroundColor": "rgb(214, 79, 0)",
+            "opacity": "1",
+            "content": "\"2\"",
+            "right": "0px",
+            "bottom": "0px",
+            "font": "700 15.4px / 13.86px \"Noto Sans\", sans-serif",
+            "color": "rgb(255, 255, 255)",
+            "borderRadius": "7px",
+            "boxShadow": "rgba(0, 0, 0, 0.15) 0px 3px 4px 0px inset"
+          }
+        },
+        {
+          "rect": {
+            "x": 1071.1875,
+            "y": 705.484375,
+            "width": 354.421875,
+            "height": 60,
+            "top": 705.484375,
+            "right": 1425.609375,
+            "bottom": 765.484375,
+            "left": 1071.1875
+          },
+          "piece": {
+            "rect": {
+              "x": 1098.390625,
+              "y": 705.484375,
+              "width": 60,
+              "height": 60,
+              "top": 705.484375,
+              "right": 1158.390625,
+              "bottom": 765.484375,
+              "left": 1098.390625
+            },
+            "width": "60px",
+            "height": "60px",
+            "backgroundSize": "cover",
+            "backgroundColor": "rgba(0, 0, 0, 0)",
+            "opacity": "1",
+            "content": "normal",
+            "right": "0px",
+            "bottom": "0px",
+            "font": "14px \"Noto Sans\", sans-serif",
+            "color": "rgb(186, 186, 186)",
+            "borderRadius": "0px",
+            "boxShadow": "none"
+          },
+          "badge": {
+            "rect": {
+              "x": 1098.390625,
+              "y": 705.484375,
+              "width": 60,
+              "height": 60,
+              "top": 705.484375,
+              "right": 1158.390625,
+              "bottom": 765.484375,
+              "left": 1098.390625
+            },
+            "width": "18.0312px",
+            "height": "19.8594px",
+            "backgroundSize": "auto",
+            "backgroundColor": "rgb(214, 79, 0)",
+            "opacity": "1",
+            "content": "\"2\"",
+            "right": "0px",
+            "bottom": "0px",
+            "font": "700 15.4px / 13.86px \"Noto Sans\", sans-serif",
+            "color": "rgb(255, 255, 255)",
+            "borderRadius": "7px",
+            "boxShadow": "rgba(0, 0, 0, 0.15) 0px 3px 4px 0px inset"
+          }
+        }
+      ],
+      "coords": [
+        {
+          "className": "ranks black",
+          "rect": {
+            "x": 1049.59375,
+            "y": 83.6875,
+            "width": 9.59375,
+            "height": 680,
+            "top": 83.6875,
+            "right": 1059.1875,
+            "bottom": 763.6875,
+            "left": 1049.59375
+          },
+          "entries": [
+            {
+              "text": "1",
+              "rect": {
+                "x": 1049.59375,
+                "y": 83.6875,
+                "width": 9.59375,
+                "height": 85,
+                "top": 83.6875,
+                "right": 1059.1875,
+                "bottom": 168.6875,
+                "left": 1049.59375
+              },
+              "font": "700 12px \"Noto Sans\", sans-serif",
+              "color": "rgb(240, 217, 181)",
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "2",
+              "rect": {
+                "x": 1049.59375,
+                "y": 168.6875,
+                "width": 9.59375,
+                "height": 85,
+                "top": 168.6875,
+                "right": 1059.1875,
+                "bottom": 253.6875,
+                "left": 1049.59375
+              },
+              "font": "700 12px \"Noto Sans\", sans-serif",
+              "color": "rgb(148, 111, 81)",
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            }
+          ]
+        },
+        {
+          "className": "files black",
+          "rect": {
+            "x": 379.1875,
+            "y": 745.890625,
+            "width": 680,
+            "height": 16.796875,
+            "top": 745.890625,
+            "right": 1059.1875,
+            "bottom": 762.6875,
+            "left": 379.1875
+          },
+          "entries": [
+            {
+              "text": "a",
+              "rect": {
+                "x": 973.984375,
+                "y": 745.890625,
+                "width": 85.203125,
+                "height": 16.796875,
+                "top": 745.890625,
+                "right": 1059.1875,
+                "bottom": 762.6875,
+                "left": 973.984375
+              },
+              "font": "700 12px \"Noto Sans\", sans-serif",
+              "color": "rgb(148, 111, 81)",
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "b",
+              "rect": {
+                "x": 888.359375,
+                "y": 745.890625,
+                "width": 85.625,
+                "height": 16.796875,
+                "top": 745.890625,
+                "right": 973.984375,
+                "bottom": 762.6875,
+                "left": 888.359375
+              },
+              "font": "700 12px \"Noto Sans\", sans-serif",
+              "color": "rgb(240, 217, 181)",
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            }
+          ]
+        }
+      ],
+      "tools": {
+        "rect": {
+          "x": 1071.1875,
+          "y": 142.6875,
+          "width": 354.421875,
+          "height": 562.796875,
+          "top": 142.6875,
+          "right": 1425.609375,
+          "bottom": 705.484375,
+          "left": 1071.1875
+        },
+        "width": "354.422px",
+        "height": "562.797px",
+        "backgroundSize": "auto",
+        "backgroundColor": "rgb(38, 36, 33)",
+        "opacity": "1",
+        "content": "normal",
+        "right": "0px",
+        "bottom": "0px",
+        "font": "14px \"Noto Sans\", sans-serif",
+        "color": "rgb(186, 186, 186)",
+        "borderRadius": "7px",
+        "boxShadow": "rgba(0, 0, 0, 0.08) 0px 2px 2px 0px, rgba(0, 0, 0, 0.18) 0px 3px 1px -2px, rgba(0, 0, 0, 0.1) 0px 1px 5px 0px"
+      },
+      "controlButtons": [
+        {
+          "text": "",
+          "rect": {
+            "x": 1145.1875,
+            "y": 769.484375,
+            "width": 60.34375,
+            "height": 34,
+            "top": 769.484375,
+            "right": 1205.53125,
+            "bottom": 803.484375,
+            "left": 1145.1875
+          },
+          "font": "13.65px / 20.475px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "rect": {
+            "x": 1205.53125,
+            "y": 769.484375,
+            "width": 60.359375,
+            "height": 34,
+            "top": 769.484375,
+            "right": 1265.890625,
+            "bottom": 803.484375,
+            "left": 1205.53125
+          },
+          "font": "18.2px / 27.3px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "rect": {
+            "x": 1265.890625,
+            "y": 769.484375,
+            "width": 60.359375,
+            "height": 34,
+            "top": 769.484375,
+            "right": 1326.25,
+            "bottom": 803.484375,
+            "left": 1265.890625
+          },
+          "font": "18.2px / 27.3px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "rect": {
+            "x": 1326.25,
+            "y": 769.484375,
+            "width": 60.359375,
+            "height": 34,
+            "top": 769.484375,
+            "right": 1386.609375,
+            "bottom": 803.484375,
+            "left": 1326.25
+          },
+          "font": "13.65px / 20.475px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "rect": {
+            "x": 1071.1875,
+            "y": 765.484375,
+            "width": 35,
+            "height": 42,
+            "top": 765.484375,
+            "right": 1106.1875,
+            "bottom": 807.484375,
+            "left": 1071.1875
+          },
+          "font": "14px / 21px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "rect": {
+            "x": 1106.1875,
+            "y": 765.484375,
+            "width": 35,
+            "height": 42,
+            "top": 765.484375,
+            "right": 1141.1875,
+            "bottom": 807.484375,
+            "left": 1106.1875
+          },
+          "font": "14px / 21px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "rect": {
+            "x": 1390.609375,
+            "y": 765.484375,
+            "width": 35,
+            "height": 42,
+            "top": 765.484375,
+            "right": 1425.609375,
+            "bottom": 807.484375,
+            "left": 1390.609375
+          },
+          "font": "14px / 21px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        }
+      ],
+      "moveCells": [
+        {
+          "tagName": "index",
+          "text": "1",
+          "rect": {
+            "x": 1071.1875,
+            "y": 168.6875,
+            "width": 46.0625,
+            "height": 29.03125,
+            "top": 168.6875,
+            "right": 1117.25,
+            "bottom": 197.71875,
+            "left": 1071.1875
+          },
+          "font": "14px / 28.98px \"Noto Sans\", sans-serif",
+          "color": "color(srgb 0.42 0.42 0.42)",
+          "backgroundColor": "rgb(51, 49, 46)"
+        },
+        {
+          "tagName": "move",
+          "text": "...",
+          "rect": {
+            "x": 1117.25,
+            "y": 168.6875,
+            "width": 154.171875,
+            "height": 29.03125,
+            "top": 168.6875,
+            "right": 1271.421875,
+            "bottom": 197.71875,
+            "left": 1117.25
+          },
+          "font": "16.59px / 29.0325px \"Noto Chess\", \"Noto Sans\"",
+          "color": "color(srgb 0.42 0.42 0.42)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "tagName": "move",
+          "text": "@e2+!",
+          "rect": {
+            "x": 1271.421875,
+            "y": 168.6875,
+            "width": 154.171875,
+            "height": 29.03125,
+            "top": 168.6875,
+            "right": 1425.59375,
+            "bottom": 197.71875,
+            "left": 1271.421875
+          },
+          "font": "700 16.59px / 29.0325px \"Noto Chess\", \"Noto Sans\"",
+          "color": "rgb(255, 255, 255)",
+          "backgroundColor": "oklab(0.62156 -0.103588 0.115868 / 0.85)"
+        },
+        {
+          "tagName": "move",
+          "text": "1...R@e1+?!",
+          "rect": {
+            "x": 1082.1875,
+            "y": 200.71875,
+            "width": 81.203125,
+            "height": 24,
+            "top": 200.71875,
+            "right": 1163.390625,
+            "bottom": 224.71875,
+            "left": 1082.1875
+          },
+          "font": "14.5236px \"Noto Chess\", \"Noto Sans\"",
+          "color": "rgb(83, 178, 234)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "tagName": "index",
+          "text": "1...",
+          "rect": {
+            "x": 1084.1875,
+            "y": 204.71875,
+            "width": 17.71875,
+            "height": 18,
+            "top": 204.71875,
+            "right": 1101.90625,
+            "bottom": 222.71875,
+            "left": 1084.1875
+          },
+          "font": "13.0712px \"Noto Chess\", \"Noto Sans\"",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "tagName": "move",
+          "text": "2.Qxe1",
+          "rect": {
+            "x": 1165.390625,
+            "y": 200.71875,
+            "width": 49.453125,
+            "height": 24,
+            "top": 200.71875,
+            "right": 1214.84375,
+            "bottom": 224.71875,
+            "left": 1165.390625
+          },
+          "font": "14.5236px \"Noto Chess\", \"Noto Sans\"",
+          "color": "rgb(186, 186, 186)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "tagName": "index",
+          "text": "2.",
+          "rect": {
+            "x": 1167.390625,
+            "y": 204.71875,
+            "width": 10.703125,
+            "height": 18,
+            "top": 204.71875,
+            "right": 1178.09375,
+            "bottom": 222.71875,
+            "left": 1167.390625
+          },
+          "font": "13.0712px \"Noto Chess\", \"Noto Sans\"",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "tagName": "move",
+          "text": "dxe1=Q+",
+          "rect": {
+            "x": 1216.84375,
+            "y": 200.71875,
+            "width": 63.671875,
+            "height": 24,
+            "top": 200.71875,
+            "right": 1280.515625,
+            "bottom": 224.71875,
+            "left": 1216.84375
+          },
+          "font": "14.5236px \"Noto Chess\", \"Noto Sans\"",
+          "color": "rgb(186, 186, 186)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        }
+      ],
+      "fork": {
+        "rect": null,
+        "children": []
+      }
+    },
+    "S2": {
+      "shapesInnerHtml": "<defs><filter id=\"cg-filter-blur\"><feGaussianBlur stdDeviation=\"0.013\"></feGaussianBlur></filter><marker id=\"arrowhead-g\" orient=\"auto\" overflow=\"visible\" markerWidth=\"4\" markerHeight=\"4\" refX=\"2.05\" refY=\"2\" cgKey=\"g\"><path d=\"M0,0 V4 L3,2 Z\" fill=\"#15781B\"></path></marker></defs><g><g cgHash=\"680,680,h6,green\"><circle stroke=\"#15781B\" stroke-width=\"0.0625\" fill=\"none\" opacity=\"1\" cx=\"-3.5\" cy=\"1.5\" r=\"0.46875\"></circle></g><g cgHash=\"680,680,1,g4,h6,green\"><line stroke=\"#15781B\" stroke-width=\"0.15625\" stroke-linecap=\"round\" marker-end=\"url(#arrowhead-g)\" opacity=\"1\" x1=\"-2.5\" y1=\"-0.5\" x2=\"-3.4301228757031317\" y2=\"1.3602457514062631\"></line></g></g>",
+      "shapesBelowInnerHtml": "<defs><filter id=\"cg-filter-blur\"><feGaussianBlur stdDeviation=\"0.013\"></feGaussianBlur></filter><marker id=\"arrowhead-hilite-3291ff\" orient=\"auto\" overflow=\"visible\" markerWidth=\"4\" markerHeight=\"4\" refX=\"1.86\" refY=\"2\" cgKey=\"hilite-3291ff\"><path d=\"M0,0 V4 L3,2 Z\" fill=\"#3291ff\"></path></marker><marker id=\"arrowhead-variation\" orient=\"auto\" overflow=\"visible\" markerWidth=\"4\" markerHeight=\"4\" refX=\"2.05\" refY=\"2\" cgKey=\"variation\"><path d=\"M0,0 V4 L3,2 Z\" fill=\"white\"></path></marker><marker id=\"arrowhead-hilite-aaa\" orient=\"auto\" overflow=\"visible\" markerWidth=\"4\" markerHeight=\"4\" refX=\"1.86\" refY=\"2\" cgKey=\"hilite-aaa\"><path d=\"M0,0 V4 L3,2 Z\" fill=\"#aaa\"></path></marker></defs><g></g>",
+      "customSvgsInnerHtml": "<g><g transform=\"translate(1.5,-3.5)\" cgHash=\"680,680,c1,custom-3942342843,o\"><svg width=\"1\" height=\"1\" viewBox=\"0 0 100 100\"><defs><filter id=\"a\"><feDropShadow dx=\"4\" dy=\"7\" flood-opacity=\".5\" stdDeviation=\"5\"></feDropShadow></filter></defs><g transform=\"matrix(.4 0 0 .4 71 -12)\"><circle cx=\"50\" cy=\"50\" r=\"50\" fill=\"#168226\" filter=\"url(#a)\"></circle><path fill=\"#fff\" d=\"M71.967 62.349h-9.75l-2.049-39.083h13.847zM60.004 76.032q0-3.77 2.049-5.244 2.048-1.557 4.998-1.557 2.867 0 4.916 1.557 2.048 1.475 2.048 5.244 0 3.605-2.048 5.244-2.049 1.556-4.916 1.556-2.95 0-4.998-1.556-2.049-1.64-2.049-5.244zM37.967 62.349h-9.75l-2.049-39.083h13.847zM26.004 76.032q0-3.77 2.049-5.244 2.048-1.557 4.998-1.557 2.867 0 4.916 1.557 2.048 1.475 2.048 5.244 0 3.605-2.048 5.244-2.049 1.556-4.916 1.556-2.95 0-4.998-1.556-2.049-1.64-2.049-5.244z\" vector-effect=\"non-scaling-stroke\"></path></g></svg></g></g>",
+      "customBelowInnerHtml": "<g></g>",
+      "pockets": [
+        {
+          "rect": {
+            "x": 1071.1875,
+            "y": 82.6875,
+            "width": 354.421875,
+            "height": 60,
+            "top": 82.6875,
+            "right": 1425.609375,
+            "bottom": 142.6875,
+            "left": 1071.1875
+          },
+          "piece": {
+            "rect": {
+              "x": 1098.390625,
+              "y": 82.6875,
+              "width": 60,
+              "height": 60,
+              "top": 82.6875,
+              "right": 1158.390625,
+              "bottom": 142.6875,
+              "left": 1098.390625
+            },
+            "width": "60px",
+            "height": "60px",
+            "backgroundSize": "cover",
+            "backgroundColor": "rgba(0, 0, 0, 0)",
+            "opacity": "1",
+            "content": "normal",
+            "right": "0px",
+            "bottom": "0px",
+            "font": "14px \"Noto Sans\", sans-serif",
+            "color": "rgb(186, 186, 186)",
+            "borderRadius": "0px",
+            "boxShadow": "none"
+          },
+          "badge": {
+            "rect": {
+              "x": 1098.390625,
+              "y": 82.6875,
+              "width": 60,
+              "height": 60,
+              "top": 82.6875,
+              "right": 1158.390625,
+              "bottom": 142.6875,
+              "left": 1098.390625
+            },
+            "width": "18.0312px",
+            "height": "19.8594px",
+            "backgroundSize": "auto",
+            "backgroundColor": "rgb(214, 79, 0)",
+            "opacity": "1",
+            "content": "\"3\"",
+            "right": "0px",
+            "bottom": "0px",
+            "font": "700 15.4px / 13.86px \"Noto Sans\", sans-serif",
+            "color": "rgb(255, 255, 255)",
+            "borderRadius": "7px",
+            "boxShadow": "rgba(0, 0, 0, 0.15) 0px 3px 4px 0px inset"
+          }
+        },
+        {
+          "rect": {
+            "x": 1071.1875,
+            "y": 705.484375,
+            "width": 354.421875,
+            "height": 60,
+            "top": 705.484375,
+            "right": 1425.609375,
+            "bottom": 765.484375,
+            "left": 1071.1875
+          },
+          "piece": {
+            "rect": {
+              "x": 1098.390625,
+              "y": 705.484375,
+              "width": 60,
+              "height": 60,
+              "top": 705.484375,
+              "right": 1158.390625,
+              "bottom": 765.484375,
+              "left": 1098.390625
+            },
+            "width": "60px",
+            "height": "60px",
+            "backgroundSize": "cover",
+            "backgroundColor": "rgba(0, 0, 0, 0)",
+            "opacity": "0.1",
+            "content": "normal",
+            "right": "0px",
+            "bottom": "0px",
+            "font": "14px \"Noto Sans\", sans-serif",
+            "color": "rgb(186, 186, 186)",
+            "borderRadius": "0px",
+            "boxShadow": "none"
+          },
+          "badge": {
+            "rect": {
+              "x": 1098.390625,
+              "y": 705.484375,
+              "width": 60,
+              "height": 60,
+              "top": 705.484375,
+              "right": 1158.390625,
+              "bottom": 765.484375,
+              "left": 1098.390625
+            },
+            "width": "auto",
+            "height": "auto",
+            "backgroundSize": "auto",
+            "backgroundColor": "rgb(214, 79, 0)",
+            "opacity": "1",
+            "content": "none",
+            "right": "0px",
+            "bottom": "0px",
+            "font": "700 15.4px / 13.86px \"Noto Sans\", sans-serif",
+            "color": "rgb(255, 255, 255)",
+            "borderRadius": "7px",
+            "boxShadow": "rgba(0, 0, 0, 0.15) 0px 3px 4px 0px inset"
+          }
+        }
+      ],
+      "coords": [
+        {
+          "className": "ranks black",
+          "rect": {
+            "x": 1049.59375,
+            "y": 83.6875,
+            "width": 9.59375,
+            "height": 680,
+            "top": 83.6875,
+            "right": 1059.1875,
+            "bottom": 763.6875,
+            "left": 1049.59375
+          },
+          "entries": [
+            {
+              "text": "1",
+              "rect": {
+                "x": 1049.59375,
+                "y": 83.6875,
+                "width": 9.59375,
+                "height": 85,
+                "top": 83.6875,
+                "right": 1059.1875,
+                "bottom": 168.6875,
+                "left": 1049.59375
+              },
+              "font": "700 12px \"Noto Sans\", sans-serif",
+              "color": "rgb(240, 217, 181)",
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "2",
+              "rect": {
+                "x": 1049.59375,
+                "y": 168.6875,
+                "width": 9.59375,
+                "height": 85,
+                "top": 168.6875,
+                "right": 1059.1875,
+                "bottom": 253.6875,
+                "left": 1049.59375
+              },
+              "font": "700 12px \"Noto Sans\", sans-serif",
+              "color": "rgb(148, 111, 81)",
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            }
+          ]
+        },
+        {
+          "className": "files black",
+          "rect": {
+            "x": 379.1875,
+            "y": 745.890625,
+            "width": 680,
+            "height": 16.796875,
+            "top": 745.890625,
+            "right": 1059.1875,
+            "bottom": 762.6875,
+            "left": 379.1875
+          },
+          "entries": [
+            {
+              "text": "a",
+              "rect": {
+                "x": 973.984375,
+                "y": 745.890625,
+                "width": 85.203125,
+                "height": 16.796875,
+                "top": 745.890625,
+                "right": 1059.1875,
+                "bottom": 762.6875,
+                "left": 973.984375
+              },
+              "font": "700 12px \"Noto Sans\", sans-serif",
+              "color": "rgb(148, 111, 81)",
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "b",
+              "rect": {
+                "x": 888.359375,
+                "y": 745.890625,
+                "width": 85.625,
+                "height": 16.796875,
+                "top": 745.890625,
+                "right": 973.984375,
+                "bottom": 762.6875,
+                "left": 888.359375
+              },
+              "font": "700 12px \"Noto Sans\", sans-serif",
+              "color": "rgb(240, 217, 181)",
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            }
+          ]
+        }
+      ],
+      "tools": {
+        "rect": {
+          "x": 1071.1875,
+          "y": 142.6875,
+          "width": 354.421875,
+          "height": 562.796875,
+          "top": 142.6875,
+          "right": 1425.609375,
+          "bottom": 705.484375,
+          "left": 1071.1875
+        },
+        "width": "354.422px",
+        "height": "562.797px",
+        "backgroundSize": "auto",
+        "backgroundColor": "rgb(38, 36, 33)",
+        "opacity": "1",
+        "content": "normal",
+        "right": "0px",
+        "bottom": "0px",
+        "font": "14px \"Noto Sans\", sans-serif",
+        "color": "rgb(186, 186, 186)",
+        "borderRadius": "7px",
+        "boxShadow": "rgba(0, 0, 0, 0.08) 0px 2px 2px 0px, rgba(0, 0, 0, 0.18) 0px 3px 1px -2px, rgba(0, 0, 0, 0.1) 0px 1px 5px 0px"
+      },
+      "controlButtons": [
+        {
+          "text": "",
+          "rect": {
+            "x": 1145.1875,
+            "y": 769.484375,
+            "width": 60.34375,
+            "height": 34,
+            "top": 769.484375,
+            "right": 1205.53125,
+            "bottom": 803.484375,
+            "left": 1145.1875
+          },
+          "font": "13.65px / 20.475px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "rect": {
+            "x": 1205.53125,
+            "y": 769.484375,
+            "width": 60.359375,
+            "height": 34,
+            "top": 769.484375,
+            "right": 1265.890625,
+            "bottom": 803.484375,
+            "left": 1205.53125
+          },
+          "font": "18.2px / 27.3px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "rect": {
+            "x": 1265.890625,
+            "y": 769.484375,
+            "width": 60.359375,
+            "height": 34,
+            "top": 769.484375,
+            "right": 1326.25,
+            "bottom": 803.484375,
+            "left": 1265.890625
+          },
+          "font": "18.2px / 27.3px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "rect": {
+            "x": 1326.25,
+            "y": 769.484375,
+            "width": 60.359375,
+            "height": 34,
+            "top": 769.484375,
+            "right": 1386.609375,
+            "bottom": 803.484375,
+            "left": 1326.25
+          },
+          "font": "13.65px / 20.475px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "rect": {
+            "x": 1071.1875,
+            "y": 765.484375,
+            "width": 35,
+            "height": 42,
+            "top": 765.484375,
+            "right": 1106.1875,
+            "bottom": 807.484375,
+            "left": 1071.1875
+          },
+          "font": "14px / 21px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "rect": {
+            "x": 1106.1875,
+            "y": 765.484375,
+            "width": 35,
+            "height": 42,
+            "top": 765.484375,
+            "right": 1141.1875,
+            "bottom": 807.484375,
+            "left": 1106.1875
+          },
+          "font": "14px / 21px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "",
+          "rect": {
+            "x": 1390.609375,
+            "y": 765.484375,
+            "width": 35,
+            "height": 42,
+            "top": 765.484375,
+            "right": 1425.609375,
+            "bottom": 807.484375,
+            "left": 1390.609375
+          },
+          "font": "14px / 21px \"Noto Sans\", sans-serif",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        }
+      ],
+      "moveCells": [
+        {
+          "tagName": "index",
+          "text": "1",
+          "rect": {
+            "x": 1071.1875,
+            "y": 168.6875,
+            "width": 46.0625,
+            "height": 29.03125,
+            "top": 168.6875,
+            "right": 1117.25,
+            "bottom": 197.71875,
+            "left": 1071.1875
+          },
+          "font": "14px / 28.98px \"Noto Sans\", sans-serif",
+          "color": "color(srgb 0.42 0.42 0.42)",
+          "backgroundColor": "rgb(51, 49, 46)"
+        },
+        {
+          "tagName": "move",
+          "text": "...",
+          "rect": {
+            "x": 1117.25,
+            "y": 168.6875,
+            "width": 154.171875,
+            "height": 29.03125,
+            "top": 168.6875,
+            "right": 1271.421875,
+            "bottom": 197.71875,
+            "left": 1117.25
+          },
+          "font": "16.59px / 29.0325px \"Noto Chess\", \"Noto Sans\"",
+          "color": "color(srgb 0.42 0.42 0.42)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "tagName": "move",
+          "text": "@e2+!",
+          "rect": {
+            "x": 1271.421875,
+            "y": 168.6875,
+            "width": 154.171875,
+            "height": 29.03125,
+            "top": 168.6875,
+            "right": 1425.59375,
+            "bottom": 197.71875,
+            "left": 1271.421875
+          },
+          "font": "16.59px / 29.0325px \"Noto Chess\", \"Noto Sans\"",
+          "color": "rgb(98, 153, 36)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "tagName": "move",
+          "text": "1...R@e1+?!",
+          "rect": {
+            "x": 1082.1875,
+            "y": 200.71875,
+            "width": 81.203125,
+            "height": 24,
+            "top": 200.71875,
+            "right": 1163.390625,
+            "bottom": 224.71875,
+            "left": 1082.1875
+          },
+          "font": "14.5236px \"Noto Chess\", \"Noto Sans\"",
+          "color": "rgb(83, 178, 234)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "tagName": "index",
+          "text": "1...",
+          "rect": {
+            "x": 1084.1875,
+            "y": 204.71875,
+            "width": 17.71875,
+            "height": 18,
+            "top": 204.71875,
+            "right": 1101.90625,
+            "bottom": 222.71875,
+            "left": 1084.1875
+          },
+          "font": "13.0712px \"Noto Chess\", \"Noto Sans\"",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "tagName": "move",
+          "text": "2.Qxe1",
+          "rect": {
+            "x": 1165.390625,
+            "y": 200.71875,
+            "width": 49.453125,
+            "height": 24,
+            "top": 200.71875,
+            "right": 1214.84375,
+            "bottom": 224.71875,
+            "left": 1165.390625
+          },
+          "font": "14.5236px \"Noto Chess\", \"Noto Sans\"",
+          "color": "rgb(186, 186, 186)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "tagName": "index",
+          "text": "2.",
+          "rect": {
+            "x": 1167.390625,
+            "y": 204.71875,
+            "width": 10.703125,
+            "height": 18,
+            "top": 204.71875,
+            "right": 1178.09375,
+            "bottom": 222.71875,
+            "left": 1167.390625
+          },
+          "font": "13.0712px \"Noto Chess\", \"Noto Sans\"",
+          "color": "rgb(148, 148, 148)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "tagName": "move",
+          "text": "dxe1=Q+",
+          "rect": {
+            "x": 1216.84375,
+            "y": 200.71875,
+            "width": 63.671875,
+            "height": 24,
+            "top": 200.71875,
+            "right": 1280.515625,
+            "bottom": 224.71875,
+            "left": 1216.84375
+          },
+          "font": "14.5236px \"Noto Chess\", \"Noto Sans\"",
+          "color": "rgb(186, 186, 186)",
+          "backgroundColor": "rgba(0, 0, 0, 0)"
+        }
+      ],
+      "fork": {
+        "rect": null,
+        "children": []
+      }
+    }
   }
 }

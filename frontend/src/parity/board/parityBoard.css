@@ -1,9 +1,7 @@
 .parity-board.cg-wrap {
-  --parity-board-size: 800px;
-  --parity-square-size: 100px;
   position: relative;
   display: block;
-  width: calc(var(--parity-board-size) + 3.3px);
+  width: var(--parity-board-size);
   height: var(--parity-board-size);
   user-select: none;
 }
@@ -16,8 +14,8 @@
   height: var(--parity-board-size);
 }
 
-.parity-board cg-container { left: 3.3px; top: 0; }
-.parity-board cg-board { inset: 0; overflow: hidden; background: #b9ab9b url("/boards/parity-wood.svg") center / 100% 100% no-repeat; }
+.parity-board cg-container { inset: 0; }
+.parity-board cg-board { inset: 0; overflow: hidden; background-color: var(--parity-light-square); background-image: var(--parity-board-image); background-position: center; background-size: 100% 100%; background-repeat: no-repeat; }
 
 .parity-board piece,
 .parity-board square {
@@ -29,6 +27,11 @@
   will-change: transform;
 }
 
+.parity-board square.board-square { z-index: 0; }
+.parity-board[data-theme="brown"] square.board-square.light { background: var(--parity-light-square); }
+.parity-board[data-theme="brown"] square.board-square.dark { background: var(--parity-dark-square); }
+.parity-board[data-theme="wood"] square.board-square { display: none; }
+
 .parity-board piece {
   z-index: 3;
   background-position: center;
@@ -36,7 +39,7 @@
   background-size: contain;
 }
 
-.parity-board square { z-index: 1; }
+.parity-board square:not(.board-square) { z-index: 1; }
 .parity-board square.last-move { background: rgba(155, 199, 0, .41); }
 .parity-board square.check { background: radial-gradient(rgb(255, 0, 0) 0%, rgb(231, 0, 0) 25%, rgba(169, 0, 0, 0) 89%, rgba(158, 0, 0, 0) 100%); }
 .parity-board square.last-move.check { background: radial-gradient(rgb(255, 0, 0) 0%, rgb(231, 0, 0) 25%, rgba(169, 0, 0, 0) 89%, rgba(158, 0, 0, 0) 100%), rgba(155, 199, 0, .41); }
@@ -50,20 +53,13 @@
   font: 700 12px "Noto Sans", sans-serif;
 }
 
-.parity-board coords.ranks { top: 0; right: 0; width: 9.6px; height: 100%; flex-direction: column; }
-.parity-board coords.ranks coord { display: flex; width: 9.6px; height: var(--parity-square-size); align-items: flex-start; justify-content: center; }
-.parity-board coords.files { right: 0; bottom: 0; width: 100%; height: 16.8px; }
-.parity-board coords.files coord { display: block; width: var(--parity-square-size); height: 16.8px; padding-left: 4px; text-align: left; }
-.parity-board coord.coord-light { color: rgb(208, 206, 202); }
-.parity-board coord.coord-dark { color: rgb(117, 88, 57); }
+.parity-board coords.ranks { top: 1px; right: 0; width: var(--parity-ranks-width); height: 100%; flex-direction: column; }
+.parity-board coords.ranks coord { display: flex; width: var(--parity-ranks-width); height: var(--parity-square-size); flex: 0 0 var(--parity-square-size); align-items: flex-start; justify-content: center; }
+.parity-board coords.files { right: 0; bottom: 0; width: 100%; height: var(--parity-files-height); }
+.parity-board coords.files coord { display: block; width: var(--parity-square-size); height: var(--parity-files-height); flex: 0 0 var(--parity-square-size); padding-left: 4px; text-align: left; }
+.parity-board coord.coord-light { color: var(--parity-coord-on-light); }
+.parity-board coord.coord-dark { color: var(--parity-coord-on-dark); }
 
 .parity-board .cg-shapes,
 .parity-board .cg-custom-svgs { position: absolute; inset: 0; z-index: 4; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
-.parity-board .glyph-badge { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .75)); }
-.parity-board .glyph-badge.good { color: rgb(98, 153, 36); fill: currentColor; }
-.parity-board .glyph-badge.brilliant { color: rgb(33, 196, 58); fill: currentColor; }
-.parity-board .glyph-badge.inaccuracy { color: rgb(83, 178, 234); fill: currentColor; }
-.parity-board .glyph-badge.interesting { color: rgb(240, 117, 225); fill: currentColor; }
-.parity-board .glyph-badge.mistake { color: rgb(230, 157, 0); fill: currentColor; }
-.parity-board .glyph-badge.blunder { color: hsl(0 69% 60%); fill: currentColor; }
-.parity-board .glyph-badge text { fill: #fff; font: 700 16px "Noto Sans", sans-serif; text-anchor: middle; dominant-baseline: central; }
+.parity-board .cg-shapes-below { z-index: 2; }
