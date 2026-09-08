@@ -38,9 +38,12 @@ deployment -> Backup/domain -> Private UI library
 
 ## 🚧 Active
 
-- [ ] SHELL-01 (Lane 3): two-column review workspace around the existing BoardPanel — main board dominant, persistent secondary rail, replay controls beneath the main board; viewport-math CSS removed. Layout layer only.
-- [ ] LIST-01 (Lane 4): guest game list → three rows, one per rating class (2300+ · 1900–2300 · 1400–1900; games whose highest-rated seat is below 1400 excluded), freshest per class, 5-minute rebuild, per-class seeds + self-filling roster. Owner ruling 2026-09-07.
-- [ ] OBS-01 (Lane 2): read-only Railway log pass since the LAND-02 deploy — reset frequency per hour, deploy markers, 5xx.
+- [ ] SHELL-01 (Lane 3): two-column review workspace around the existing BoardPanel — main board dominant, persistent secondary rail, replay controls beneath the main board; viewport-math CSS removed. Layout layer only. — built 899e48b, HELD pending owner ruling (board shrink)
+- [x] LIST-01/02/03 (Lane 4): guest list by rating class (merges bdfa120, 49c7004, 7b4b3e3); verified on production 2026-09-07/08.
+- [x] OBS-01 (Lane 2): read-only Railway log pass 2026-09-07 21:40Z — deploy bdfa120 SUCCESS, no 429/ERROR, first build hit the 60 s budget with 31 validated matches; app INFO logs are not emitted under uvicorn's default root level (LOG-01 candidate).
+- [x] BOARD-01 (Lane 3): registry-driven board appearance, Cburnett + Wood Classic defaults, legacy ids preserved (merge a007918); verified on production 2026-09-08.
+- [ ] TEST-01: guestReplay.integration.test.tsx hit its 5 s timeout under host load in two lanes on 2026-09-07 (gate goldens green) — raise its own timeout or split it.
+- [ ] LOG-01: emit the backend logger at INFO so "Guest matchup list assembled" reaches Railway.
 - [x] Separate the UI library from the public application bundle.
   - Evidence at bc6f967: no frontend/src/blocks.tsx, no frontend/public/blocks/, no blocks entry in vite.config.ts; production /blocks/index.html returns the SPA shell (UILIB-02, merge 5565276). Verified by the gate 2026-09-07.
 - [x] Reproduced the handoff's backend/frontend test counts from a clean worktree:
@@ -113,6 +116,10 @@ owner rules.
 LAND-05 memo merged 8396a08 (docs/MEMO-credential-intake-2026-09.md): magic link · email + password · Chess.com OAuth, each with the Privacy Policy and Terms edits it requires. Finding: the live claim form already collects an email and sets an account cookie while LegalPage.tsx:66 and :110 state the service has no user accounts — the policy needs that disclosure before any option, including the existing claim. Owner ruling pending.
 
 LEGAL-01 memo (docs/MEMO-legal-delta-2026-09.md, merge pending): exact Privacy Policy and Terms replacement text for the live claim flow (guest-identity paragraph, corrected storage paragraph, cookies item, claimed-identity terms clause, effective-date eyebrows, claim-form disclosure line). Owner approval pending; LEGAL-02 applies the approved text, adds the claim-form line, and rewrites operations/data-deletion-runbook.md as a current procedure.
+
+LIST-01/02/03 production acceptance (2026-09-07/08, gate walks on www): three rows in class order 2300+ / 1900–2300 / 1400–1900, freshest finished game per class, floor 1400; Regenerate rotates within class from the pool with zero upstream calls and reports classes that could not rotate; keyboard selection opens the replay. LIST-01 shipped with a global examined cap that let the roster starve the top class (placeholder observed 22:24Z, 1 of 5 snapshots); LIST-03 scopes the ladder to each class's seeds, shares the cap per class with rollover, exempts cached matches, and stops top_up at the cap — after M3 the cap holds (examined_upstream 40) with all classes filled. LIST-02 also filtered placeholder rows out of the saved-moment and permalink lookups (latent crash).
+
+BOARD-01 production acceptance (2026-09-08, gate walk): fresh guest gets data-board-theme=wood-classic and data-piece-set=cburnett with the registry's CSS variables inline; 32 SVG pieces per board with role=img and colour/piece aria-labels, no glyph text; pockets render SVG pieces with count badges; saved legacy ids (slate, solid) still apply. License: Commons file pages offer GFDL / CC BY-SA 3.0 / BSD-3-Clause / GPL-2.0+ ("select the license of your choice"); BSD-3-Clause chosen, full notice reproduced in THIRD-PARTY-NOTICES.md and linked from the Notices page.
 
 ## Update format
 

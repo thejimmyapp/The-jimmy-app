@@ -42,16 +42,15 @@ Matchup list cold-load time: fixed by Task 52 (`claude/task-52-guest-list-warm`,
 merged `a843dd6`, pytest 191). Production after deploy: 5 games in ~114 ms,
 `cached=true`, `pool_size=23`, background build 25 s at startup.
 
-## 3. Custom domain — RESOLVED (www on Railway, apex via Cloudflare, 2026-09-07)
+## 3. State / queue
 
-[https://www.thejimmyapp.com](https://www.thejimmyapp.com) is live on the Ryan-owned service (custom domain 93ccc8f8, certificate valid). Apex thejimmyapp.com resolved 2026-09-07 via Ryan's Cloudflare account (authoritative DNS moved from Namecheap; zone a79406defec75fbddf81be167d36ef68): proxied placeholder + redirect rule [https://thejimmyapp.com/*](https://thejimmyapp.com/*) -> [https://www.thejimmyapp.com/${1}](https://www.thejimmyapp.com/${1}) (301, query preserved), Always Use HTTPS, Universal certificate active; www stays DNS-only so Railway terminates TLS. Gate-verified: [https://thejimmyapp.com/?x](https://thejimmyapp.com/?x) -> [https://www.thejimmyapp.com/?x](https://www.thejimmyapp.com/?x); [http://thejimmyapp.com/health](http://thejimmyapp.com/health) -> www /health JSON. Mail records (MX, SPF, DKIM, DMARC, Google verifications) migrated intact. Jimmy's stale Railway binding no longer blocks anything.
+`main` = `7b4b3e37e55c46fd23e29e675c4d981bfefd7311`; merged 2026-09-07/08 after `a3422f6`: LEDGER-4, LAND-03, LAND-05, LAND-04, LEDGER-5, UX-01, DOCS-01, LEGAL-01 memo, LEDGER-6, LIST-01, BOARD-01, LIST-02, LIST-03; golden at M3: vitest 46 files / 223 tests, pytest 204.
 
-Railway variables now list www in `TRUSTED_HOSTS`, `CORS_ORIGINS`,
-`WEBSOCKET_ORIGINS`; `VITE_PUBLIC_BASE_URL` and
-`CHESSCOM_OAUTH_CALLBACK_URL` point at www (the callback change was outside the
-order; the Chess.com app registration must match before OAuth is enabled).
+**HELD:** SHELL-01 `899e48b` (merges clean on current main).
 
-Canonical origin ruling: [www.thejimmyapp.com](http://www.thejimmyapp.com).
+**Open owner calls:** SHELL-01 ruling; LEGAL-01 copy approval (6 blocks + deletion scope: identity only or moments too); carousel UX-02 (STRUCTURE / VERBATIM / DROP; brand); credential memo (magic link · password · Chess.com OAuth); founder ordinals #1–#2; guest-list copy (explainer, empty-class row, rotation note — three [COPY-PLACEHOLDER]s); optional seed usernames for 1900–2300 / 1400–1900 via `CHESSCOM_SEED_PLAYERS_1900_2300` / `_1400_1900`; LOG-01; TEST-01.
+
+**Gate notes for AUTOPILOT:** keep-awake = `launchctl submit -l com.thejimmyapp.keepawake -- /usr/bin/caffeinate -dimsu -t <secs>` (Codex reaps `nohup &` children); the screen-control grant drops when the Mac idle-locks (caffeinate does not stop the screen saver) — heartbeat input every ≤3 min or disable the lock for the window; Codex composer accepts clipboard paste + Return in display-scope mode only; lane reports are mirrored at `4robots/HARDCODE/gate4-work/reports/<TAG>.md`. Merge identity for non-fast-forward merges = `git merge-tree --write-tree main branch` tree hash, never an empty diff vs the branch.
 
 ## 4. Save-moment → account-unlock loop — what exists
 
