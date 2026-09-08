@@ -5,16 +5,11 @@ against production by the gate, not taken from an executor report.
 
 ## 1. State of `main`
 
-| Item | Value |
-|---|---|
-| `main` | `bc6f967` (LAND-04 merge, 2026-09-07 10:30 PT) |
-| Golden build on that tree | Ruff ok · pytest **191** · vitest **211** (44 files) · ESLint ok · Vite build ok |
-| Production | `https://www.thejimmyapp.com` — `/health` ok; bundle `index-D3le_Hua.css` + `index-DbWXpsdu.js`; `/openapi.json` 42 paths |
-| Railway | project `thejimmyapp-ryan` (`65513c12-b3af-4d42-ac78-cdb3c34a9ae5`), env `production` (`2567c380-…`), service `thejimmyapp` (`ea408278-…`), region sfo, volume `thejimmyapp-volume` at `/app/data` |
+`main` = `7b4b3e37e55c46fd23e29e675c4d981bfefd7311`; merged 2026-09-07/08 after `a3422f6`: LEDGER-4, LAND-03, LAND-05, LAND-04, LEDGER-5, UX-01, DOCS-01, LEGAL-01 memo, LEDGER-6, LIST-01, BOARD-01, LIST-02, LIST-03; golden at M3: vitest 46 files / 223 tests, pytest 204.
 
-The "lost" flashcard build was never lost: the worktree that was deleted was a
-`git worktree` of the canonical repo, so its commit lived in the canonical `.git`
-as an unpushed local branch. Lesson stays: **push the instant you commit.**
+**HELD:** SHELL-01 `899e48b` (merges clean on current main).
+
+**Open owner calls:** SHELL-01 ruling; LEGAL-01 copy approval (6 blocks + deletion scope: identity only or moments too); carousel UX-02 (STRUCTURE / VERBATIM / DROP; brand); credential memo (magic link · password · Chess.com OAuth); founder ordinals #1–#2; guest-list copy (explainer, empty-class row, rotation note — three [COPY-PLACEHOLDER]s); optional seed usernames for 1900–2300 / 1400–1900 via `CHESSCOM_SEED_PLAYERS_1900_2300` / `_1400_1900`; LOG-01; TEST-01.
 
 ## 2. Production walk-through as a fresh guest (2026-09-05, guest #50)
 
@@ -101,3 +96,5 @@ Nothing in this loop should be built until the owner rules on credential intake.
 - Browser pane: with viewport emulation on, the click-coordinate factor depends on the pane size — 800×565 pane mapped 1:1 with the picture (CSS = frame × 992/800), a 393×277 pane mapped squared (CSS = frame × (992/393)²). Calibrate once per session with a document click listener before clicking anything that matters; the wizard's Save button sits below a 700 px fold — scrollIntoView first.
 - Production bundle identity: build with VITE_PUBLIC_BASE_URL=https://www.thejimmyapp.com to reproduce the deployed JS filename (publicUrl.ts bakes it); the CSS filename matches the default build.
 - Backend tests in the cloud container: Debian's setuptools breaks the chess==1.11.2 sdist build — use a venv (python3 -m venv), then python -m pytest -q from the repo root (191).
+
+**Gate notes for AUTOPILOT:** keep-awake = `launchctl submit -l com.thejimmyapp.keepawake -- /usr/bin/caffeinate -dimsu -t <secs>` (Codex reaps `nohup &` children); the screen-control grant drops when the Mac idle-locks (caffeinate does not stop the screen saver) — heartbeat input every ≤3 min or disable the lock for the window; Codex composer accepts clipboard paste + Return in display-scope mode only; lane reports are mirrored at `4robots/HARDCODE/gate4-work/reports/<TAG>.md`. Merge identity for non-fast-forward merges = `git merge-tree --write-tree main branch` tree hash, never an empty diff vs the branch.
