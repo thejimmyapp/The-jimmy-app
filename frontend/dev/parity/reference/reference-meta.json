@@ -1,0 +1,98 @@
+{
+  "url": "https://lichess.org/study/Ma9vcnpu/4lZqSffp",
+  "capturedAt": "2026-09-08T21:27:18.288Z",
+  "cgBoard": {
+    "x": 379.1875,
+    "y": 82.6875,
+    "width": 680,
+    "height": 680,
+    "top": 82.6875,
+    "right": 1059.1875,
+    "bottom": 762.6875,
+    "left": 379.1875
+  },
+  "coords": [
+    {
+      "className": "ranks black",
+      "rect": {
+        "x": 1049.59375,
+        "y": 83.6875,
+        "width": 9.59375,
+        "height": 680,
+        "top": 83.6875,
+        "right": 1059.1875,
+        "bottom": 763.6875,
+        "left": 1049.59375
+      }
+    },
+    {
+      "className": "files black",
+      "rect": {
+        "x": 379.1875,
+        "y": 745.890625,
+        "width": 680,
+        "height": 16.796875,
+        "top": 745.890625,
+        "right": 1059.1875,
+        "bottom": 762.6875,
+        "left": 379.1875
+      }
+    }
+  ],
+  "pockets": [
+    {
+      "x": 1071.1875,
+      "y": 82.6875,
+      "width": 354.421875,
+      "height": 60,
+      "top": 82.6875,
+      "right": 1425.609375,
+      "bottom": 142.6875,
+      "left": 1071.1875
+    },
+    {
+      "x": 1071.1875,
+      "y": 705.484375,
+      "width": 354.421875,
+      "height": 60,
+      "top": 705.484375,
+      "right": 1425.609375,
+      "bottom": 765.484375,
+      "left": 1071.1875
+    }
+  ],
+  "tools": {
+    "x": 1071.1875,
+    "y": 142.6875,
+    "width": 354.421875,
+    "height": 562.796875,
+    "top": 142.6875,
+    "right": 1425.609375,
+    "bottom": 705.484375,
+    "left": 1071.1875
+  },
+  "controls": {
+    "x": 1071.1875,
+    "y": 765.484375,
+    "width": 354.421875,
+    "height": 42,
+    "top": 765.484375,
+    "right": 1425.609375,
+    "bottom": 807.484375,
+    "left": 1071.1875
+  },
+  "boardBeforeBackgroundImage": "url(\"https://lichess1.org/assets/hashed/brown.d4a5fe34.png\")",
+  "bodyBackground": "rgb(22, 21, 18)",
+  "bodyFont": "14px \"Noto Sans\", sans-serif",
+  "navigation": {
+    "variant": "a:user-agent-minus-headless+locale-en-US",
+    "status": 200,
+    "responseHeaders": {
+      "server": "nginx",
+      "cfRay": null
+    },
+    "requestUserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "boardPresent": true,
+    "title": "bug puzzles & insights • lichess.org"
+  }
+}

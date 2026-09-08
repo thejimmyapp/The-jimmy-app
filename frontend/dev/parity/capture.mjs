@@ -22,10 +22,17 @@ const stateIds = ["S0", "S1", "S2"];
 mkdirSync(referenceDir, { recursive: true });
 mkdirSync(outDir, { recursive: true });
 
-async function newPage(browser) {
-  const context = await browser.newContext({ viewport, deviceScaleFactor: 1, colorScheme: "dark" });
+async function newPage(browser, overrides = {}) {
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 1, colorScheme: "dark", ...overrides });
   const page = await context.newPage();
   return { context, page };
+}
+
+async function installedChromeUserAgent(browser) {
+  const { context, page } = await newPage(browser);
+  const userAgent = await page.evaluate(() => navigator.userAgent);
+  await context.close();
+  return userAgent.replace("HeadlessChrome/", "Chrome/");
 }
 
 async function settle(page) {
@@ -34,16 +41,33 @@ async function settle(page) {
 }
 
 async function captureReference(browser) {
-  const { context, page } = await newPage(browser);
-  let response = await page.goto(referenceUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
-  if (response?.status() === 404) {
-    response = await page.goto(referenceUrl, { waitUntil: "networkidle", timeout: 90_000 });
-    await page.waitForTimeout(3_000);
+  const captureVariant = "a:user-agent-minus-headless+locale-en-US";
+  const userAgent = await installedChromeUserAgent(browser);
+  const { context, page } = await newPage(browser, { userAgent, locale: "en-US" });
+  const response = await page.goto(referenceUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
+  let boardPresent = false;
+  if (response?.status() === 200) {
+    boardPresent = await page.waitForSelector("cg-board", { timeout: 90_000 }).then(() => true, () => false);
   }
-  if (!response?.ok()) throw new Error(`Reference returned HTTP ${response?.status() ?? "unknown"}: ${await page.title()}`);
+  const responseHeaders = response?.headers() ?? {};
+  const requestHeaders = response ? await response.request().allHeaders() : {};
+  const navigation = {
+    variant: captureVariant,
+    status: response?.status() ?? null,
+    responseHeaders: {
+      server: responseHeaders.server ?? null,
+      cfRay: responseHeaders["cf-ray"] ?? null,
+    },
+    requestUserAgent: requestHeaders["user-agent"] ?? userAgent,
+    boardPresent,
+    title: await page.title(),
+  };
+  console.log(`Reference navigation: ${JSON.stringify(navigation)}`);
+  if (!response?.ok() || !boardPresent) {
+    throw new Error(`Reference returned HTTP ${response?.status() ?? "unknown"} with cg-board=${boardPresent}: ${navigation.title}`);
+  }
   const chapter = page.locator(`.study__chapters button[data-id="${referenceChapter}"]`);
   if (await chapter.count() && !(await chapter.first().evaluate((element) => element.classList.contains("active")))) await chapter.first().click();
-  await page.waitForSelector("cg-board", { timeout: 90_000 });
   await page.waitForSelector(".pocket", { timeout: 90_000 });
   await page.waitForSelector(".tview2 move", { timeout: 90_000 });
   await settle(page);
@@ -84,7 +108,7 @@ async function captureReference(browser) {
       bodyFont: getComputedStyle(document.body).font,
     };
   });
-  writeFileSync(join(referenceDir, "reference-meta.json"), `${JSON.stringify(meta, null, 2)}\n`);
+  writeFileSync(join(referenceDir, "reference-meta.json"), `${JSON.stringify({ ...meta, navigation }, null, 2)}\n`);
   await context.close();
 }
 
