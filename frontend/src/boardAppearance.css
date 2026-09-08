@@ -1,0 +1,101 @@
+.board {
+  background-color: var(--board-dark);
+  background-image: var(--board-texture);
+  background-position: center;
+  background-size: cover;
+}
+
+.square.light { background: var(--board-light); }
+.square.dark { background: var(--board-dark); }
+[data-board-theme="wood-classic"] .square.light { background: color-mix(in srgb, var(--board-light) 92%, transparent); }
+[data-board-theme="wood-classic"] .square.dark { background: color-mix(in srgb, var(--board-dark) 92%, transparent); }
+.square.light .coordinate { color: var(--coord-on-light); }
+.square.dark .coordinate { color: var(--coord-on-dark); }
+.square.last-move { box-shadow: inset 0 0 0 999px var(--overlay-last-move); }
+.square.annotated { box-shadow: inset 0 0 0 4px var(--overlay-annotated); }
+.square.selected-source { box-shadow: inset 0 0 0 4px var(--overlay-selected), inset 0 0 0 999px color-mix(in srgb, var(--overlay-selected) 20%, transparent); }
+.square.legal-target::after { border-color: color-mix(in srgb, var(--overlay-legal) 62%, #061016); background: var(--overlay-legal); }
+
+[data-piece-set="cburnett"] {
+  --piece-wK: url("/pieces/cburnett/wK.svg");
+  --piece-wQ: url("/pieces/cburnett/wQ.svg");
+  --piece-wR: url("/pieces/cburnett/wR.svg");
+  --piece-wB: url("/pieces/cburnett/wB.svg");
+  --piece-wN: url("/pieces/cburnett/wN.svg");
+  --piece-wP: url("/pieces/cburnett/wP.svg");
+  --piece-bK: url("/pieces/cburnett/bK.svg");
+  --piece-bQ: url("/pieces/cburnett/bQ.svg");
+  --piece-bR: url("/pieces/cburnett/bR.svg");
+  --piece-bB: url("/pieces/cburnett/bB.svg");
+  --piece-bN: url("/pieces/cburnett/bN.svg");
+  --piece-bP: url("/pieces/cburnett/bP.svg");
+}
+
+[data-piece-set="cburnett"] .piece[data-piece] {
+  display: block;
+  inline-size: var(--piece-inline-size);
+  block-size: var(--piece-inline-size);
+  max-inline-size: 100%;
+  max-block-size: 100%;
+  background-image: var(--piece-image);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  color: transparent;
+  text-shadow: none;
+  -webkit-text-stroke: 0;
+}
+
+[data-piece-set="cburnett"] .pocket-rail .piece[data-piece] {
+  inline-size: min(var(--piece-inline-size), var(--pocket-block-size));
+  block-size: min(var(--piece-inline-size), var(--pocket-block-size));
+}
+
+.piece[data-piece="wK"] { --piece-image: var(--piece-wK); }
+.piece[data-piece="wQ"] { --piece-image: var(--piece-wQ); }
+.piece[data-piece="wR"] { --piece-image: var(--piece-wR); }
+.piece[data-piece="wB"] { --piece-image: var(--piece-wB); }
+.piece[data-piece="wN"] { --piece-image: var(--piece-wN); }
+.piece[data-piece="wP"] { --piece-image: var(--piece-wP); }
+.piece[data-piece="bK"] { --piece-image: var(--piece-bK); }
+.piece[data-piece="bQ"] { --piece-image: var(--piece-bQ); }
+.piece[data-piece="bR"] { --piece-image: var(--piece-bR); }
+.piece[data-piece="bB"] { --piece-image: var(--piece-bB); }
+.piece[data-piece="bN"] { --piece-image: var(--piece-bN); }
+.piece[data-piece="bP"] { --piece-image: var(--piece-bP); }
+
+.engine-drop image { opacity: .94; }
+
+.appearance-mini-board {
+  position: relative;
+  width: 70px;
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  overflow: hidden;
+  border: 1px solid #0007;
+  background-image: var(--board-texture);
+  background-size: cover;
+}
+.appearance-mini-square { display: grid; place-items: center; background: var(--board-light); }
+.appearance-mini-square:nth-child(2),
+.appearance-mini-square:nth-child(3) { background: var(--board-dark); }
+[data-board-theme="wood-classic"].appearance-mini-board .appearance-mini-square { background: color-mix(in srgb, var(--board-light) 92%, transparent); }
+[data-board-theme="wood-classic"].appearance-mini-board .appearance-mini-square:nth-child(2),
+[data-board-theme="wood-classic"].appearance-mini-board .appearance-mini-square:nth-child(3) { background: color-mix(in srgb, var(--board-dark) 92%, transparent); }
+.appearance-mini-board .piece {
+  inline-size: 28px;
+  block-size: 28px;
+  font-size: 28px;
+  line-height: 1;
+}
+.appearance-mini-board[data-piece-set="cburnett"] .piece[data-piece] { inline-size: 28px; block-size: 28px; }
+
+.piece-style-card .appearance-mini-board { width: 42px; }
+.piece-style-card .appearance-mini-board .piece,
+.piece-style-card .appearance-mini-board[data-piece-set="cburnett"] .piece[data-piece] {
+  inline-size: 17px;
+  block-size: 17px;
+  font-size: 17px;
+}

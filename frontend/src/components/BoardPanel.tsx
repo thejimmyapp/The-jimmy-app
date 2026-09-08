@@ -1,28 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BrainCircuit, ExternalLink, FileInput, LockKeyhole } from "lucide-react";
 import { api } from "../api";
+import { displayPiece, pieceAriaLabel, pieceAssetId, resolvePieceSet, type PieceSetId } from "../boardAppearance";
 import { isMeaningfulChessVector, parseEngineBestmove } from "../boardInteractions";
 import { sendRoomEvent } from "../socket";
 import { currentPosition, useCoachStore } from "../store";
 import type { Annotation, BoardId, ExplorationMoveResult, ReplayPosition } from "../types";
 import { FutureComponentPlaceholder } from "./FutureComponentPlaceholder";
-
-const pieces: Record<string, string> = {
-  K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘", P: "♙",
-  k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟",
-};
-
-const filledPieces: Record<string, string> = {
-  K: "\u265A", Q: "\u265B", R: "\u265C", B: "\u265D", N: "\u265E", P: "\u265F",
-  k: "\u265A", q: "\u265B", r: "\u265C", b: "\u265D", n: "\u265E", p: "\u265F",
-};
-
-type PieceStyleId = "classic" | "solid" | "bold" | "soft";
-
-const displayPiece = (piece: string, pieceStyle: PieceStyleId) => {
-  if (pieceStyle === "solid") return filledPieces[piece] ?? "";
-  return pieces[piece] ?? "";
-};
 
 const squareName = (row: number, col: number, orientation: "white" | "black") => {
   const file = orientation === "white" ? col : 7 - col;
@@ -35,7 +19,7 @@ interface Props {
   position: ReplayPosition | null;
   pairedPosition?: ReplayPosition | null;
   orientation: "white" | "black";
-  pieceStyle: PieceStyleId;
+  pieceStyle: PieceSetId;
   title: string;
   showTitle?: boolean;
   onCaptureMoment?: () => void;
@@ -81,6 +65,7 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
   const [interactionStatus, setInteractionStatus] = useState("");
   const [analysis, setAnalysis] = useState<BoardAnalysisState>({ status: "idle" });
   const [oneBoardAccepted, setOneBoardAccepted] = useState(false);
+  const pieceSet = resolvePieceSet(pieceStyle);
   const { game, globalPly, mode, explorationPositions, explorationFuture, annotations, addAnnotation, removeAnnotation, applyExploration, undoExploration, redoExploration, seek } = useCoachStore();
   const visible = useMemo(
     () => annotations.filter((item) => item.board === boardId && item.ply === globalPly),
@@ -339,6 +324,8 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
           const lastMove = position?.from_square === square || position?.to_square === square;
           const pieceColor = piece && piece === piece.toUpperCase() ? "White" : "Black";
           const canDrag = !locked && Boolean(piece) && position?.side_to_move === pieceColor;
+          const assetId = pieceAssetId(piece);
+          const svgPiece = pieceSet.kind === "svg" && assetId;
           return (
             <button
               className={`square ${(rowIndex + colIndex) % 2 ? "dark" : "light"} ${marked ? "annotated" : ""} ${lastMove ? "last-move" : ""} ${selectedSource === square ? "selected-source" : ""} ${legalTargets.includes(square) ? "legal-target" : ""}`}
@@ -361,9 +348,12 @@ export function BoardPanel({ boardId, position, pairedPosition, orientation, pie
               {rowIndex === 7 && <span className="coordinate file-coordinate">{square[0]}</span>}
               <span
                 className={`piece ${piece === piece.toUpperCase() ? "white-piece" : "black-piece"}`}
+                data-piece={svgPiece || undefined}
+                role={svgPiece ? "img" : undefined}
+                aria-label={svgPiece ? pieceAriaLabel(piece) : undefined}
                 draggable={canDrag}
                 onDragStart={(event) => { event.dataTransfer.setData("bughouse/from", square); event.dataTransfer.effectAllowed = "move"; setSelectedSource(square); void showLegalTargets(square); }}
-              >{displayPiece(piece, pieceStyle)}</span>
+              >{svgPiece ? null : displayPiece(piece, pieceStyle)}</span>
             </button>
           );
         }))}
@@ -448,10 +438,11 @@ function PlayerBar({ name, clock, bottom = false }: { name: string; clock?: stri
   return <div className={`player-bar ${bottom ? "bottom" : ""}`}><strong>{name}</strong><span className="clock">{clock ?? "--:--"}</span></div>;
 }
 
-function PocketRail({ color, value, draggable, pieceStyle, selectedPiece, onSelectPiece, onDragPiece }: { color: "White" | "Black"; value: string; draggable: boolean; pieceStyle: PieceStyleId; selectedPiece: "P" | "N" | "B" | "R" | "Q" | null; onSelectPiece: (piece: "P" | "N" | "B" | "R" | "Q") => void; onDragPiece: (piece: "P" | "N" | "B" | "R" | "Q") => void }) {
-  const counts = [...value].filter((piece) => pieces[piece]).reduce<Record<string, number>>((result, piece) => ({ ...result, [piece]: (result[piece] ?? 0) + 1 }), {});
+export function PocketRail({ color, value, draggable, pieceStyle, selectedPiece, onSelectPiece, onDragPiece }: { color: "White" | "Black"; value: string; draggable: boolean; pieceStyle: PieceSetId; selectedPiece: "P" | "N" | "B" | "R" | "Q" | null; onSelectPiece: (piece: "P" | "N" | "B" | "R" | "Q") => void; onDragPiece: (piece: "P" | "N" | "B" | "R" | "Q") => void }) {
+  const pieceSet = resolvePieceSet(pieceStyle);
+  const counts = [...value].filter((piece) => pieceAssetId(piece)).reduce<Record<string, number>>((result, piece) => ({ ...result, [piece]: (result[piece] ?? 0) + 1 }), {});
   const entries = Object.entries(counts).filter(([piece]) => color === "White" ? piece === piece.toUpperCase() : piece === piece.toLowerCase());
-  return <div className={`pocket-rail ${color.toLowerCase()}`} aria-label={`${color} pocket`}>{entries.map(([piece, count]) => { const symbol = piece.toUpperCase() as "P" | "N" | "B" | "R" | "Q"; return <span className={selectedPiece === symbol && draggable ? "selected-pocket-piece" : ""} key={piece} draggable={draggable} onClick={() => { if (draggable) onSelectPiece(symbol); }} onDragStart={(event) => { if (!draggable) { event.preventDefault(); return; } event.dataTransfer.setData("bughouse/drop", symbol); event.dataTransfer.effectAllowed = "move"; onDragPiece(symbol); }}>{displayPiece(piece, pieceStyle)}{count > 1 && <b>{count}</b>}</span>; })}</div>;
+  return <div className={`pocket-rail ${color.toLowerCase()}`} aria-label={`${color} pocket`}>{entries.map(([piece, count]) => { const symbol = piece.toUpperCase() as "P" | "N" | "B" | "R" | "Q"; const assetId = pieceAssetId(piece); const svgPiece = pieceSet.kind === "svg" && assetId; return <span className={`piece ${piece === piece.toUpperCase() ? "white-piece" : "black-piece"} ${selectedPiece === symbol && draggable ? "selected-pocket-piece" : ""}`} data-piece={svgPiece || undefined} role={svgPiece ? "img" : undefined} aria-label={svgPiece ? pieceAriaLabel(piece) : undefined} key={piece} draggable={draggable} onClick={() => { if (draggable) onSelectPiece(symbol); }} onDragStart={(event) => { if (!draggable) { event.preventDefault(); return; } event.dataTransfer.setData("bughouse/drop", symbol); event.dataTransfer.effectAllowed = "move"; onDragPiece(symbol); }}>{svgPiece ? null : displayPiece(piece, pieceStyle)}{count > 1 && <b>{count}</b>}</span>; })}</div>;
 }
 
 function AnalysisLabel({ analysis }: { analysis: BoardAnalysisState }) {
@@ -468,11 +459,13 @@ function boardPoint(square: string, orientation: "white" | "black") {
   return { x: file * 100 + 50, y: (7 - rank) * 100 + 50 };
 }
 
-function EngineSuggestion({ move, orientation, markerId, sideToMove, pieceStyle }: { move: NonNullable<ReturnType<typeof parseEngineBestmove>>; orientation: "white" | "black"; markerId: string; sideToMove: string; pieceStyle: PieceStyleId }) {
+function EngineSuggestion({ move, orientation, markerId, sideToMove, pieceStyle }: { move: NonNullable<ReturnType<typeof parseEngineBestmove>>; orientation: "white" | "black"; markerId: string; sideToMove: string; pieceStyle: PieceSetId }) {
   const to = boardPoint(move.to, orientation);
   if (!move.from && move.dropPiece) {
     const pieceKey = sideToMove === "Black" ? move.dropPiece.toLowerCase() : move.dropPiece;
-    return <g className="engine-suggestion engine-drop"><circle cx={to.x} cy={to.y} r="40" /><text x={to.x} y={to.y}>{displayPiece(pieceKey, pieceStyle)}</text></g>;
+    const pieceSet = resolvePieceSet(pieceStyle);
+    const assetId = pieceAssetId(pieceKey);
+    return <g className="engine-suggestion engine-drop"><circle cx={to.x} cy={to.y} r="40" />{pieceSet.kind === "svg" && pieceSet.dir && assetId ? <image href={`${pieceSet.dir}${assetId}.svg`} x={to.x - 42} y={to.y - 42} width="84" height="84" role="img" aria-label={pieceAriaLabel(pieceKey)} /> : <text x={to.x} y={to.y}>{displayPiece(pieceKey, pieceStyle)}</text>}</g>;
   }
   if (!move.from) return null;
   const from = boardPoint(move.from, orientation);

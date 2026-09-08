@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { boardThemeVariables } from "../boardAppearance";
 
 interface AppShellProps {
   rail: ReactNode;
@@ -18,7 +19,7 @@ export function AppShell({ rail, railUnlockedAction, stage, topbar, dock, classN
   const wholeDockLocked = onboardingLocked && !dockOverlayActive;
   // Internal QA reference: the board layout was originally evaluated at 175% browser zoom.
   return (
-    <main className={`app-shell app-shell-rail-stage-dock ${className}`} data-board-theme={boardTheme} data-piece-style={pieceStyle} data-piece-size={pieceSize}>
+    <main className={`app-shell app-shell-rail-stage-dock ${className}`} data-board-theme={boardTheme} data-piece-set={pieceStyle} data-piece-style={pieceStyle} data-piece-size={pieceSize} style={boardThemeVariables(boardTheme) as CSSProperties}>
       <div className="small-screen-message" role="status"><strong>Widen the window to at least 992px to use The Jimmy App.</strong></div>
       <aside className="app-rail" aria-label="Application navigation">
         <div className="app-rail-locked-content" inert={onboardingLocked || undefined} aria-hidden={onboardingLocked || undefined}>{rail}</div>

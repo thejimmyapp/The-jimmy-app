@@ -3,6 +3,7 @@ import { BarChart3, BookOpen, Bot, Check, Copy, ExternalLink, FileInput, Flag, H
 import { CSSProperties, FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ApiError, api } from "./api";
+import { BOARD_THEMES, DEFAULT_BOARD_THEME, DEFAULT_PIECE_SET, PIECE_SETS, boardThemeVariables, displayPiece, pieceAriaLabel, pieceAssetId, resolvePieceSet, type BoardThemeId, type PieceSetId } from "./boardAppearance";
 import { MatchReconstructionError, reconstructGuestMatch } from "./bughouseDecoder";
 import { buildChessComConnectorPrompt } from "./chesscomConnectorPrompt";
 import { bmachoUrlFromChessComUrl } from "./chesscomGameUrl";
@@ -35,30 +36,12 @@ import { currentPosition, useCoachStore } from "./store";
 import { replayNotices } from "./replayIntegrity";
 import type { BoardId, GamePayload, GameSummary, NormalizedMatch } from "./types";
 
-const boardThemes = [
-  { id: "slate", name: "Slate", light: "#c8d2d8", dark: "#58717e", white: "#f7f5ed", black: "#17202b" },
-  { id: "classic", name: "Classic", light: "#edd8b4", dark: "#b98b64", white: "#fff9ec", black: "#050505" },
-  { id: "wood", name: "Wood", light: "#e6c690", dark: "#9b683d", white: "#fff7e3", black: "#3e3e3e" },
-  { id: "green", name: "Green", light: "#eee4c9", dark: "#739352", white: "#f7f7f0", black: "#1f2933" },
-  { id: "blue", name: "Blue", light: "#d8e3ea", dark: "#6d92a4", white: "#ffffff", black: "#182536" },
-  { id: "violet", name: "Violet", light: "#ded6ea", dark: "#7c6798", white: "#fffaf0", black: "#1d1630" },
-  { id: "mono", name: "Mono", light: "#dedede", dark: "#7b7b7b", white: "#ffffff", black: "#0b0b0b" },
-] as const;
-
-type BoardThemeId = (typeof boardThemes)[number]["id"];
-const pieceStyles = [
-  { id: "classic", name: "Classic", white: "\u2658", black: "\u265E" },
-  { id: "solid", name: "Filled", white: "\u265E", black: "\u265E" },
-  { id: "bold", name: "Bold", white: "\u265C", black: "\u265C" },
-  { id: "soft", name: "Soft", white: "\u2657", black: "\u265D" },
-] as const;
 const pieceSizes = [
   { id: "compact", name: "Compact" },
   { id: "normal", name: "Normal" },
   { id: "large", name: "Large" },
   { id: "xl", name: "XL" },
 ] as const;
-type PieceStyleId = (typeof pieceStyles)[number]["id"];
 type PieceSizeId = (typeof pieceSizes)[number]["id"];
 const themeStorageKey = "thejimmyapp.boardTheme";
 const pieceStyleStorageKey = "thejimmyapp.pieceStyle";
@@ -77,13 +60,28 @@ const initialMomentPermalink = (): InitialMomentPermalink | null => {
 
 const initialBoardTheme = (): BoardThemeId => {
   const saved = localStorage.getItem(themeStorageKey);
-  return boardThemes.some((theme) => theme.id === saved) ? saved as BoardThemeId : "slate";
+  return BOARD_THEMES.some((theme) => theme.id === saved) ? saved as BoardThemeId : DEFAULT_BOARD_THEME;
 };
 
-const initialPieceStyle = (): PieceStyleId => {
+const initialPieceStyle = (): PieceSetId => {
   const saved = localStorage.getItem(pieceStyleStorageKey);
-  return pieceStyles.some((style) => style.id === saved) ? saved as PieceStyleId : "solid";
+  return PIECE_SETS.some((pieceSet) => pieceSet.id === saved) ? saved as PieceSetId : DEFAULT_PIECE_SET;
 };
+
+const previewPieces = ["N", "p", "B", "r"] as const;
+
+function AppearanceMiniBoard({ boardTheme, pieceSet }: { boardTheme: BoardThemeId; pieceSet: PieceSetId }) {
+  const selectedSet = resolvePieceSet(pieceSet);
+  return (
+    <span className="appearance-mini-board" data-board-theme={boardTheme} data-piece-set={pieceSet} style={boardThemeVariables(boardTheme) as CSSProperties}>
+      {previewPieces.map((piece) => {
+        const assetId = pieceAssetId(piece);
+        const svgPiece = selectedSet.kind === "svg" && assetId;
+        return <i className="appearance-mini-square" key={piece}><span className={`piece ${piece === piece.toUpperCase() ? "white-piece" : "black-piece"}`} data-piece={svgPiece || undefined} role={svgPiece ? "img" : undefined} aria-label={svgPiece ? pieceAriaLabel(piece) : undefined}>{svgPiece ? null : displayPiece(piece, pieceSet)}</span></i>;
+      })}
+    </span>
+  );
+}
 
 const initialPieceSize = (): PieceSizeId => {
   const saved = localStorage.getItem(pieceSizeStorageKey);
@@ -96,7 +94,7 @@ export default function App() {
   const { roomId, username, setGame, setGuestReplay, setRoom } = store;
   const joinedRoomRef = useRef<string | null>(null);
   const [boardTheme, setBoardTheme] = useState<BoardThemeId>(initialBoardTheme);
-  const [pieceStyle, setPieceStyle] = useState<PieceStyleId>(initialPieceStyle);
+  const [pieceStyle, setPieceStyle] = useState<PieceSetId>(initialPieceStyle);
   const [pieceSize, setPieceSize] = useState<PieceSizeId>(initialPieceSize);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
@@ -278,7 +276,7 @@ export default function App() {
     setBoardTheme(theme);
     localStorage.setItem(themeStorageKey, theme);
   };
-  const choosePieceStyle = (style: PieceStyleId) => {
+  const choosePieceStyle = (style: PieceSetId) => {
     setPieceStyle(style);
     localStorage.setItem(pieceStyleStorageKey, style);
   };
@@ -908,37 +906,24 @@ export default function App() {
             <span className="modal-kicker">BOARD SETTINGS</span>
             <h1>Board style</h1>
             <div className="theme-grid">
-              {boardThemes.map((theme) => {
+              {BOARD_THEMES.map((theme) => {
                 const active = theme.id === boardTheme;
-                const previewStyle = {
-                  "--preview-light": theme.light,
-                  "--preview-dark": theme.dark,
-                  "--preview-white": theme.white,
-                  "--preview-black": theme.black,
-                } as CSSProperties;
                 return (
                   <button key={theme.id} className={`theme-card ${active ? "active" : ""}`} type="button" onClick={() => chooseBoardTheme(theme.id)}>
-                    <span className="theme-preview" style={previewStyle}>
-                      <i />
-                      <i />
-                      <i />
-                      <i />
-                      <b className="preview-white">{"\u2658"}</b>
-                      <b className="preview-black">{"\u265E"}</b>
-                    </span>
+                    <AppearanceMiniBoard boardTheme={theme.id} pieceSet={pieceStyle} />
                     <span>{theme.name}</span>
                     {active && <Check size={14} />}
                   </button>
                 );
               })}
             </div>
-            <h2>Piece style</h2>
+            <h2>Piece set</h2>
             <div className="piece-style-grid">
-              {pieceStyles.map((style) => (
-                <button key={style.id} className={`piece-style-card ${style.id === pieceStyle ? "active" : ""}`} type="button" onClick={() => choosePieceStyle(style.id)}>
-                  <span className="piece-style-preview"><b className="preview-white">{style.white}</b><b className="preview-black">{style.black}</b></span>
-                  <span>{style.name}</span>
-                  {style.id === pieceStyle && <Check size={14} />}
+              {PIECE_SETS.map((pieceSet) => (
+                <button key={pieceSet.id} className={`piece-style-card ${pieceSet.id === pieceStyle ? "active" : ""}`} type="button" onClick={() => choosePieceStyle(pieceSet.id)}>
+                  <AppearanceMiniBoard boardTheme={boardTheme} pieceSet={pieceSet.id} />
+                  <span>{pieceSet.name}</span>
+                  {pieceSet.id === pieceStyle && <Check size={14} />}
                 </button>
               ))}
             </div>

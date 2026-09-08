@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" preserveAspectRatio="none">
+  <defs>
+    <filter id="grain" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.16" numOctaves="2" seed="23" />
+      <feDisplacementMap in="SourceGraphic" scale="3" />
+    </filter>
+  </defs>
+  <g fill="none" stroke="#59351f" stroke-linecap="round" opacity=".07" filter="url(#grain)">
+    <path d="M-12 18C38 7 71 31 126 17s85 4 126-8" />
+    <path d="M-8 54c51-12 91 17 145 2s82 9 112-3" />
+    <path d="M-15 91c63-18 98 19 157 1s78 8 111-1" />
+    <path d="M-10 129c45-10 82 12 137-3s89 8 127-4" />
+    <path d="M-13 166c56-14 97 17 149 1s81 7 116-2" />
+    <path d="M-9 205c48-13 86 14 143-1s82 7 118-3" />
+    <path d="M-16 231c67-12 104 10 161-2s76 6 108-1" />
+  </g>
+</svg>
