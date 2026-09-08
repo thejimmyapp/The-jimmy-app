@@ -29,6 +29,7 @@ function MoveCell({ node, activeId, onSelect, inline = false }: { node: PgnNode;
   const className = [inline ? "inline-move" : "column-move", node.id === activeId ? "active" : "", firstGlyph ? `glyph-${glyphClass(firstGlyph)}` : ""].filter(Boolean).join(" ");
   return <move className={className} data-node-id={node.id} data-glyph={firstGlyph?.kind} onClick={() => onSelect(node.id)} tabIndex={0} role="button">
     {inline && <index>{node.moveNumber}{node.sideToMove === "Black" ? "..." : "."}</index>}
+    {node.boardTag && <span className="parity-board-tag" aria-label={`Board ${node.boardTag}`}>{node.boardTag}</span>}
     <san>{shownSan(node.san, node.sideToMove)}</san>
     {node.glyphs.map((glyph, index) => <glyph key={`${glyph.symbol}-${index}`} className={glyphClass(glyph)}>{glyph.symbol}</glyph>)}
   </move>;

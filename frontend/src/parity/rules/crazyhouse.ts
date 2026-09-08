@@ -177,6 +177,19 @@ function checkedKing(state: CrazyhouseState, side: Side) {
   return king && isSquareAttacked(state, king, otherSide(side)) ? king : null;
 }
 
+export function kingSquareInCheck(position: Pick<CrazyhousePosition, "board" | "white_pocket" | "black_pocket" | "side_to_move">, side: Side) {
+  const state: CrazyhouseState = {
+    ...position,
+    board: position.board.map((row) => [...row]),
+    castlingRights: "",
+    enPassant: null,
+    promoted: new Set(),
+    lastMove: null,
+    check: null,
+  };
+  return checkedKing(state, side);
+}
+
 function removeCastlingRight(state: CrazyhouseState, chars: string) {
   for (const char of chars) state.castlingRights = state.castlingRights.replace(char, "");
 }
