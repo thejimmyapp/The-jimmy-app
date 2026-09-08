@@ -11,7 +11,9 @@ const frontendRoot = join(parityRoot, "..", "..");
 const referenceDir = join(parityRoot, "reference");
 const outDir = join(parityRoot, "out");
 const statesPath = join(frontendRoot, "src", "parity", "fixtures", "Ma9vcnpu-4lZqSffp.states.json");
-const studyUrl = "https://lichess.org/study/Ma9vcnpu/4lZqSffp";
+const defaultStudyUrl = "https://lichess.org/study/Ma9vcnpu/4lZqSffp";
+const referenceUrl = process.env.PARITY_REFERENCE_URL ?? defaultStudyUrl;
+const referenceChapter = process.env.PARITY_REFERENCE_CHAPTER ?? "4lZqSffp";
 const candidateUrl = "http://127.0.0.1:4177/dev/parity.html";
 const viewport = { width: 1440, height: 900 };
 const boardCrop = { x: 323, y: 83, width: 800, height: 800 };
@@ -33,9 +35,13 @@ async function settle(page) {
 
 async function captureReference(browser) {
   const { context, page } = await newPage(browser);
-  const response = await page.goto(studyUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
+  let response = await page.goto(referenceUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
+  if (response?.status() === 404) {
+    response = await page.goto(referenceUrl, { waitUntil: "networkidle", timeout: 90_000 });
+    await page.waitForTimeout(3_000);
+  }
   if (!response?.ok()) throw new Error(`Reference returned HTTP ${response?.status() ?? "unknown"}: ${await page.title()}`);
-  const chapter = page.locator('.study__chapters button[data-id="4lZqSffp"]');
+  const chapter = page.locator(`.study__chapters button[data-id="${referenceChapter}"]`);
   if (await chapter.count() && !(await chapter.first().evaluate((element) => element.classList.contains("active")))) await chapter.first().click();
   await page.waitForSelector("cg-board", { timeout: 90_000 });
   await page.waitForSelector(".pocket", { timeout: 90_000 });
@@ -180,6 +186,9 @@ function compareAll() {
       const fileMismatch = compareCrop(reference, candidate, filesCrop, stateId, "files", threshold);
       coords[threshold] = (rankMismatch * ranksCrop.width * ranksCrop.height + fileMismatch * filesCrop.width * filesCrop.height) / (ranksCrop.width * ranksCrop.height + filesCrop.width * filesCrop.height);
     }
+    const pockets = { top: {}, bottom: {} };
+    const pocketCrops = { top: { x: 1135, y: 84, width: 284, height: 57 }, bottom: { x: 1135, y: 828, width: 284, height: 57 } };
+    for (const [position, cropBox] of Object.entries(pocketCrops)) for (const threshold of [0.1, 0.3]) pockets[position][threshold] = compareCrop(reference, candidate, cropBox, stateId, `pocket-${position}`, threshold);
     const means = nearestEmptySquares(states[stateId].position.board).map(({ square, displayX, displayY }) => {
       const x = boardCrop.x + displayX * 100;
       const y = boardCrop.y + displayY * 100;
@@ -187,8 +196,8 @@ function compareAll() {
       const actual = squareMean(candidate, x, y);
       return { square, reference: expected, candidate: actual, deltaE: Number(deltaE(expected, actual).toFixed(2)) };
     });
-    results[stateId] = { board, coords, means };
-    console.log(`${stateId}: board mismatch ${board[0.1].toFixed(3)}% @0.1 · ${board[0.3].toFixed(3)}% @0.3; coords ${coords[0.1].toFixed(3)}% @0.1 · ${coords[0.3].toFixed(3)}% @0.3`);
+    results[stateId] = { board, coords, pockets, means };
+    console.log(`${stateId}: board ${board[0.1].toFixed(3)}% @0.1 · ${board[0.3].toFixed(3)}% @0.3; coords ${coords[0.1].toFixed(3)}% @0.1 · ${coords[0.3].toFixed(3)}% @0.3; pocket-top ${pockets.top[0.1].toFixed(3)}% · ${pockets.top[0.3].toFixed(3)}%; pocket-bottom ${pockets.bottom[0.1].toFixed(3)}% · ${pockets.bottom[0.3].toFixed(3)}%`);
     console.table(means.map((item) => ({ state: stateId, square: item.square, reference: item.reference.join(","), candidate: item.candidate.join(","), deltaE: item.deltaE })));
   }
   writeFileSync(join(outDir, "results.json"), `${JSON.stringify(results, null, 2)}\n`);
@@ -197,12 +206,16 @@ function compareAll() {
 const mode = process.argv[2] ?? "all";
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 try {
-  if (mode === "reference") await captureReference(browser);
+  const referenceComplete = stateIds.every((stateId) => existsSync(join(referenceDir, `${stateId}.png`)));
+  if (mode === "reference") {
+    if (referenceComplete && process.env.PARITY_RECAPTURE !== "1") console.log("Reference S0/S1/S2 already exist; set PARITY_RECAPTURE=1 to replace them.");
+    else await captureReference(browser);
+  }
   else {
     await captureCandidate(browser);
-    if (stateIds.every((stateId) => existsSync(join(referenceDir, `${stateId}.png`)))) compareAll();
+    if (referenceComplete) compareAll();
     else {
-      const result = { status: "unmeasurable", reason: `Reference unavailable at ${studyUrl}; candidate captures completed.` };
+      const result = { status: "unmeasurable", reason: `Reference unavailable at ${referenceUrl}; candidate captures completed.` };
       writeFileSync(join(outDir, "results.json"), `${JSON.stringify(result, null, 2)}\n`);
       console.log(result.reason);
     }

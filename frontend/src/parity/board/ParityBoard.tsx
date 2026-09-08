@@ -10,7 +10,7 @@ export interface ParityPosition {
 }
 
 export interface ParityLastMove { from: string | null; to: string }
-export interface ParityGlyph { square: string; glyph: string; kind: "good" | "brilliant" }
+export interface ParityGlyph { square: string; glyph: string; kind: "brilliant" | "good" | "inaccuracy" | "interesting" | "mistake" | "blunder" }
 export interface ParityShape { brush: "green"; orig: string; dest?: string }
 
 export interface ParityBoardProps {

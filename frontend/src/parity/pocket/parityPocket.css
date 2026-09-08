@@ -1,0 +1,43 @@
+.pocket {
+  display: flex;
+  width: 283.5px;
+  height: 56.7px;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 7px;
+  background: rgb(136, 136, 136);
+}
+
+.pocket piece {
+  position: relative;
+  display: block;
+  width: 56.7px;
+  height: 56.7px;
+  flex: 0 0 56.7px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.pocket.usable piece { cursor: pointer; }
+.pocket piece[data-nb="0"] { opacity: .1; }
+
+.pocket piece::after {
+  content: attr(data-nb);
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  width: 18.03px;
+  height: 19.86px;
+  place-items: center;
+  border-radius: 7px;
+  background: rgb(214, 79, 0);
+  color: #fff;
+  font: 700 15.4px/13.86px "Noto Sans", sans-serif;
+  text-align: center;
+}
+
+.pocket piece.empty::after { display: none; content: none; }

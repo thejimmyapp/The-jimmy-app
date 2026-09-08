@@ -6,9 +6,9 @@ body { background: rgb(22, 21, 18); color: rgb(208, 206, 202); font: 14px "Noto 
 .parity-side { position: absolute; left: 14.4px; top: 82.7px; width: 293.5px; height: 801.7px; }
 .parity-board-block { position: absolute; left: 319.8px; top: 82.7px; width: 803.3px; height: 803.3px; }
 .parity-tools-column { position: absolute; left: 1135.1px; top: 82.7px; width: 283.5px; height: 845.3px; background: rgb(38, 36, 33); }
-.parity-pocket-top { height: 56.7px; }
+.parity-tools-column > .pocket-top { position: absolute; top: 1.6px; left: 0; }
 .parity-moves { position: absolute; top: 58.4px; width: 100%; height: 658.5px; overflow: auto; }
 .parity-fork { position: absolute; top: 717.3px; width: 100%; height: 26px; }
-.parity-pocket-bottom { position: absolute; top: 745px; width: 100%; height: 56.7px; }
+.parity-tools-column > .pocket-bottom { position: absolute; top: 744.9px; left: 0; }
 .parity-controls { position: absolute; top: 803.3px; width: 100%; height: 42px; }
 .parity-underboard { position: absolute; left: 319.8px; top: 899px; width: 803.3px; min-height: 1px; }
