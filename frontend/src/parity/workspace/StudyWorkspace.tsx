@@ -4,26 +4,21 @@ import type { GamePayload, ReplayPosition } from "../../types";
 import { ParityBoard } from "../board/ParityBoard";
 import { parityBoardTheme } from "../board/themes";
 import { ParityControls } from "../controls/ParityControls";
-import { PARITY_LAYOUTS, type ParityLayout } from "../layout";
+import { studyLayoutForBox, type ParityLayout } from "../layout";
 import { ParityPocket } from "../pocket/ParityPocket";
 import { parityKeyboardAction, type ParityNavigationAction } from "../tree/treeNavigation";
 import { replayToParity } from "../adapters/replayToParity";
 import { StudyMoves } from "./StudyMoves";
 import "./studyWorkspace.css";
 
-function studyLayoutForWidth(width: number) {
-  if (width >= 1600) return PARITY_LAYOUTS.owner;
-  if (width <= 1024) return PARITY_LAYOUTS.reference1024;
-  if (width <= 1200) return PARITY_LAYOUTS.reference1200;
-  return PARITY_LAYOUTS.reference;
-}
+const fallbackFrame = () => ({ width: Math.max(0, window.innerWidth - 68), height: Math.max(0, window.innerHeight - 58) });
 
 function reviewerOrientation(game: GamePayload): "white" | "black" {
   return game.game.user_color === "black" ? "black" : "white";
 }
 
 function compactLayout(layout: ParityLayout): ParityLayout {
-  const size = layout.id === "owner" ? 293.5 : Math.min(293.5, layout.board.size * 0.5);
+  const size = layout.id === "owner" || layout.id.startsWith("jimmy") ? 293.5 : Math.min(293.5, layout.board.size * 0.5);
   const pocketHeight = 35;
   return {
     ...layout,
@@ -44,19 +39,27 @@ function pocketColor(position: ReplayPosition, orientation: "white" | "black", e
 
 export function StudyWorkspace() {
   const { game, globalPly, seek } = useCoachStore();
-  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
+  const [frame, setFrame] = useState(fallbackFrame);
   const [flipped, setFlipped] = useState(false);
   const workspaceRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    const resize = () => setViewportWidth(window.innerWidth);
-    window.addEventListener("resize", resize);
+    const workspace = workspaceRef.current;
+    if (workspace && typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(([entry]) => setFrame({ width: entry.contentRect.width, height: entry.contentRect.height }));
+      observer.observe(workspace);
+      return () => observer.disconnect();
+    }
+    const resize = () => setFrame(fallbackFrame());
+    window.addEventListener("resize", resize); resize();
     return () => window.removeEventListener("resize", resize);
   }, []);
   useEffect(() => workspaceRef.current?.focus(), []);
   if (!game) return null;
 
-  const layout = studyLayoutForWidth(viewportWidth);
+  const layout = studyLayoutForBox(frame.width, frame.height);
   const smallLayout = compactLayout(layout);
+  const secondBoard = layout.secondBoard!;
+  const secondBoardTop = secondBoard.placement === "side" ? layout.board.y : layout.board.y + layout.board.size + 8 + smallLayout.tools.pocketHeight;
   const baseOrientation = reviewerOrientation(game);
   const orientation = flipped ? (baseOrientation === "white" ? "black" : "white") : baseOrientation;
   const boardAReplay = currentPosition(game, globalPly, "A");
@@ -92,11 +95,12 @@ export function StudyWorkspace() {
     "--study-pocket-bottom": `${layout.tools.pocketBottomY}px`, "--study-moves-top": `${layout.tools.movesTop}px`,
     "--study-moves-height": `${layout.tools.movesBottom - layout.tools.movesTop}px`, "--study-controls-y": `${layout.tools.controlsY}px`, "--study-controls-height": `${layout.tools.controlsHeight}px`,
     "--study-side-size": `${smallLayout.board.size}px`, "--study-side-pocket-height": `${smallLayout.tools.pocketHeight}px`,
+    "--study-side-x": `${secondBoard.x}px`, "--study-side-top": `${secondBoardTop}px`, "--study-side-column-width": `${secondBoard.width}px`,
   } as CSSProperties;
 
-  return <section ref={workspaceRef} className="study-workspace" aria-label="Study review workspace" tabIndex={0} onKeyDown={onKeyDown} data-layout={layout.id} data-orientation={orientation} style={style}>
-    {game.second_board_available && boardBReplay && boardB && <aside className="study-second-board" data-jimmy-departure="second-board">
-      {/* Jimmy departure: the synchronized second board remains visible in the study side column. */}
+  return <section ref={workspaceRef} className="study-workspace" aria-label="Study review workspace" tabIndex={0} onKeyDown={onKeyDown} data-layout={layout.id} data-frame={`${Math.round(frame.width)}x${Math.round(frame.height)}`} data-orientation={orientation} data-second-board-placement={secondBoard.placement} style={style}>
+    {game.second_board_available && boardBReplay && boardB && <aside className="study-second-board" data-jimmy-departure="second-board" data-placement={secondBoard.placement}>
+      {/* Jimmy departure: the synchronized second board uses the measured side column or flows beneath the main board. */}
       <ParityPocket {...pocketColor(boardBReplay, orientation, "top")} position="top" usable={boardB.position.side_to_move.toLowerCase() === pocketColor(boardBReplay, orientation, "top").color} orientation={orientation} layout={smallLayout} />
       <ParityBoard position={boardB.position} orientation={orientation} layout={smallLayout} theme={parityBoardTheme("brown")} lastMove={boardB.lastMove} check={boardB.check} showCoords />
       <ParityPocket {...pocketColor(boardBReplay, orientation, "bottom")} position="bottom" usable={boardB.position.side_to_move.toLowerCase() === pocketColor(boardBReplay, orientation, "bottom").color} orientation={orientation} layout={smallLayout} />

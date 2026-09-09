@@ -1,4 +1,4 @@
-export type ParityLayoutId = "reference" | "reference1200" | "reference1024" | "owner";
+export type ParityLayoutId = "reference" | "reference1200" | "reference1024" | "owner" | "jimmy1440" | "jimmy1200" | "jimmy1024";
 
 export interface ParityLayout {
   id: ParityLayoutId;
@@ -32,6 +32,9 @@ export interface ParityLayout {
     fontSize: number;
     lineHeight: number;
   };
+  frame?: { width: number; height: number };
+  extents?: { right: number; bottom: number };
+  secondBoard?: { placement: "side" | "under"; x: number; width: number };
 }
 
 export const PARITY_LAYOUTS: Record<ParityLayoutId, ParityLayout> = {
@@ -101,8 +104,50 @@ export const PARITY_LAYOUTS: Record<ParityLayoutId, ParityLayout> = {
     },
     badge: { width: 18.03125, height: 19.859375, radius: 7, fontSize: 15.4, lineHeight: 13.86 },
   },
+  jimmy1440: {
+    id: "jimmy1440",
+    viewport: { width: 1372, height: 902 }, frame: { width: 1372, height: 842 }, headerHeight: 0, mainY: 22.703125,
+    board: { x: 353.234375, y: 22.703125, size: 680, squareSize: 85, ranksWidth: 9.59375, filesHeight: 16.796875 },
+    tools: {
+      x: 1045.234375, width: 313.046875, pocketTopY: 22.703125, pocketBottomY: 647.1875,
+      pocketHeight: 60, pocketSlotSize: 60, movesTop: 82.703125, movesBottom: 647.1875,
+      controlsY: 707.1875, controlsHeight: 42,
+    },
+    badge: { width: 18.03125, height: 19.859375, radius: 7, fontSize: 15.4, lineHeight: 13.86 },
+    extents: { right: 1358.28125, bottom: 749.1875 }, secondBoard: { placement: "side", x: 13.71875, width: 323.03125 },
+  },
+  jimmy1200: {
+    id: "jimmy1200",
+    viewport: { width: 1132, height: 802 }, frame: { width: 1132, height: 742 }, headerHeight: 0, mainY: 22,
+    board: { x: 64.09375, y: 22, size: 600, squareSize: 75, ranksWidth: 9.34375, filesHeight: 16.375 },
+    tools: {
+      x: 668.09375, width: 400, pocketTopY: 22, pocketBottomY: 562.203125,
+      pocketHeight: 60, pocketSlotSize: 60, movesTop: 82, movesBottom: 562.203125,
+      controlsY: 622.203125, controlsHeight: 41.53125,
+    },
+    badge: { width: 18.03125, height: 19.859375, radius: 7, fontSize: 15.4, lineHeight: 13.86 },
+    extents: { right: 1068.09375, bottom: 663.734375 }, secondBoard: { placement: "under", x: 64.09375, width: 293.5 },
+  },
+  jimmy1024: {
+    id: "jimmy1024",
+    viewport: { width: 956, height: 770 }, frame: { width: 956, height: 710 }, headerHeight: 0, mainY: 21.34375,
+    board: { x: 12.140625, y: 21.34375, size: 560, squareSize: 70, ranksWidth: 8.71875, filesHeight: 15.28125 },
+    tools: {
+      x: 576.140625, width: 370.3125, pocketTopY: 21.34375, pocketBottomY: 523.9375,
+      pocketHeight: 60, pocketSlotSize: 60, movesTop: 81.34375, movesBottom: 523.9375,
+      controlsY: 583.9375, controlsHeight: 40.359375,
+    },
+    badge: { width: 18.03125, height: 19.859375, radius: 7, fontSize: 15.4, lineHeight: 13.86 },
+    extents: { right: 946.453125, bottom: 624.296875 }, secondBoard: { placement: "under", x: 12.140625, width: 293.5 },
+  },
 };
 
 export function parityLayout(id: string | null): ParityLayout {
-  return id === "owner" || id === "reference1200" || id === "reference1024" ? PARITY_LAYOUTS[id] : PARITY_LAYOUTS.reference;
+  return id === "owner" || id === "reference1200" || id === "reference1024" || id === "jimmy1440" || id === "jimmy1200" || id === "jimmy1024" ? PARITY_LAYOUTS[id] : PARITY_LAYOUTS.reference;
+}
+
+const jimmyLayouts = [PARITY_LAYOUTS.jimmy1440, PARITY_LAYOUTS.jimmy1200, PARITY_LAYOUTS.jimmy1024];
+
+export function studyLayoutForBox(width: number, height: number): ParityLayout {
+  return jimmyLayouts.find((layout) => layout.extents!.right <= width && layout.extents!.bottom <= height) ?? PARITY_LAYOUTS.jimmy1024;
 }

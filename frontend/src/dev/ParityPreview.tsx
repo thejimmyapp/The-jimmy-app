@@ -11,6 +11,7 @@ import { ParityPocket } from "../parity/pocket/ParityPocket";
 import type { CrazyhousePosition } from "../parity/rules/crazyhouse";
 import { ParityFork, ParityTree } from "../parity/tree/ParityTree";
 import { parityKeyboardAction, pgnNodeById, treeControlTarget, treeNavigationTarget } from "../parity/tree/treeNavigation";
+import { StudyPreview } from "./StudyPreview";
 import "./parityPreview.css";
 
 const tree = parsePgn(pgnText);
@@ -96,4 +97,10 @@ export function ParityPreview() {
   );
 }
 
-createRoot(document.getElementById("root")!).render(<ParityPreview />);
+const studyIndex = params.get("study");
+const requestedPly = Number(params.get("ply") ?? 0);
+const requestedFrame = params.get("frame")?.match(/^(\d+)x(\d+)$/);
+const studyFrame = requestedFrame ? { width: Number(requestedFrame[1]), height: Number(requestedFrame[2]) } : null;
+createRoot(document.getElementById("root")!).render(studyIndex === null
+  ? <ParityPreview />
+  : <StudyPreview fixtureIndex={Number(studyIndex)} requestedPly={Number.isSafeInteger(requestedPly) ? requestedPly : 0} frame={studyFrame} />);
