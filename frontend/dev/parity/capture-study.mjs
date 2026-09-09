@@ -9,7 +9,7 @@ import { chromium } from "playwright";
 const parityRoot = dirname(fileURLToPath(import.meta.url));
 const frontendRoot = join(parityRoot, "..", "..");
 const referenceDir = join(parityRoot, "reference");
-const reportDir = "/Users/user/Documents/4robots/HARDCODE/gate4-work/reports/PARITY-05c";
+const reportDir = process.env.PARITY_STUDY_REPORT_DIR ?? "/Users/user/Documents/4robots/HARDCODE/gate4-work/reports/PARITY-05c";
 const candidateUrl = "http://127.0.0.1:4179/dev/parity.html";
 const referenceMeta = JSON.parse(readFileSync(join(referenceDir, "reference-meta.json"), "utf8"));
 const cases = [

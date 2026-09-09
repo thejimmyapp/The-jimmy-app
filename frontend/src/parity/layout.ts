@@ -35,6 +35,7 @@ export interface ParityLayout {
   frame?: { width: number; height: number };
   extents?: { right: number; bottom: number };
   secondBoard?: { placement: "side" | "under"; x: number; width: number };
+  underboard?: { y: number; buttonsHeight: number; fontSize: number; buttonFontSize: number; headingHeight: number; headingFontSize: number; headingPadding: number; rowHeight: number };
 }
 
 export const PARITY_LAYOUTS: Record<ParityLayoutId, ParityLayout> = {
@@ -115,6 +116,7 @@ export const PARITY_LAYOUTS: Record<ParityLayoutId, ParityLayout> = {
     },
     badge: { width: 18.03125, height: 19.859375, radius: 7, fontSize: 15.4, lineHeight: 13.86 },
     extents: { right: 1358.28125, bottom: 749.1875 }, secondBoard: { placement: "side", x: 13.71875, width: 323.03125 },
+    underboard: { y: 720.375, buttonsHeight: 39.34375, fontSize: 14, buttonFontSize: 16.1, headingHeight: 42.78125, headingFontSize: 18.2, headingPadding: 14, rowHeight: 40.578125 },
   },
   jimmy1200: {
     id: "jimmy1200",
@@ -127,6 +129,7 @@ export const PARITY_LAYOUTS: Record<ParityLayoutId, ParityLayout> = {
     },
     badge: { width: 18.03125, height: 19.859375, radius: 7, fontSize: 15.4, lineHeight: 13.86 },
     extents: { right: 1068.09375, bottom: 663.734375 }, secondBoard: { placement: "under", x: 64.09375, width: 293.5 },
+    underboard: { y: 656.046875, buttonsHeight: 39.203125, fontSize: 13.8489, buttonFontSize: 15.9262, headingHeight: 42.515625, headingFontSize: 18.0036, headingPadding: 13.8489, rowHeight: 40.125 },
   },
   jimmy1024: {
     id: "jimmy1024",
@@ -139,6 +142,7 @@ export const PARITY_LAYOUTS: Record<ParityLayoutId, ParityLayout> = {
     },
     badge: { width: 18.03125, height: 19.859375, radius: 7, fontSize: 15.4, lineHeight: 13.86 },
     extents: { right: 946.453125, bottom: 624.296875 }, secondBoard: { placement: "under", x: 12.140625, width: 293.5 },
+    underboard: { y: 616.875, buttonsHeight: 38.46875, fontSize: 13.4578, buttonFontSize: 15.4764, headingHeight: 40.796875, headingFontSize: 17.4951, headingPadding: 13.4578, rowHeight: 38.984375 },
   },
 };
 

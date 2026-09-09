@@ -18,4 +18,10 @@ describe("Jimmy stage-frame layout selection", () => {
   it("stores the 1440 board top relative to the 60px Lichess header", () => {
     expect(PARITY_LAYOUTS.jimmy1440.board.y).toBe(82.703125 - 60);
   });
+
+  it("stores each anonymous underboard top relative to the 60px header", () => {
+    expect(PARITY_LAYOUTS.jimmy1440.underboard?.y).toBe(780.375 - 60);
+    expect(PARITY_LAYOUTS.jimmy1200.underboard?.y).toBe(716.046875 - 60);
+    expect(PARITY_LAYOUTS.jimmy1024.underboard?.y).toBe(676.875 - 60);
+  });
 });
