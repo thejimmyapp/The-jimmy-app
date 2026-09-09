@@ -5576,5 +5576,300 @@
         }
       ]
     }
+  },
+  "jimmyEngine": {
+    "viewport": {
+      "width": 1372,
+      "height": 902
+    },
+    "frame": {
+      "width": 1372,
+      "height": 842
+    },
+    "capturedAt": "2026-09-09T01:27:30.605Z",
+    "keyboardAttempt": "l",
+    "localEvaluationAvailable": false,
+    "off": {
+      "ceval": null,
+      "cevalChildren": [],
+      "pvBox": null,
+      "toolsColumn": {
+        "tagName": "div",
+        "className": "analyse__tools 4lZqSffp",
+        "rect": {
+          "x": 1045.234375,
+          "y": 142.703125,
+          "width": 313.046875,
+          "height": 564.484375,
+          "top": 142.703125,
+          "right": 1358.28125,
+          "bottom": 707.1875,
+          "left": 1045.234375
+        },
+        "background": "rgb(38, 36, 33) none repeat scroll 0% 0% / auto padding-box border-box",
+        "backgroundColor": "rgb(38, 36, 33)",
+        "color": "rgb(186, 186, 186)",
+        "font": "14px \"Noto Sans\", sans-serif",
+        "height": "564.484px",
+        "padding": "0px",
+        "borderRadius": "7px",
+        "boxShadow": "rgba(0, 0, 0, 0.08) 0px 2px 2px 0px, rgba(0, 0, 0, 0.18) 0px 3px 1px -2px, rgba(0, 0, 0, 0.1) 0px 1px 5px 0px",
+        "display": "flex"
+      },
+      "moves": {
+        "tagName": "div",
+        "className": "analyse__moves areplay",
+        "rect": {
+          "x": 1045.234375,
+          "y": 142.703125,
+          "width": 313.046875,
+          "height": 564.484375,
+          "top": 142.703125,
+          "right": 1358.28125,
+          "bottom": 707.1875,
+          "left": 1045.234375
+        },
+        "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "color": "rgb(186, 186, 186)",
+        "font": "14px \"Noto Sans\", sans-serif",
+        "height": "564.484px",
+        "padding": "0px",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "display": "flex"
+      },
+      "pockets": [
+        {
+          "tagName": "div",
+          "className": "pocket is2d pocket-top pos-black usable",
+          "rect": {
+            "x": 1045.234375,
+            "y": 82.703125,
+            "width": 313.046875,
+            "height": 60,
+            "top": 82.703125,
+            "right": 1358.28125,
+            "bottom": 142.703125,
+            "left": 1045.234375
+          },
+          "background": "rgb(136, 136, 136) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgb(136, 136, 136)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "60px",
+          "padding": "0px",
+          "borderRadius": "7px",
+          "boxShadow": "rgba(0, 0, 0, 0.3) 0px 3px 5px 0px inset",
+          "display": "flex"
+        },
+        {
+          "tagName": "div",
+          "className": "pocket is2d pocket-bottom pos-black",
+          "rect": {
+            "x": 1045.234375,
+            "y": 707.1875,
+            "width": 313.046875,
+            "height": 60,
+            "top": 707.1875,
+            "right": 1358.28125,
+            "bottom": 767.1875,
+            "left": 1045.234375
+          },
+          "background": "rgb(136, 136, 136) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgb(136, 136, 136)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "60px",
+          "padding": "0px",
+          "borderRadius": "7px",
+          "boxShadow": "rgba(0, 0, 0, 0.3) 0px 3px 5px 0px inset",
+          "display": "flex"
+        }
+      ],
+      "controls": {
+        "tagName": "div",
+        "className": "analyse__controls analyse-controls",
+        "rect": {
+          "x": 1045.234375,
+          "y": 767.1875,
+          "width": 313.046875,
+          "height": 42,
+          "top": 767.1875,
+          "right": 1358.28125,
+          "bottom": 809.1875,
+          "left": 1045.234375
+        },
+        "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "color": "rgb(186, 186, 186)",
+        "font": "14px \"Noto Sans\", sans-serif",
+        "height": "42px",
+        "padding": "0px",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "display": "flex"
+      },
+      "engineControls": [
+        {
+          "tagName": "button",
+          "className": "fbt",
+          "text": "",
+          "title": "Practice with computer",
+          "ariaLabel": null,
+          "rect": {
+            "x": 1080.234375,
+            "y": 767.1875,
+            "width": 35,
+            "height": 42,
+            "top": 767.1875,
+            "right": 1115.234375,
+            "bottom": 809.1875,
+            "left": 1080.234375
+          }
+        }
+      ]
+    },
+    "afterLocalEvaluationKey": {
+      "ceval": null,
+      "cevalChildren": [],
+      "pvBox": null,
+      "toolsColumn": {
+        "tagName": "div",
+        "className": "analyse__tools 4lZqSffp",
+        "rect": {
+          "x": 1045.234375,
+          "y": 142.703125,
+          "width": 313.046875,
+          "height": 564.484375,
+          "top": 142.703125,
+          "right": 1358.28125,
+          "bottom": 707.1875,
+          "left": 1045.234375
+        },
+        "background": "rgb(38, 36, 33) none repeat scroll 0% 0% / auto padding-box border-box",
+        "backgroundColor": "rgb(38, 36, 33)",
+        "color": "rgb(186, 186, 186)",
+        "font": "14px \"Noto Sans\", sans-serif",
+        "height": "564.484px",
+        "padding": "0px",
+        "borderRadius": "7px",
+        "boxShadow": "rgba(0, 0, 0, 0.08) 0px 2px 2px 0px, rgba(0, 0, 0, 0.18) 0px 3px 1px -2px, rgba(0, 0, 0, 0.1) 0px 1px 5px 0px",
+        "display": "flex"
+      },
+      "moves": {
+        "tagName": "div",
+        "className": "analyse__moves areplay",
+        "rect": {
+          "x": 1045.234375,
+          "y": 142.703125,
+          "width": 313.046875,
+          "height": 564.484375,
+          "top": 142.703125,
+          "right": 1358.28125,
+          "bottom": 707.1875,
+          "left": 1045.234375
+        },
+        "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "color": "rgb(186, 186, 186)",
+        "font": "14px \"Noto Sans\", sans-serif",
+        "height": "564.484px",
+        "padding": "0px",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "display": "flex"
+      },
+      "pockets": [
+        {
+          "tagName": "div",
+          "className": "pocket is2d pocket-top pos-black usable",
+          "rect": {
+            "x": 1045.234375,
+            "y": 82.703125,
+            "width": 313.046875,
+            "height": 60,
+            "top": 82.703125,
+            "right": 1358.28125,
+            "bottom": 142.703125,
+            "left": 1045.234375
+          },
+          "background": "rgb(136, 136, 136) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgb(136, 136, 136)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "60px",
+          "padding": "0px",
+          "borderRadius": "7px",
+          "boxShadow": "rgba(0, 0, 0, 0.3) 0px 3px 5px 0px inset",
+          "display": "flex"
+        },
+        {
+          "tagName": "div",
+          "className": "pocket is2d pocket-bottom pos-black",
+          "rect": {
+            "x": 1045.234375,
+            "y": 707.1875,
+            "width": 313.046875,
+            "height": 60,
+            "top": 707.1875,
+            "right": 1358.28125,
+            "bottom": 767.1875,
+            "left": 1045.234375
+          },
+          "background": "rgb(136, 136, 136) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgb(136, 136, 136)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "60px",
+          "padding": "0px",
+          "borderRadius": "7px",
+          "boxShadow": "rgba(0, 0, 0, 0.3) 0px 3px 5px 0px inset",
+          "display": "flex"
+        }
+      ],
+      "controls": {
+        "tagName": "div",
+        "className": "analyse__controls analyse-controls",
+        "rect": {
+          "x": 1045.234375,
+          "y": 767.1875,
+          "width": 313.046875,
+          "height": 42,
+          "top": 767.1875,
+          "right": 1358.28125,
+          "bottom": 809.1875,
+          "left": 1045.234375
+        },
+        "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "color": "rgb(186, 186, 186)",
+        "font": "14px \"Noto Sans\", sans-serif",
+        "height": "42px",
+        "padding": "0px",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "display": "flex"
+      },
+      "engineControls": [
+        {
+          "tagName": "button",
+          "className": "fbt",
+          "text": "",
+          "title": "Practice with computer",
+          "ariaLabel": null,
+          "rect": {
+            "x": 1080.234375,
+            "y": 767.1875,
+            "width": 35,
+            "height": 42,
+            "top": 767.1875,
+            "right": 1115.234375,
+            "bottom": 809.1875,
+            "left": 1080.234375
+          }
+        }
+      ]
+    }
   }
 }
