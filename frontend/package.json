@@ -8,6 +8,7 @@
     "dev:appearance": "vite --host 127.0.0.1 --open /dev/board-appearance.html",
     "dev:parity": "vite --host 127.0.0.1 --open /dev/parity.html",
     "capture:parity": "node dev/parity/capture.mjs",
+    "usability:journey": "node dev/usability/guest-journey.mjs",
     "build": "tsc -b && vite build --configLoader runner",
     "lint": "eslint .",
     "test": "vitest run"
