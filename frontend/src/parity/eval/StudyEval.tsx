@@ -7,14 +7,15 @@ export interface StudyEvalProps {
   onToggle: () => void;
 }
 
+export const STUDY_EVAL_ROW_HEIGHT = 44;
+
 export function StudyEval({ enabled, analysis, onToggle }: StudyEvalProps) {
-  return <section className={`study-eval${enabled ? " enabled" : ""}`} aria-label="Computer analysis" data-enabled={enabled}>
+  return <section className={`study-eval${enabled ? " enabled" : ""}`} aria-label="Computer analysis" data-enabled={enabled} style={{ height: STUDY_EVAL_ROW_HEIGHT }}>
     <span className="study-eval-toggle">
       <button type="button" role="switch" aria-label="Toggle local evaluation" aria-checked={enabled} onClick={onToggle}><span /></button>
     </span>
-    <span className="study-eval-pearl" aria-hidden={!enabled}>{enabled ? "J" : ""}</span>
-    <div className="study-eval-engine"><span>JIMMY</span><span className="technology">LOCAL</span><small>{enabled ? "analysis ready" : "in local browser"}</small></div>
-    <button className="study-eval-settings" type="button" title="Engine settings" aria-label="Engine settings" disabled>⚙</button>
+    <span className="study-eval-pearl" aria-hidden="true" />
+    <div className="study-eval-engine">Fairy-Stockfish</div>
     {enabled && analysis && <div className="study-eval-analysis">{analysis}</div>}
   </section>;
 }

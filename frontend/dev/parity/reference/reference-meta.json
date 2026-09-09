@@ -5578,6 +5578,19 @@
     }
   },
   "jimmyEngine": {
+    "rule": {
+      "row_height": 44,
+      "moves_offset_off": 44,
+      "pv_height_on": 26,
+      "moves_offset_on": 70,
+      "anchors_unchanged": [
+        "pocket_top",
+        "pocket_bottom",
+        "controls"
+      ],
+      "frozen_fixture_query": "eval=none",
+      "description": "The evaluation row owns a 44px band before moves; enabling evaluation adds the measured 26px PV band. The eval=none preview omits both bands for frozen study-reference comparisons."
+    },
     "viewport": {
       "width": 1372,
       "height": 902
