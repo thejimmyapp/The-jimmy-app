@@ -46,14 +46,22 @@ export function GlyphPicker({ value, onChange, disabled = false, label = "Move g
       onKeyDown={selectFromNumberKey}
     >
       <legend>{label}</legend>
-      <p className="glyph-picker__instruction">Press a number key</p>
+      <p className="glyph-picker__instruction">Click a glyph, or press its number key</p>
       <ol className="glyph-picker__key-map" aria-label="Number key glyph map">
         {glyphOptions.map((option) => (
           <li className={value === option.glyph ? "is-selected" : ""} key={option.key}>
-            <kbd>{option.key}</kbd>
-            <strong>{option.glyph}</strong>
-            <span>{option.name}</span>
-            <code>NAG ${option.nag}</code>
+            <button
+              type="button"
+              aria-label={`${option.key} · ${option.glyph} · ${option.name}`}
+              aria-pressed={value === option.glyph}
+              disabled={disabled}
+              onClick={() => onChange(option.glyph)}
+            >
+              <kbd>{option.key}</kbd>
+              <strong>{option.glyph}</strong>
+              <span>{option.name}</span>
+              <code>NAG ${option.nag}</code>
+            </button>
           </li>
         ))}
       </ol>

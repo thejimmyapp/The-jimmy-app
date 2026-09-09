@@ -43,4 +43,52 @@ describe("GlyphPicker", () => {
     expect((screen.getByRole("combobox") as HTMLSelectElement).disabled).toBe(true);
     expect(picker.getAttribute("tabindex")).toBe("-1");
   });
+
+  it.each([
+    ["1", "!", "good"],
+    ["2", "?", "mistake"],
+    ["3", "!!", "brilliant"],
+    ["4", "??", "blunder"],
+    ["5", "!?", "interesting"],
+    ["6", "?!", "dubious"],
+  ] as const)("selects tile %s by click and exposes its pressed state", (key, glyph, name) => {
+    const onChange = vi.fn();
+    const { rerender } = render(<GlyphPicker value={null} onChange={onChange} />);
+    const tile = screen.getByRole("button", { name: `${key} · ${glyph} · ${name}` });
+    expect(tile.getAttribute("type")).toBe("button");
+    expect(tile.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(tile);
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(glyph);
+
+    rerender(<GlyphPicker value={glyph} onChange={onChange} />);
+    expect(screen.getByRole("button", { pressed: true })).toBe(tile);
+    expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(glyph);
+  });
+
+  it("does not select any disabled tile by click", () => {
+    const onChange = vi.fn();
+    render(<GlyphPicker value={null} onChange={onChange} disabled />);
+    const tiles = screen.getAllByRole("button");
+    expect(tiles).toHaveLength(6);
+    for (const tile of tiles) {
+      expect((tile as HTMLButtonElement).disabled).toBe(true);
+      fireEvent.click(tile);
+    }
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("keeps number-key selection when a tile has focus", () => {
+    render(<ControlledPicker />);
+    const tile = screen.getByRole("button", { name: "1 · ! · good" });
+    tile.focus();
+    fireEvent.keyDown(tile, { key: "2" });
+    expect(screen.getByRole("button", { name: "2 · ? · mistake" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("group", { name: "Move glyph" }).getAttribute("tabindex")).toBe("0");
+  });
+
+  it("explains both tile clicking and number-key selection", () => {
+    render(<ControlledPicker />);
+    expect(screen.getByText("Click a glyph, or press its number key")).toBeTruthy();
+  });
 });
