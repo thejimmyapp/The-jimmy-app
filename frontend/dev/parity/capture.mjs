@@ -411,6 +411,88 @@ async function captureJimmyEngine(browser) {
   await context.close();
 }
 
+async function captureJimmyMenuAndSide(browser) {
+  const userAgent = await installedChromeUserAgent(browser);
+  const item = jimmyReferenceCases[0];
+  const { context, page } = await newPage(browser, { viewport: item.viewport, userAgent, locale: "en-US" });
+  const response = await page.goto(referenceUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
+  const boardPresent = response?.status() === 200 && await page.waitForSelector("cg-board", { timeout: 90_000 }).then(() => true, () => false);
+  if (!response?.ok() || !boardPresent) {
+    const title = await page.title(); await context.close();
+    throw new Error(`${item.id} returned HTTP ${response?.status() ?? "unknown"} with cg-board=${boardPresent}: ${title}`);
+  }
+  const chapter = page.locator(`.study__chapters button[data-id="${referenceChapter}"]`);
+  if (await chapter.count() && !(await chapter.first().evaluate((element) => element.classList.contains("active")))) await chapter.first().click();
+  await page.waitForSelector(".study__side", { timeout: 90_000 });
+  await settle(page); await page.keyboard.press("ArrowRight"); await settle(page);
+
+  const measure = (selectors) => page.evaluate((requested) => {
+    const rectFor = (element) => {
+      if (!element) return null;
+      const box = element.getBoundingClientRect();
+      return { x: box.x, y: box.y, width: box.width, height: box.height, top: box.top, right: box.right, bottom: box.bottom, left: box.left };
+    };
+    const styleFor = (element) => {
+      if (!element) return null;
+      const style = getComputedStyle(element);
+      return {
+        tagName: element.tagName.toLowerCase(), className: element.className,
+        text: element.childElementCount <= 1 ? element.textContent?.trim() ?? "" : undefined,
+        rect: rectFor(element),
+        background: style.background, backgroundColor: style.backgroundColor, color: style.color, font: style.font,
+        height: style.height, padding: style.padding, margin: style.margin, border: style.border, borderRadius: style.borderRadius,
+        boxShadow: style.boxShadow, display: style.display, alignItems: style.alignItems, justifyContent: style.justifyContent,
+      };
+    };
+    return Object.fromEntries(Object.entries(requested).map(([name, selector]) => {
+      const elements = [...document.querySelectorAll(selector)];
+      return [name, elements.map(styleFor)];
+    }));
+  }, selectors);
+
+  const chapterSide = await measure({
+    side: ".study__side", tabs: ".study__side > .tabs-horiz", tabRows: ".study__side > .tabs-horiz > button",
+    chapterList: ".study__chapters .study-list", chapterRows: ".study__chapters .study-list > button",
+    activeChapter: ".study__chapters .study-list > button.active", chat: ".mchat", chatHeader: ".mchat__tabs",
+    chatTabs: ".mchat__tab", chatToggle: ".mchat .cmn-toggle", chatMessages: ".mchat__messages",
+    chatMessageRows: ".mchat__messages > li", chatInput: ".mchat input[type=text], .mchat textarea, .mchat form",
+  });
+  chapterSide.chapterRows = [chapterSide.chapterRows[0], ...chapterSide.activeChapter].filter(Boolean);
+  chapterSide.chatMessageRows = [chapterSide.chatMessageRows[0], chapterSide.chatMessageRows.at(-1)].filter(Boolean);
+  await page.screenshot({ path: join(referenceDir, "jimmy1440-side.png") });
+  await page.locator(".study__side .members").click(); await settle(page);
+  const memberSide = await measure({ memberList: ".study__members .study-list", memberRows: ".study__members .study-list > div" });
+
+  const menuButton = page.locator('button[title="Menu"]');
+  const practiceButton = await measure({ practiceButton: 'button[title="Practice with computer"]' });
+  await menuButton.click(); await settle(page);
+  const opened = await measure({
+    panel: ".action-menu", title: ".action-menu > .title", inner: ".action-menu > .inner",
+    toolRows: ".action-menu__tools > *", sectionHeaders: ".action-menu h2", replayRows: ".action-menu .autoplay > *",
+  });
+  opened.controls = await page.evaluate(() => [...document.querySelectorAll(".action-menu a, .action-menu button, .action-menu input, .action-menu select")].map((element) => ({
+    tagName: element.tagName.toLowerCase(), text: element.textContent?.trim() ?? "", type: element.getAttribute("type"),
+    title: element.getAttribute("title"), ariaLabel: element.getAttribute("aria-label"), checked: "checked" in element ? element.checked : null,
+  })));
+  await page.screenshot({ path: join(referenceDir, "jimmy1440-menu-open.png") });
+  await menuButton.click(); await settle(page);
+  const clickAgainLeavesOpen = await page.locator(".action-menu").count() > 0;
+  await menuButton.click(); await settle(page); await page.keyboard.press("Escape"); await settle(page);
+  const escapeLeavesOpen = await page.locator(".action-menu").count() > 0;
+
+  const metaPath = join(referenceDir, "reference-meta.json");
+  const meta = JSON.parse(readFileSync(metaPath, "utf8"));
+  meta.jimmyMenu = {
+    viewport: item.viewport, frame: item.frame, capturedAt: new Date().toISOString(), practiceButton,
+    opened, closeBehavior: { clickAgain: clickAgainLeavesOpen ? "remains open" : "closes", Escape: escapeLeavesOpen ? "remains open" : "closes" },
+  };
+  meta.jimmySide = { viewport: item.viewport, frame: item.frame, capturedAt: new Date().toISOString(), chapterSide, memberSide };
+  writeFileSync(metaPath, `${JSON.stringify(meta, null, 2)}\n`);
+  console.log(`jimmyMenu: ${JSON.stringify(meta.jimmyMenu)}`);
+  console.log(`jimmySide: ${JSON.stringify(meta.jimmySide)}`);
+  await context.close();
+}
+
 async function waitForServer(url) {
   for (let attempt = 0; attempt < 80; attempt += 1) {
     try { if ((await fetch(url)).ok) return; } catch { /* Vite is still starting. */ }
@@ -567,6 +649,7 @@ try {
   else if (mode === "reference-jimmy") await captureJimmyReferences(browser);
   else if (mode === "reference-jimmy-underboard") await captureJimmyUnderboards(browser);
   else if (mode === "reference-jimmy-engine") await captureJimmyEngine(browser);
+  else if (mode === "reference-jimmy-menu-side") await captureJimmyMenuAndSide(browser);
   else {
     await captureCandidate(browser);
     if (referenceComplete) compareAll();

@@ -3,6 +3,8 @@ import "./parityControls.css";
 
 export interface ParityControlsProps {
   onNavigate: (action: ParityNavigationAction) => void;
+  menuOpen?: boolean;
+  onMenuToggle?: () => void;
 }
 
 function Icon({ action }: { action: ParityNavigationAction }) {
@@ -15,7 +17,7 @@ function Icon({ action }: { action: ParityNavigationAction }) {
   </svg>;
 }
 
-export function ParityControls({ onNavigate }: ParityControlsProps) {
+export function ParityControls({ onNavigate, menuOpen = false, onMenuToggle }: ParityControlsProps) {
   const labels: Record<ParityNavigationAction, string> = { first: "First move", prev: "Previous move", next: "Next move", last: "Last move" };
   const actions = Object.keys(labels) as ParityNavigationAction[];
   return <div className="analyse__controls parity-control-row">
@@ -23,6 +25,6 @@ export function ParityControls({ onNavigate }: ParityControlsProps) {
     <div className="parity-move-controls">
       {actions.map((action) => <button key={action} className="fbt move" type="button" data-act={action} title={labels[action]} aria-label={labels[action]} onClick={() => onNavigate(action)}><Icon action={action} /></button>)}
     </div>
-    <button className="fbt placeholder menu" type="button" title="Menu" aria-label="Menu" />
+    <button className={`fbt placeholder menu${menuOpen ? " active" : ""}`} type="button" title="Menu" aria-label="Menu" aria-expanded={menuOpen} onClick={onMenuToggle} />
   </div>;
 }

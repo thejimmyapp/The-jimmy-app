@@ -103,4 +103,4 @@ const requestedFrame = params.get("frame")?.match(/^(\d+)x(\d+)$/);
 const studyFrame = requestedFrame ? { width: Number(requestedFrame[1]), height: Number(requestedFrame[2]) } : null;
 createRoot(document.getElementById("root")!).render(studyIndex === null
   ? <ParityPreview />
-  : <StudyPreview fixtureIndex={Number(studyIndex)} requestedPly={Number.isSafeInteger(requestedPly) ? requestedPly : 0} frame={studyFrame} />);
+  : <StudyPreview fixtureIndex={Number(studyIndex)} requestedPly={Number.isSafeInteger(requestedPly) ? requestedPly : 0} frame={studyFrame} chrome={params.get("chrome") === "1"} />);

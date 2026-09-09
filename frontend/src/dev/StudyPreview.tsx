@@ -31,7 +31,7 @@ function hasPocket(frame: ReturnType<typeof reconstructGuestMatch>["game"]["time
   return [frame.board_a.white_pocket, frame.board_a.black_pocket, frame.board_b.white_pocket, frame.board_b.black_pocket].some((value) => value && value !== "-");
 }
 
-export function StudyPreview({ fixtureIndex, requestedPly, frame }: { fixtureIndex: number; requestedPly: number; frame: { width: number; height: number } | null }) {
+export function StudyPreview({ fixtureIndex, requestedPly, frame, chrome = false }: { fixtureIndex: number; requestedPly: number; frame: { width: number; height: number } | null; chrome?: boolean }) {
   const fixture = (fixtures.matches as unknown as ReplayFixture[])[fixtureIndex];
   if (!fixture) throw new Error(`Unknown study fixture ${fixtureIndex}`);
   const game = useMemo(() => reconstructGuestMatch({ match: normalizedMatch(fixture.boards), boards: fixture.boards } satisfies GuestMatchReplaySource).game, [fixture]);
@@ -44,5 +44,6 @@ export function StudyPreview({ fixtureIndex, requestedPly, frame }: { fixtureInd
   const expected = replayToParity(selected.board_a);
   useCoachStore.setState({ game, mode: "review", globalPly: selectedPly });
   Object.assign(window, { __STUDY_PREVIEW__: { fixtureIndex, seed: fixture.seed, game, selectedPly, suggestedMid, lastPly, expected } });
-  return <div className="study-preview-frame" style={frame ? { width: frame.width, height: frame.height } : undefined}><StudyWorkspace /></div>;
+  const collaborate = chrome ? <><button className="share-button" type="button">Invite partner</button><span className="viewer-pill">1</span><button className="coach-button" type="button">Team Coach</button></> : undefined;
+  return <div className="study-preview-frame" style={frame ? { width: frame.width, height: frame.height } : undefined}><StudyWorkspace collaborate={collaborate} /></div>;
 }
