@@ -14,3 +14,9 @@
 [data-layout="reference1024"] .parity-control-row .menu,
 [data-layout="reference1024"] .parity-move-controls { margin-left: 3.890625px; }
 [data-layout="reference1024"] .parity-move-controls .move { height: 32.8125px; }
+[data-layout="jimmy1200"] .parity-control-row .placeholder { width: 34.609375px; }
+[data-layout="jimmy1200"] .parity-control-row .practice { margin-left: 34.609375px; }
+[data-layout="jimmy1200"] .parity-move-controls .move { height: 33.53125px; }
+[data-layout="jimmy1024"] .parity-control-row .placeholder { width: 33.640625px; }
+[data-layout="jimmy1024"] .parity-control-row .practice { margin-left: 33.640625px; }
+[data-layout="jimmy1024"] .parity-move-controls .move { height: 32.359375px; }

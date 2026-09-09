@@ -1,4 +1,5 @@
-.study-workspace { position: relative; width: 100%; height: 100%; min-height: 0; overflow: hidden; outline: none; background: rgb(22, 21, 18); color: rgb(208, 206, 202); font: 14px "Noto Sans", sans-serif; }
+.study-workspace { position: relative; width: 100%; height: 100%; min-height: 0; overflow-x: hidden; overflow-y: hidden; outline: none; background: rgb(22, 21, 18); color: rgb(208, 206, 202); font: 14px "Noto Sans", sans-serif; }
+.study-workspace[data-second-board-placement="under"] { overflow-y: auto; }
 .study-main-board { position: absolute; left: var(--study-board-x); top: var(--study-board-y); width: var(--study-board-size); }
 .study-player-bar { position: absolute; left: 0; display: flex; width: 100%; height: 22px; align-items: center; justify-content: space-between; padding: 0 8px; background: rgb(38, 36, 33); color: rgb(186, 186, 186); font: 12px/22px "Noto Sans", sans-serif; }
 .study-player-bar.top { bottom: 100%; }
@@ -10,7 +11,10 @@
 .study-moves { position: absolute; top: var(--study-moves-top); width: 100%; height: var(--study-moves-height); overflow: hidden; border-radius: 7px; background: rgb(38, 36, 33); box-shadow: 0 2px 2px rgb(0 0 0 / 8%), 0 3px 1px -2px rgb(0 0 0 / 18%), 0 1px 5px rgb(0 0 0 / 10%); }
 .study-fork { position: absolute; top: calc(var(--study-pocket-bottom) - 25.59375px); width: 100%; height: 25.59375px; }
 .study-controls { position: absolute; top: var(--study-controls-y); width: 100%; height: var(--study-controls-height); }
-.study-second-board { position: absolute; left: 14.4px; top: var(--study-board-y); width: var(--study-side-size); }
-.study-second-board > .pocket-top { position: absolute; bottom: 100%; }
-.study-second-board > .parity-board { position: relative; }
-.study-second-board > .pocket-bottom { position: absolute; top: var(--study-side-size); }
+.study-second-board { position: absolute; left: var(--study-side-x); top: var(--study-side-top); width: var(--study-side-column-width); }
+.study-second-board > .pocket-top { position: absolute; bottom: 100%; left: calc((100% - var(--study-side-size)) / 2); }
+.study-second-board > .parity-board { position: relative; margin-left: calc((100% - var(--study-side-size)) / 2); }
+.study-second-board > .pocket-bottom { position: absolute; top: var(--study-side-size); left: calc((100% - var(--study-side-size)) / 2); }
+.study-second-board[data-placement="under"] > .pocket-top,
+.study-second-board[data-placement="under"] > .pocket-bottom { left: 0; }
+.study-second-board[data-placement="under"] > .parity-board { margin-left: 0; }

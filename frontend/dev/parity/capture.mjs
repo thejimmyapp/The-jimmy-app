@@ -22,6 +22,11 @@ const responsiveCases = [
   { id: "1200x800", viewport: { width: 1200, height: 800 }, layout: "reference1200", board: { x: 105, y: 82, width: 592, height: 592 }, moves: { x: 701, y: 142, width: 400, height: 478 } },
   { id: "1024x768", viewport: { width: 1024, height: 768 }, layout: "reference1024", board: { x: 28, y: 82, width: 568, height: 568 }, moves: { x: 600, y: 142, width: 400, height: 451 } },
 ];
+const jimmyReferenceCases = [
+  { id: "jimmy1440", viewport: { width: 1372, height: 902 }, frame: { width: 1372, height: 842 } },
+  { id: "jimmy1200", viewport: { width: 1132, height: 802 }, frame: { width: 1132, height: 742 } },
+  { id: "jimmy1024", viewport: { width: 956, height: 770 }, frame: { width: 956, height: 710 } },
+];
 
 mkdirSync(referenceDir, { recursive: true });
 mkdirSync(outDir, { recursive: true });
@@ -214,6 +219,74 @@ async function captureResponsiveReferences(browser) {
   writeFileSync(metaPath, `${JSON.stringify(meta, null, 2)}\n`);
 }
 
+async function captureJimmyReferences(browser) {
+  const userAgent = await installedChromeUserAgent(browser);
+  const jimmyFrames = {};
+  for (const item of jimmyReferenceCases) {
+    const { context, page } = await newPage(browser, { viewport: item.viewport, userAgent, locale: "en-US" });
+    const response = await page.goto(referenceUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    const boardPresent = response?.status() === 200 && await page.waitForSelector("cg-board", { timeout: 90_000 }).then(() => true, () => false);
+    if (!response?.ok() || !boardPresent) {
+      const title = await page.title();
+      await context.close();
+      throw new Error(`${item.id} returned HTTP ${response?.status() ?? "unknown"} with cg-board=${boardPresent}: ${title}`);
+    }
+    const chapter = page.locator(`.study__chapters button[data-id="${referenceChapter}"]`);
+    if (await chapter.count() && !(await chapter.first().evaluate((element) => element.classList.contains("active")))) await chapter.first().click();
+    await page.waitForSelector(".pocket", { timeout: 90_000 });
+    await page.waitForSelector(".tview2 move", { timeout: 90_000 });
+    await settle(page);
+    await page.keyboard.press("ArrowRight");
+    await settle(page);
+    await page.screenshot({ path: join(referenceDir, `${item.id}-S1.png`) });
+    const details = await referenceStateMeta(page);
+    const frameMeta = await page.evaluate(() => {
+      const rectFor = (element) => {
+        if (!element) return null;
+        const box = element.getBoundingClientRect();
+        return { x: box.x, y: box.y, width: box.width, height: box.height, top: box.top, right: box.right, bottom: box.bottom, left: box.left };
+      };
+      const player = (element) => {
+        if (!element) return null;
+        const style = getComputedStyle(element);
+        return {
+          rect: rectFor(element), background: style.background, backgroundColor: style.backgroundColor,
+          color: style.color, font: style.font, height: style.height, borderRadius: style.borderRadius,
+          justifyContent: style.justifyContent, left: rectFor(element.querySelector(".left")), material: rectFor(element.querySelector(".material")),
+        };
+      };
+      const main = document.querySelector("main");
+      const mainStyle = main ? getComputedStyle(main) : null;
+      return {
+        top: rectFor(document.querySelector("#top")),
+        main: { rect: rectFor(main), gridTemplateColumns: mainStyle?.gridTemplateColumns ?? null, gridTemplateRows: mainStyle?.gridTemplateRows ?? null },
+        side: rectFor(document.querySelector(".analyse__side")),
+        underboard: rectFor(document.querySelector(".analyse__underboard")),
+        players: [...document.querySelectorAll(".study__player")].map(player),
+        cgBoard: rectFor(document.querySelector("cg-board")),
+        coords: [...document.querySelectorAll("coords")].map((element) => ({ className: element.className, rect: rectFor(element) })),
+        pockets: [...document.querySelectorAll(".pocket")].map((element) => rectFor(element)),
+        tools: rectFor(document.querySelector(".analyse__tools")),
+        fork: rectFor(document.querySelector(".analyse__fork")),
+        controls: rectFor(document.querySelector(".analyse__controls")),
+        controlButtons: [...document.querySelectorAll(".analyse__controls button")].map(rectFor),
+        moveCells: [...document.querySelectorAll(".tview2 index, .tview2 move")].slice(0, 8).map((element) => ({ tagName: element.tagName.toLowerCase(), text: element.textContent, rect: rectFor(element) })),
+      };
+    });
+    if (!frameMeta.top || Math.abs(frameMeta.top.height - 60) > 0.01) {
+      await context.close();
+      throw new Error(`${item.id} #top height was ${frameMeta.top?.height ?? "missing"}, expected 60`);
+    }
+    jimmyFrames[item.id] = { viewport: item.viewport, frame: item.frame, capturedAt: new Date().toISOString(), state: "S1", details, ...frameMeta };
+    console.log(`${item.id}: ${JSON.stringify(jimmyFrames[item.id])}`);
+    await context.close();
+  }
+  const metaPath = join(referenceDir, "reference-meta.json");
+  const meta = existsSync(metaPath) ? JSON.parse(readFileSync(metaPath, "utf8")) : {};
+  meta.jimmyFrames = jimmyFrames;
+  writeFileSync(metaPath, `${JSON.stringify(meta, null, 2)}\n`);
+}
+
 async function waitForServer(url) {
   for (let attempt = 0; attempt < 80; attempt += 1) {
     try { if ((await fetch(url)).ok) return; } catch { /* Vite is still starting. */ }
@@ -367,6 +440,7 @@ try {
     else await captureReference(browser);
   }
   else if (mode === "reference-responsive") await captureResponsiveReferences(browser);
+  else if (mode === "reference-jimmy") await captureJimmyReferences(browser);
   else {
     await captureCandidate(browser);
     if (referenceComplete) compareAll();
