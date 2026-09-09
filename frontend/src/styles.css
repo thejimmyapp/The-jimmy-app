@@ -1544,8 +1544,12 @@ body { background: #050910; }
 .glyph-picker legend { color: #dce8f6; font-size: 10px; font-weight: 800; }
 .glyph-picker__instruction { margin: 0 0 8px; color: #9aacbf; font: 9px Consolas, monospace; }
 .glyph-picker__key-map { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
-.glyph-picker__key-map li { display: grid; grid-template-columns: auto 1fr; gap: 2px 7px; align-items: center; min-width: 0; padding: 8px; border: 1px solid var(--line); border-radius: 5px; background: #09111c; }
-.glyph-picker__key-map li.is-selected { border-color: var(--cyan); background: #24d6e814; }
+.glyph-picker__key-map li { min-width: 0; }
+.glyph-picker__key-map button { display: grid; grid-template-columns: auto 1fr; gap: 2px 7px; align-items: center; width: 100%; height: 100%; min-width: 0; padding: 8px; border: 1px solid var(--line); border-radius: 5px; background: #09111c; color: inherit; font: inherit; text-align: left; }
+.glyph-picker__key-map button:enabled { cursor: pointer; }
+.glyph-picker__key-map li.is-selected button,
+.glyph-picker__key-map button:enabled:hover,
+.glyph-picker__key-map button:enabled:focus-visible { border-color: var(--cyan); background: #24d6e814; }
 .glyph-picker__key-map kbd { grid-row: span 2; display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; color: var(--cyan); font: 11px Consolas, monospace; }
 .glyph-picker__key-map strong { font: 700 17px Consolas, monospace; }
 .glyph-picker__key-map span, .glyph-picker__key-map code { color: #71839c; font-size: 8px; }
