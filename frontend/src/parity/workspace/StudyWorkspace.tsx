@@ -13,6 +13,7 @@ import { StudyPlayerBar } from "./StudyPlayerBar";
 import "./studyWorkspace.css";
 
 const fallbackFrame = () => ({ width: Math.max(0, window.innerWidth - 68), height: Math.max(0, window.innerHeight - 58) });
+const playerBarHeight = 22.390625;
 
 function reviewerOrientation(game: GamePayload): "white" | "black" {
   return game.game.user_color === "black" ? "black" : "white";
@@ -56,7 +57,9 @@ export function StudyWorkspace() {
   const layout = studyLayoutForBox(frame.width, frame.height);
   const smallLayout = compactLayout(layout);
   const secondBoard = layout.secondBoard!;
-  const secondBoardTop = secondBoard.placement === "side" ? layout.board.y : layout.board.y + layout.board.size + 8 + smallLayout.tools.pocketHeight;
+  const secondBoardTop = secondBoard.placement === "side"
+    ? layout.board.y + smallLayout.tools.pocketHeight
+    : layout.board.y + layout.board.size + playerBarHeight + 8 + smallLayout.tools.pocketHeight;
   const baseOrientation = reviewerOrientation(game);
   const orientation = flipped ? (baseOrientation === "white" ? "black" : "white") : baseOrientation;
   const boardAReplay = currentPosition(game, globalPly, "A");

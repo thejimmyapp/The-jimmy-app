@@ -42,6 +42,7 @@ describe("stage-frame study workspace", () => {
     act(() => resize([{ contentRect: { width: 1372, height: 842 } } as ResizeObserverEntry], {} as ResizeObserver));
     expect(workspace.dataset.layout).toBe("jimmy1440");
     expect(workspace.dataset.frame).toBe("1372x842");
+    expect(workspace.style.getPropertyValue("--study-side-top")).toBe("57.703125px");
     act(() => resize([{ contentRect: { width: 1132, height: 742 } } as ResizeObserverEntry], {} as ResizeObserver));
     expect(workspace.dataset.layout).toBe("jimmy1200");
   });
@@ -51,8 +52,12 @@ describe("stage-frame study workspace", () => {
     const second = () => container.querySelector<HTMLElement>('[data-jimmy-departure="second-board"]')!;
     act(() => resize([{ contentRect: { width: 1372, height: 842 } } as ResizeObserverEntry], {} as ResizeObserver));
     expect(second().dataset.placement).toBe("side");
+    expect(container.querySelector<HTMLElement>(".study-workspace")?.style.getPropertyValue("--study-side-top")).toBe("57.703125px");
     act(() => resize([{ contentRect: { width: 1132, height: 742 } } as ResizeObserverEntry], {} as ResizeObserver));
     expect(second().dataset.placement).toBe("under");
+    expect(container.querySelector<HTMLElement>(".study-workspace")?.style.getPropertyValue("--study-side-top")).toBe("687.390625px");
     expect(second().querySelector<HTMLElement>(".parity-board")?.style.getPropertyValue("--parity-board-size")).toBe("293.5px");
+    act(() => resize([{ contentRect: { width: 956, height: 710 } } as ResizeObserverEntry], {} as ResizeObserver));
+    expect(container.querySelector<HTMLElement>(".study-workspace")?.style.getPropertyValue("--study-side-top")).toBe("646.734375px");
   });
 });
