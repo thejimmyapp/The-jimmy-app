@@ -348,6 +348,69 @@ async function captureJimmyUnderboards(browser) {
   writeFileSync(metaPath, `${JSON.stringify(meta, null, 2)}\n`);
 }
 
+async function captureJimmyEngine(browser) {
+  const userAgent = await installedChromeUserAgent(browser);
+  const item = jimmyReferenceCases[0];
+  const { context, page } = await newPage(browser, { viewport: item.viewport, userAgent, locale: "en-US" });
+  const response = await page.goto(referenceUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
+  const boardPresent = response?.status() === 200 && await page.waitForSelector("cg-board", { timeout: 90_000 }).then(() => true, () => false);
+  if (!response?.ok() || !boardPresent) {
+    const title = await page.title(); await context.close();
+    throw new Error(`${item.id} returned HTTP ${response?.status() ?? "unknown"} with cg-board=${boardPresent}: ${title}`);
+  }
+  const chapter = page.locator(`.study__chapters button[data-id="${referenceChapter}"]`);
+  if (await chapter.count() && !(await chapter.first().evaluate((element) => element.classList.contains("active")))) await chapter.first().click();
+  await page.waitForSelector(".analyse__tools", { timeout: 90_000 });
+  await settle(page); await page.keyboard.press("ArrowRight"); await settle(page);
+
+  const engineState = () => page.evaluate(() => {
+    const rectFor = (element) => {
+      if (!element) return null;
+      const box = element.getBoundingClientRect();
+      return { x: box.x, y: box.y, width: box.width, height: box.height, top: box.top, right: box.right, bottom: box.bottom, left: box.left };
+    };
+    const styleFor = (element) => {
+      if (!element) return null;
+      const style = getComputedStyle(element);
+      return {
+        tagName: element.tagName.toLowerCase(), className: element.className,
+        text: element.matches(".ceval, .ceval *, .pv_box, .pv_box *") ? element.textContent?.trim() ?? "" : undefined,
+        rect: rectFor(element),
+        background: style.background, backgroundColor: style.backgroundColor, color: style.color, font: style.font,
+        height: style.height, padding: style.padding, borderRadius: style.borderRadius, boxShadow: style.boxShadow, display: style.display,
+      };
+    };
+    const ceval = document.querySelector(".ceval");
+    const relevantControl = (element) => /engine|evaluation|computer/i.test([
+      element.textContent, element.getAttribute("title"), element.getAttribute("aria-label"), element.getAttribute("data-icon"), element.className,
+    ].filter(Boolean).join(" "));
+    return {
+      ceval: styleFor(ceval), cevalChildren: ceval ? [...ceval.children].map(styleFor) : [], pvBox: styleFor(document.querySelector(".pv_box")),
+      toolsColumn: styleFor(document.querySelector(".analyse__tools")), moves: styleFor(document.querySelector(".analyse__moves")),
+      pockets: [...document.querySelectorAll(".pocket")].map(styleFor), controls: styleFor(document.querySelector(".analyse__controls")),
+      engineControls: [...document.querySelectorAll("button, input, label")].filter(relevantControl).map((element) => ({
+        tagName: element.tagName.toLowerCase(), className: element.className, text: element.textContent?.trim() ?? "",
+        title: element.getAttribute("title"), ariaLabel: element.getAttribute("aria-label"), rect: rectFor(element),
+      })),
+    };
+  });
+
+  const off = await engineState();
+  await page.screenshot({ path: join(referenceDir, "jimmy1440-engine-off.png") });
+  await page.keyboard.press("l"); await settle(page);
+  const afterLocalEvaluationKey = await engineState();
+  await page.screenshot({ path: join(referenceDir, "jimmy1440-engine-after-l.png") });
+  const metaPath = join(referenceDir, "reference-meta.json");
+  const meta = JSON.parse(readFileSync(metaPath, "utf8"));
+  meta.jimmyEngine = {
+    viewport: item.viewport, frame: item.frame, capturedAt: new Date().toISOString(), keyboardAttempt: "l",
+    localEvaluationAvailable: Boolean(off.ceval || afterLocalEvaluationKey.ceval), off, afterLocalEvaluationKey,
+  };
+  writeFileSync(metaPath, `${JSON.stringify(meta, null, 2)}\n`);
+  console.log(`jimmyEngine: ${JSON.stringify(meta.jimmyEngine)}`);
+  await context.close();
+}
+
 async function waitForServer(url) {
   for (let attempt = 0; attempt < 80; attempt += 1) {
     try { if ((await fetch(url)).ok) return; } catch { /* Vite is still starting. */ }
@@ -503,6 +566,7 @@ try {
   else if (mode === "reference-responsive") await captureResponsiveReferences(browser);
   else if (mode === "reference-jimmy") await captureJimmyReferences(browser);
   else if (mode === "reference-jimmy-underboard") await captureJimmyUnderboards(browser);
+  else if (mode === "reference-jimmy-engine") await captureJimmyEngine(browser);
   else {
     await captureCandidate(browser);
     if (referenceComplete) compareAll();

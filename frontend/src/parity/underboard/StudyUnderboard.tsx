@@ -9,6 +9,7 @@ export interface StudyUnderboardProps {
   savedMomentCount?: number;
   onSaveMoment?: () => void;
   onOpenLibrary?: () => void;
+  onInfoVisibilityChange?: (visible: boolean) => void;
 }
 
 function TabIcon({ children }: { children: ReactNode }) {
@@ -28,7 +29,7 @@ function playerLabels(game: GamePayload) {
   };
 }
 
-export function StudyUnderboard({ game, layout, savedMomentCount = 0, onSaveMoment = () => undefined, onOpenLibrary = () => undefined }: StudyUnderboardProps) {
+export function StudyUnderboard({ game, layout, savedMomentCount = 0, onSaveMoment = () => undefined, onOpenLibrary = () => undefined, onInfoVisibilityChange = () => undefined }: StudyUnderboardProps) {
   const [showInfo, setShowInfo] = useState(true);
   const measured = layout.underboard;
   if (!measured) return null;
@@ -52,7 +53,11 @@ export function StudyUnderboard({ game, layout, savedMomentCount = 0, onSaveMome
       <div className="study-underboard-buttons-left">
         <button type="button" aria-label="Save moment" title="Save moment" onClick={onSaveMoment}><SaveIcon /></button>
         <button type="button" aria-label="Library" title="Library" onClick={onOpenLibrary}><LibraryIcon /><span className="study-underboard-count">{savedMomentCount}</span></button>
-        <button type="button" className={showInfo ? "active" : undefined} aria-label="Match info" title="Match info" aria-expanded={showInfo} onClick={() => setShowInfo((current) => !current)}><InfoIcon /></button>
+        <button type="button" className={showInfo ? "active" : undefined} aria-label="Match info" title="Match info" aria-expanded={showInfo} onClick={() => {
+          const next = !showInfo;
+          setShowInfo(next);
+          onInfoVisibilityChange(next);
+        }}><InfoIcon /></button>
       </div>
       <div className="study-underboard-buttons-right" aria-hidden="true" />
     </div>

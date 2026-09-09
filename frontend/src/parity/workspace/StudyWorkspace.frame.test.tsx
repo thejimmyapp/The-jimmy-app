@@ -1,4 +1,4 @@
-import { act, cleanup, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { useCoachStore } from "../../store";
 import type { GamePayload, ReplayPosition } from "../../types";
@@ -47,6 +47,17 @@ describe("stage-frame study workspace", () => {
     expect(workspace.dataset.layout).toBe("jimmy1200");
   });
 
+  it("selects the wide preset from border-box dimensions when a scrollbar narrows contentRect", () => {
+    const { container } = render(<StudyWorkspace />);
+    const workspace = container.querySelector<HTMLElement>(".study-workspace")!;
+    act(() => resize([{
+      contentRect: { width: 1357, height: 842 },
+      borderBoxSize: [{ inlineSize: 1372, blockSize: 842 }],
+    } as unknown as ResizeObserverEntry], {} as ResizeObserver));
+    expect(workspace.dataset.layout).toBe("jimmy1440");
+    expect(workspace.dataset.frame).toBe("1372x842");
+  });
+
   it("switches the second board from the wide side column to the narrow underboard", () => {
     const { container } = render(<StudyWorkspace />);
     const second = () => container.querySelector<HTMLElement>('[data-jimmy-departure="second-board"]')!;
@@ -55,9 +66,13 @@ describe("stage-frame study workspace", () => {
     expect(container.querySelector<HTMLElement>(".study-workspace")?.style.getPropertyValue("--study-side-top")).toBe("57.703125px");
     act(() => resize([{ contentRect: { width: 1132, height: 742 } } as ResizeObserverEntry], {} as ResizeObserver));
     expect(second().dataset.placement).toBe("under");
-    expect(container.querySelector<HTMLElement>(".study-workspace")?.style.getPropertyValue("--study-side-top")).toBe("687.390625px");
+    expect(container.querySelector<HTMLElement>(".study-workspace")?.style.getPropertyValue("--study-side-top")).toBe("1141.890625px");
     expect(second().querySelector<HTMLElement>(".parity-board")?.style.getPropertyValue("--parity-board-size")).toBe("293.5px");
+    fireEvent.click(container.querySelector<HTMLButtonElement>('button[aria-label="Match info"]')!);
+    expect(container.querySelector<HTMLElement>(".study-workspace")?.style.getPropertyValue("--study-side-top")).toBe("738.25px");
+    fireEvent.click(container.querySelector<HTMLButtonElement>('button[aria-label="Match info"]')!);
+    expect(container.querySelector<HTMLElement>(".study-workspace")?.style.getPropertyValue("--study-side-top")).toBe("1141.890625px");
     act(() => resize([{ contentRect: { width: 956, height: 710 } } as ResizeObserverEntry], {} as ResizeObserver));
-    expect(container.querySelector<HTMLElement>(".study-workspace")?.style.getPropertyValue("--study-side-top")).toBe("646.734375px");
+    expect(container.querySelector<HTMLElement>(".study-workspace")?.style.getPropertyValue("--study-side-top")).toBe("1090px");
   });
 });
