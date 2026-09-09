@@ -5,11 +5,11 @@ against production by the gate, not taken from an executor report.
 
 ## 1. State of `main`
 
-`main` = `7b4b3e37e55c46fd23e29e675c4d981bfefd7311`; merged 2026-09-07/08 after `a3422f6`: LEDGER-4, LAND-03, LAND-05, LAND-04, LEDGER-5, UX-01, DOCS-01, LEGAL-01 memo, LEDGER-6, LIST-01, BOARD-01, LIST-02, LIST-03; golden at M3: vitest 46 files / 223 tests, pytest 204.
+`main` = `a43026718c2c1b2a72fc75e98caeb9edb5d9d216` (M9); merged 2026-09-07/08 after `a3422f6`: LEDGER-4, LAND-03, LAND-05, LAND-04, LEDGER-5, UX-01, DOCS-01, LEGAL-01 memo, LEDGER-6, LIST-01, BOARD-01, LIST-02, LIST-03, LEDGER-7, PARITY-01, PARITY-02, PARITY-03, PARITY-04, PARITY-05a; golden at M9: vitest 58 files / 261 tests, eslint clean, pytest 204 (backend unchanged since M3).
 
-**HELD:** SHELL-01 `899e48b` (merges clean on current main).
+**HELD:** none — SHELL-01 `899e48b` superseded by UX-06 (branch left unmerged).
 
-**Open owner calls:** SHELL-01 ruling; LEGAL-01 copy approval (6 blocks + deletion scope: identity only or moments too); carousel UX-02 (STRUCTURE / VERBATIM / DROP; brand); credential memo (magic link · password · Chess.com OAuth); founder ordinals #1–#2; guest-list copy (explainer, empty-class row, rotation note — three [COPY-PLACEHOLDER]s); optional seed usernames for 1900–2300 / 1400–1900 via `CHESSCOM_SEED_PLAYERS_1900_2300` / `_1400_1900`; LOG-01; TEST-01.
+**Open owner calls:** study UI default flip (`?ui=study` → default for everyone; brown/680 reference look vs the owner's wood/800 zoom); LEGAL-01 copy approval (6 blocks + deletion scope: identity only or moments too); carousel UX-02 (STRUCTURE / VERBATIM / DROP; brand); credential memo (magic link · password · Chess.com OAuth); founder ordinals #1–#2; guest-list copy (explainer, empty-class row, rotation note — three [COPY-PLACEHOLDER]s); optional seed usernames for 1900–2300 / 1400–1900 via `CHESSCOM_SEED_PLAYERS_1900_2300` / `_1400_1900`; LOG-01; TEST-01.
 
 ## 2. Production walk-through as a fresh guest (2026-09-05, guest #50)
 
@@ -96,5 +96,9 @@ Nothing in this loop should be built until the owner rules on credential intake.
 - Browser pane: with viewport emulation on, the click-coordinate factor depends on the pane size — 800×565 pane mapped 1:1 with the picture (CSS = frame × 992/800), a 393×277 pane mapped squared (CSS = frame × (992/393)²). Calibrate once per session with a document click listener before clicking anything that matters; the wizard's Save button sits below a 700 px fold — scrollIntoView first.
 - Production bundle identity: build with VITE_PUBLIC_BASE_URL=https://www.thejimmyapp.com to reproduce the deployed JS filename (publicUrl.ts bakes it); the CSS filename matches the default build.
 - Backend tests in the cloud container: Debian's setuptools breaks the chess==1.11.2 sdist build — use a venv (python3 -m venv), then python -m pytest -q from the repo root (191).
+- File channel (DISPATCH-01, proven 2026-09-08): a lane waits with `timeout 540 bash -c 'until [ -s /Users/user/Documents/4robots/HARDCODE/gate4-work/orders/LANE-N.next ]; do sleep 15; done; echo ARRIVED'` (3–4 empty waits, counter reset by each order), moves the file to `orders/done/LANE-N.<UTC>.md`, executes it as a gate order, mirrors `reports/<TAG>.md`, resumes waiting. The gate writes orders via device_bash (write `.tmp`, then `mv`). Pickup ≤ 30 s; an order written while the lane is busy is picked up when it returns to waiting. No-op KEEPALIVE-n orders keep an idle lane alive.
+- Expected production asset names in an order = the gate's own golden build of the candidate tree (they equal the deployed names); a lane's earlier build can print different JS hashes for the same tree.
+- Lichess reference captures: the study returns its 404 page to a `HeadlessChrome` user agent — capture with the installed Chrome UA minus "Headless"; anonymous = Lichess defaults (brown flat board, 680 px at 1440×900), the owner's logged-in view carries his zoom/theme prefs.
+- Merge identity for `--no-ff` merges is the `git merge-tree --write-tree main branch` tree hash, never a diff against the branch (main may have moved).
 
 **Gate notes for AUTOPILOT:** keep-awake = `launchctl submit -l com.thejimmyapp.keepawake -- /usr/bin/caffeinate -dimsu -t <secs>` (Codex reaps `nohup &` children); the screen-control grant drops when the Mac idle-locks (caffeinate does not stop the screen saver) — heartbeat input every ≤3 min or disable the lock for the window; Codex composer accepts clipboard paste + Return in display-scope mode only; lane reports are mirrored at `4robots/HARDCODE/gate4-work/reports/<TAG>.md`. Merge identity for non-fast-forward merges = `git merge-tree --write-tree main branch` tree hash, never an empty diff vs the branch.
