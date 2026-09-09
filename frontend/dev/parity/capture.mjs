@@ -574,6 +574,39 @@ async function captureJimmyMenuAndSide(browser) {
   await context.close();
 }
 
+async function captureJimmyMenuButton(browser) {
+  const userAgent = await installedChromeUserAgent(browser);
+  const item = jimmyReferenceCases[0];
+  const { context, page } = await newPage(browser, { viewport: item.viewport, userAgent, locale: "en-US" });
+  const response = await page.goto(referenceUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
+  const boardPresent = response?.status() === 200 && await page.waitForSelector("cg-board", { timeout: 90_000 }).then(() => true, () => false);
+  if (!response?.ok() || !boardPresent) {
+    const title = await page.title(); await context.close();
+    throw new Error(`menu button returned HTTP ${response?.status() ?? "unknown"} with cg-board=${boardPresent}: ${title}`);
+  }
+  const chapter = page.locator(`.study__chapters button[data-id="${referenceChapter}"]`);
+  if (await chapter.count() && !(await chapter.first().evaluate((element) => element.classList.contains("active")))) await chapter.first().click();
+  await settle(page); await page.keyboard.press("ArrowRight"); await settle(page);
+  const menuButton = page.locator('button[title="Menu"]');
+  await menuButton.click(); await settle(page);
+  const controlsButton = await menuButton.evaluate((element) => {
+    const box = element.getBoundingClientRect(); const style = getComputedStyle(element);
+    return {
+      tagName: element.tagName.toLowerCase(), className: element.className,
+      rect: { x: box.x, y: box.y, width: box.width, height: box.height, top: box.top, right: box.right, bottom: box.bottom, left: box.left },
+      background: style.background, backgroundColor: style.backgroundColor, color: style.color, font: style.font,
+      height: style.height, padding: style.padding, margin: style.margin, border: style.border, borderRadius: style.borderRadius,
+      boxShadow: style.boxShadow, display: style.display, alignItems: style.alignItems, justifyContent: style.justifyContent,
+    };
+  });
+  const metaPath = join(referenceDir, "reference-meta.json");
+  const meta = JSON.parse(readFileSync(metaPath, "utf8"));
+  meta.jimmyMenu.opened.controlsButton = controlsButton;
+  writeFileSync(metaPath, `${JSON.stringify(meta, null, 2)}\n`);
+  console.log(`jimmyMenu.opened.controlsButton: ${JSON.stringify(controlsButton)}`);
+  await context.close();
+}
+
 async function waitForServer(url) {
   for (let attempt = 0; attempt < 80; attempt += 1) {
     try { if ((await fetch(url)).ok) return; } catch { /* Vite is still starting. */ }
@@ -732,6 +765,7 @@ try {
   else if (mode === "reference-jimmy-engine") await captureJimmyEngine(browser);
   else if (mode === "reference-jimmy-analysis-engine") await captureJimmyAnalysisEngine(browser);
   else if (mode === "reference-jimmy-menu-side") await captureJimmyMenuAndSide(browser);
+  else if (mode === "reference-jimmy-menu-button") await captureJimmyMenuButton(browser);
   else {
     await captureCandidate(browser);
     if (referenceComplete) compareAll();

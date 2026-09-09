@@ -43,11 +43,12 @@ export interface StudyWorkspaceProps {
   savedMomentCount?: number;
   saveMomentDisabled?: boolean;
   collaborate?: ReactNode;
+  collaboratePanel?: ReactNode;
   onClassicView?: () => void;
   analysis?: ReactNode;
 }
 
-export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount = 0, saveMomentDisabled = false, collaborate, onClassicView = () => undefined, analysis }: StudyWorkspaceProps = {}) {
+export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount = 0, saveMomentDisabled = false, collaborate, collaboratePanel, onClassicView = () => undefined, analysis }: StudyWorkspaceProps = {}) {
   const { game, globalPly, seek } = useCoachStore();
   const [frame, setFrame] = useState(fallbackFrame);
   const [flipped, setFlipped] = useState(false);
@@ -156,7 +157,7 @@ export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount =
       <ParityPocket {...bottom} position="bottom" usable={boardA.position.side_to_move.toLowerCase() === bottom.color} orientation={orientation} layout={layout} />
       <div className="study-controls"><ParityControls onNavigate={navigate} menuOpen={menuOpen} onMenuToggle={() => setMenuOpen((current) => !current)} /></div>
     </aside>
-    {secondBoard.placement === "side" && game.second_board_available && boardBReplay && boardB && collaborate && <StudySide>{collaborate}</StudySide>}
+    {secondBoard.placement === "side" && game.second_board_available && boardBReplay && boardB && collaboratePanel && <StudySide actions={collaborate}>{collaboratePanel}</StudySide>}
     <StudyUnderboard game={game} layout={layout} savedMomentCount={savedMomentCount} onSaveMoment={onSaveMoment} onOpenLibrary={onOpenLibrary} onInfoVisibilityChange={setUnderboardInfoVisible} saveMomentDisabled={saveMomentDisabled} />
   </section>;
 }

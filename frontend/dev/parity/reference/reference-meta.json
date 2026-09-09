@@ -8005,7 +8005,34 @@
           "ariaLabel": null,
           "checked": null
         }
-      ]
+      ],
+      "controlsButton": {
+        "tagName": "button",
+        "className": "fbt active",
+        "rect": {
+          "x": 1323.28125,
+          "y": 764.1875,
+          "width": 35,
+          "height": 45,
+          "top": 764.1875,
+          "right": 1358.28125,
+          "bottom": 809.1875,
+          "left": 1323.28125
+        },
+        "background": "rgb(98, 153, 36) none repeat scroll 0% 0% / auto padding-box border-box",
+        "backgroundColor": "rgb(98, 153, 36)",
+        "color": "rgb(255, 255, 255)",
+        "font": "14px / 21px \"Noto Sans\", sans-serif",
+        "height": "45px",
+        "padding": "3px 0px 0px",
+        "margin": "-3px 0px 0px",
+        "border": "0px none rgb(255, 255, 255)",
+        "borderRadius": "0px 0px 7px 7px",
+        "boxShadow": "none",
+        "display": "block",
+        "alignItems": "normal",
+        "justifyContent": "normal"
+      }
     },
     "closeBehavior": {
       "clickAgain": "closes",

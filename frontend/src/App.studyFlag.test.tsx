@@ -11,15 +11,16 @@ const apiMock = vi.hoisted(() => ({
   guestMatchups: vi.fn(), chessComMatchReplay: vi.fn(), game: vi.fn(), resolveGame: vi.fn(), connectChessCom: vi.fn(), enrichChessCom: vi.fn(), importPgn: vi.fn(),
   createRoom: vi.fn(), room: vi.fn(), joinRoom: vi.fn(), coachStatus: vi.fn(), runCoach: vi.fn(), coachJob: vi.fn(),
 }));
-const studyWorkspaceCapture = vi.hoisted(() => ({ analysis: null as unknown }));
+const studyWorkspaceCapture = vi.hoisted(() => ({ analysis: null as unknown, collaboratePanel: null as unknown }));
 
 vi.mock("./api", async (importOriginal) => ({ ...(await importOriginal<typeof import("./api")>()), api: apiMock }));
 vi.mock("./socket", () => ({ applyRoomSnapshot: vi.fn(), connectRoomSocket: vi.fn(), disconnectRoomSocket: vi.fn(), sendRoomEvent: vi.fn() }));
 vi.mock("./components/BoardPanel", () => ({ BoardPanel: () => <div data-testid="legacy-review-board" /> }));
 vi.mock("./components/SidePanel", () => ({ SidePanel: () => <div data-testid="legacy-review-dock" /> }));
-vi.mock("./parity/workspace/StudyWorkspace", () => ({ StudyWorkspace: ({ onSaveMoment, saveMomentDisabled, collaborate, onClassicView, analysis }: { onSaveMoment?: () => void; saveMomentDisabled?: boolean; collaborate?: ReactNode; onClassicView?: () => void; analysis?: ReactNode }) => {
+vi.mock("./parity/workspace/StudyWorkspace", () => ({ StudyWorkspace: ({ onSaveMoment, onOpenLibrary, saveMomentDisabled, collaborate, collaboratePanel, onClassicView, analysis }: { onSaveMoment?: () => void; onOpenLibrary?: () => void; saveMomentDisabled?: boolean; collaborate?: ReactNode; collaboratePanel?: ReactNode; onClassicView?: () => void; analysis?: ReactNode }) => {
   studyWorkspaceCapture.analysis = analysis;
-  return <section aria-label="Study review workspace"><button type="button" onClick={onSaveMoment} disabled={saveMomentDisabled} aria-disabled={saveMomentDisabled}>Save moment</button><button type="button" onClick={onClassicView}>Classic view</button><div data-testid="study-collaborate">{collaborate}</div></section>;
+  studyWorkspaceCapture.collaboratePanel = collaboratePanel;
+  return <section aria-label="Study review workspace"><button type="button" onClick={onSaveMoment} disabled={saveMomentDisabled} aria-disabled={saveMomentDisabled}>Save moment</button><button type="button" onClick={onOpenLibrary}>Study library</button><button type="button" onClick={onClassicView}>Classic view</button><div data-testid="study-collaborate">{collaborate}</div></section>;
 } }));
 
 const position: ReplayPosition = {
@@ -53,6 +54,7 @@ describe("opt-in study UI mount", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     studyWorkspaceCapture.analysis = null;
+    studyWorkspaceCapture.collaboratePanel = null;
     localStorage.clear();
     history.replaceState(null, "", "/");
     useCoachStore.setState({ game, globalPly: 0, mode: "review", guestMatch: null, roomId: null, username: "" });
@@ -91,6 +93,15 @@ describe("opt-in study UI mount", () => {
     expect(screen.getByText("have no fear! stockfish is here!")).not.toBeNull();
   });
 
+  it("passes the dock capability lock into the visible study collaborate panel", () => {
+    history.replaceState(null, "", "/?ui=study");
+    renderApp();
+    expect(studyWorkspaceCapture.collaboratePanel).not.toBeNull();
+    render(<>{studyWorkspaceCapture.collaboratePanel as ReactNode}</>);
+    expect(screen.getByText("Locked")).not.toBeNull();
+    expect((screen.getByRole("button", { name: "Send" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("routes the study Save moment tab through the existing moment editor handler", () => {
     history.replaceState(null, "", "/?ui=study");
     useCoachStore.setState({ game, guestMatch: match, globalPly: 1, mode: "review" });
@@ -118,5 +129,20 @@ describe("opt-in study UI mount", () => {
     expect(screen.getByTestId("legacy-review-dock")).not.toBeNull();
     expect(location.search).toBe("?game=42");
     expect(localStorage.getItem("thejimmyapp.ui")).toBeNull();
+  });
+
+  it("returns from the flagged study through the unchanged onboarding rail path", () => {
+    history.replaceState(null, "", "/?game=42&ui=study");
+    renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "Return to onboarding" }));
+    expect(screen.queryByRole("region", { name: "Study review workspace" })).toBeNull();
+    expect(screen.getByLabelText("The Jimmy App landing")).not.toBeNull();
+  });
+
+  it("opens the flashcard library from the unchanged flagged-study rail action", async () => {
+    history.replaceState(null, "", "/?ui=study");
+    renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "Open flashcard library" }));
+    expect(await screen.findByRole("dialog", { name: "SirGuest#1 Flashcard library" })).not.toBeNull();
   });
 });

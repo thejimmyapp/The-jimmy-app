@@ -123,10 +123,11 @@ try {
     const page = await context.newPage();
     await page.goto(`${candidateUrl}?study=0&ply=1&frame=1372x842&chrome=1`, { waitUntil: "networkidle" });
     await page.waitForSelector('.study-workspace[data-layout="jimmy1440"]'); await page.evaluate(() => document.fonts.ready); await page.waitForTimeout(300);
-    await page.screenshot({ path: join(reportDir, "frame-1372x842-side.png") });
+    const sideName = process.env.PARITY_CAPTURE_SIDE_CHAT === "1" ? "side-chat" : "side";
+    await page.screenshot({ path: join(reportDir, `frame-1372x842-${sideName}.png`) });
     await page.getByRole("button", { name: "Menu" }).click(); await page.waitForSelector(".study-action-menu");
     await page.screenshot({ path: join(reportDir, "frame-1372x842-menu-open.png") });
-    for (const [name, referenceName] of [["side", "jimmy1440-side.png"], ["menu-open", "jimmy1440-menu-open.png"]]) {
+    for (const [name, referenceName] of [[sideName, "jimmy1440-side.png"], ["menu-open", "jimmy1440-menu-open.png"]]) {
       const candidate = PNG.sync.read(readFileSync(join(reportDir, `frame-1372x842-${name}.png`)));
       const reference = PNG.sync.read(readFileSync(join(referenceDir, referenceName)));
       const referenceFrame = crop(reference, { x: 0, y: 60, width: 1372, height: 842 });

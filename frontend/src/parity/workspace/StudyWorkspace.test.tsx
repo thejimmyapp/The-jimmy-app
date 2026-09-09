@@ -62,6 +62,7 @@ describe("study workspace", () => {
     const workspace = container.querySelector<HTMLElement>(".study-workspace")!;
     fireEvent.click(getByRole("button", { name: "Menu" }));
     expect(getByRole("region", { name: "Study menu" })).not.toBeNull();
+    expect(getByRole("region", { name: "Study menu" }).textContent).toContain("Study");
     fireEvent.click(getByRole("button", { name: "Flip board" }));
     expect(workspace.dataset.orientation).toBe("white");
     fireEvent.click(getByRole("button", { name: "Wood" }));

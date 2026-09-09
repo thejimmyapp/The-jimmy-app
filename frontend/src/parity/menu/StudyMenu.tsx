@@ -10,7 +10,7 @@ export interface StudyMenuProps {
 
 export function StudyMenu({ theme, onFlip, onThemeChange, onClassicView }: StudyMenuProps) {
   return <div className="study-action-menu" role="region" aria-label="Study menu">
-    <div className="study-action-menu-title">Analysis board</div>
+    <div className="study-action-menu-title">Study</div>
     <div className="study-action-menu-inner">
       <button type="button" onClick={onFlip}><span className="study-menu-icon" aria-hidden="true">↕</span><span>Flip board</span></button>
       <div className="study-menu-theme-row">

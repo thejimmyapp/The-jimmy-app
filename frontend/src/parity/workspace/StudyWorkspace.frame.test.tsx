@@ -77,13 +77,15 @@ describe("stage-frame study workspace", () => {
   });
 
   it("renders collaboration under the compact board only in the wide side placement", () => {
-    const { container, queryByTestId } = render(<StudyWorkspace collaborate={<button data-testid="collaborate-action">Invite partner</button>} />);
+    const { container, queryByTestId } = render(<StudyWorkspace collaborate={<button data-testid="collaborate-action">Invite partner</button>} collaboratePanel={<div data-testid="collaborate-panel">Chat</div>} />);
     act(() => resize([{ contentRect: { width: 1372, height: 842 } } as ResizeObserverEntry], {} as ResizeObserver));
     expect(queryByTestId("collaborate-action")).not.toBeNull();
+    expect(queryByTestId("collaborate-panel")).not.toBeNull();
     expect(container.querySelector<HTMLElement>(".study-side")?.style.top).toBe("");
     expect(container.querySelector<HTMLElement>(".study-workspace")?.style.getPropertyValue("--study-collaborate-top")).toBe("394.203125px");
     act(() => resize([{ contentRect: { width: 1132, height: 742 } } as ResizeObserverEntry], {} as ResizeObserver));
     expect(queryByTestId("collaborate-action")).toBeNull();
+    expect(queryByTestId("collaborate-panel")).toBeNull();
   });
 
   it("keeps OFF geometry frozen and shifts only moves by the measured 26px when ON", () => {

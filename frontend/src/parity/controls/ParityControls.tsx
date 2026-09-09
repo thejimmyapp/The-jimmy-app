@@ -21,10 +21,10 @@ export function ParityControls({ onNavigate, menuOpen = false, onMenuToggle }: P
   const labels: Record<ParityNavigationAction, string> = { first: "First move", prev: "Previous move", next: "Next move", last: "Last move" };
   const actions = Object.keys(labels) as ParityNavigationAction[];
   return <div className="analyse__controls parity-control-row">
-    <button className="fbt placeholder practice" type="button" title="Practice with computer" aria-label="Practice with computer" />
+    <button className="fbt placeholder practice" type="button" aria-hidden="true" tabIndex={-1} disabled />
     <div className="parity-move-controls">
       {actions.map((action) => <button key={action} className="fbt move" type="button" data-act={action} title={labels[action]} aria-label={labels[action]} onClick={() => onNavigate(action)}><Icon action={action} /></button>)}
     </div>
-    <button className={`fbt placeholder menu${menuOpen ? " active" : ""}`} type="button" title="Menu" aria-label="Menu" aria-expanded={menuOpen} onClick={onMenuToggle} />
+    <button className={`fbt placeholder menu${menuOpen ? " active" : ""}`} type="button" title="Menu" aria-label="Menu" aria-expanded={menuOpen} onClick={onMenuToggle}><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14" /></svg></button>
   </div>;
 }

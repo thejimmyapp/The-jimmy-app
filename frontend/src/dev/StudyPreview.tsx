@@ -3,6 +3,7 @@ import { reconstructGuestMatch } from "../bughouseDecoder";
 import fixtures from "../fixtures/guest-match-replays.json";
 import { replayToParity } from "../parity/adapters/replayToParity";
 import { StudyWorkspace } from "../parity/workspace/StudyWorkspace";
+import { CollaboratePanel } from "../components/CollaboratePanel";
 import { useCoachStore } from "../store";
 import type { CallbackReplayBoard, GuestMatchReplaySource, NormalizedMatch } from "../types";
 
@@ -42,8 +43,15 @@ export function StudyPreview({ fixtureIndex, requestedPly, frame, chrome = false
   const selectedPly = Math.max(0, Math.min(lastPly, requestedPly));
   const selected = game.timeline[selectedPly];
   const expected = replayToParity(selected.board_a);
-  useCoachStore.setState({ game, mode: "review", globalPly: selectedPly });
+  useCoachStore.setState(chrome ? {
+    game, mode: "review", globalPly: selectedPly, roomId: "preview-room", displayName: "Jimmy",
+    participants: [{ client_id: "jimmy", display_name: "Jimmy" }, { client_id: "partner", display_name: "Partner" }],
+    messages: [
+      { id: "preview-1", author: "Jimmy", content: "Try N@h6 before the exchange.", board: "A", ply: selectedPly, timestamp: "2026-09-09T01:00:00Z", sequence: 1 },
+      { id: "preview-2", author: "Partner", content: "I see the fork on the other board.", board: "A", ply: selectedPly, timestamp: "2026-09-09T01:00:01Z", sequence: 2 },
+    ],
+  } : { game, mode: "review", globalPly: selectedPly });
   Object.assign(window, { __STUDY_PREVIEW__: { fixtureIndex, seed: fixture.seed, game, selectedPly, suggestedMid, lastPly, expected } });
   const collaborate = chrome ? <><button className="share-button" type="button">Invite partner</button><span className="viewer-pill">1</span><button className="coach-button" type="button">Team Coach</button></> : undefined;
-  return <div className="study-preview-frame" style={frame ? { width: frame.width, height: frame.height } : undefined}><StudyWorkspace collaborate={collaborate} /></div>;
+  return <div className="study-preview-frame" style={frame ? { width: frame.width, height: frame.height } : undefined}><StudyWorkspace collaborate={collaborate} collaboratePanel={chrome ? <CollaboratePanel active /> : undefined} /></div>;
 }
