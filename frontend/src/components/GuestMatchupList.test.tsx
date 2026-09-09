@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../api";
@@ -192,4 +192,90 @@ describe("guest matchup list", () => {
     await screen.findByRole("button", { name: "Regenerate list" });
     await waitFor(() => expect(screen.queryByText(/no other recent game yet/)).toBeNull());
   });
+
+  it("selects the clicked card even when another card is active", async () => {
+    vi.mocked(api.guestMatchups).mockResolvedValue(matchupPayload());
+    const onSelect = vi.fn();
+    renderList(<GuestMatchupList onSelect={onSelect} />);
+    await screen.findByRole("listbox", { name: "Guest matchups" });
+    const options = screen.getAllByRole("option");
+    fireEvent.click(options[2]);
+    expect(onSelect).toHaveBeenCalledOnce();
+    expect(onSelect).toHaveBeenCalledWith(matches[2]);
+    expect(options[2].getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByText("Click a game, or use Arrow Up / Arrow Down and Enter.")).toBeTruthy();
+    await waitFor(() => expect(screen.queryByText("Verifying both boards…")).toBeNull());
+  });
+
+  it.each(["Enter", " "])("selects a focused card with %s without bubbling a second selection", async (key) => {
+    vi.mocked(api.guestMatchups).mockResolvedValue(matchupPayload());
+    const onSelect = vi.fn();
+    renderList(<GuestMatchupList onSelect={onSelect} />);
+    await screen.findByRole("listbox", { name: "Guest matchups" });
+    const card = screen.getAllByRole("option")[1];
+    card.focus();
+    expect(document.activeElement).toBe(card);
+    fireEvent.keyDown(card, { key });
+    expect(onSelect).toHaveBeenCalledOnce();
+    expect(onSelect).toHaveBeenCalledWith(matches[1]);
+    await waitFor(() => expect(screen.queryByText("Verifying both boards…")).toBeNull());
+  });
+
+  it("suppresses rapid clicks and Enter while selection is pending, then unlocks", async () => {
+    vi.mocked(api.guestMatchups).mockResolvedValue(matchupPayload());
+    let finish!: () => void;
+    const onSelect = vi.fn().mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    renderList(<GuestMatchupList onSelect={onSelect} />);
+    const list = await screen.findByRole("listbox", { name: "Guest matchups" });
+    const options = screen.getAllByRole("option");
+    act(() => {
+      fireEvent.click(options[1]);
+      fireEvent.click(options[1]);
+      fireEvent.click(options[2]);
+      fireEvent.keyDown(list, { key: "Enter" });
+    });
+    expect(onSelect).toHaveBeenCalledOnce();
+    expect(onSelect).toHaveBeenCalledWith(matches[1]);
+    expect((screen.getByRole("button", { name: "Regenerate list" }) as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => finish());
+    fireEvent.click(options[2]);
+    expect(onSelect).toHaveBeenCalledTimes(2);
+    expect(onSelect).toHaveBeenLastCalledWith(matches[2]);
+    await waitFor(() => expect(screen.queryByText("Verifying both boards…")).toBeNull());
+  });
+
+  it("preserves arrow navigation after a card has focus", async () => {
+    vi.mocked(api.guestMatchups).mockResolvedValue(matchupPayload());
+    const onSelect = vi.fn().mockRejectedValue(new Error("offline"));
+    renderList(<GuestMatchupList onSelect={onSelect} />);
+    const list = await screen.findByRole("listbox", { name: "Guest matchups" });
+    const card = screen.getAllByRole("option")[1];
+    fireEvent.click(card);
+    await screen.findByRole("alert");
+    card.focus();
+    fireEvent.keyDown(card, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(list);
+    fireEvent.keyDown(list, { key: "Enter" });
+    expect(onSelect).toHaveBeenLastCalledWith(matches[2]);
+    await screen.findByRole("alert");
+  });
+
+  it.each([false, true])("handles pointer selection errors and retries (synchronous: %s)", async (synchronous) => {
+    vi.mocked(api.guestMatchups).mockResolvedValue(matchupPayload());
+    const failure = new MoveListDecodeError("unknown_symbol", "unknown callback symbol");
+    const onSelect = vi.fn().mockImplementationOnce(() => {
+      if (synchronous) throw failure;
+      return Promise.reject(failure);
+    });
+    renderList(<GuestMatchupList onSelect={onSelect} />);
+    await screen.findByRole("listbox", { name: "Guest matchups" });
+    const card = screen.getAllByRole("option")[1];
+    fireEvent.click(card);
+    expect((await screen.findByRole("alert")).textContent).toContain("decoder cannot verify");
+    fireEvent.click(card);
+    expect(onSelect).toHaveBeenCalledTimes(2);
+    expect(onSelect).toHaveBeenLastCalledWith(matches[1]);
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+  });
+
 });

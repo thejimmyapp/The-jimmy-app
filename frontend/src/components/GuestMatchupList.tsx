@@ -39,6 +39,7 @@ export function GuestMatchupList({ onSelect }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selecting, setSelecting] = useState(false);
+  const selectingRef = useRef(false);
   const [selectionError, setSelectionError] = useState("");
   const [rotationNoteLabels, setRotationNoteLabels] = useState<string[]>([]);
   const preserveRotationNoteRef = useRef(false);
@@ -95,24 +96,38 @@ export function GuestMatchupList({ onSelect }: Props) {
     return () => document.removeEventListener("focusin", keepFocusInside);
   }, [matches.length]);
 
+  const selectMatch = async (index: number) => {
+    const selectedMatch = matches[index];
+    if (selecting || selectingRef.current || !selectedMatch || !isRealMatch(selectedMatch)) return;
+    // Lock synchronously so rapid pointer/keyboard events cannot submit twice.
+    selectingRef.current = true;
+    setActiveIndex(index);
+    setSelecting(true);
+    setSelectionError("");
+    try {
+      await onSelect(selectedMatch);
+    } catch (error: unknown) {
+      const typedDecoderFailure = error instanceof Error && (error.name === "MoveListDecodeError" || error.name === "MatchReconstructionError");
+      setSelectionError(typedDecoderFailure
+        ? "This match uses replay data the decoder cannot verify. It was refused."
+        : "This match could not be loaded. Press Enter to try again.");
+    } finally {
+      selectingRef.current = false;
+      setSelecting(false);
+    }
+  };
+
   const handleListKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       const direction = event.key === "ArrowDown" ? 1 : -1;
       setActiveIndex((current) => nextSelectableIndex(matches, current, direction));
+      listRef.current?.focus();
       return;
     }
-    const selectedMatch = matches[activeIndex];
-    if (event.key === "Enter" && selectedMatch && isRealMatch(selectedMatch) && !selecting) {
+    if (event.key === "Enter") {
       event.preventDefault();
-      setSelecting(true);
-      setSelectionError("");
-      void Promise.resolve(onSelect(selectedMatch)).catch((error: unknown) => {
-        const typedDecoderFailure = error instanceof Error && (error.name === "MoveListDecodeError" || error.name === "MatchReconstructionError");
-        setSelectionError(typedDecoderFailure
-          ? "This match uses replay data the decoder cannot verify. It was refused."
-          : "This match could not be loaded. Press Enter to try again.");
-      }).finally(() => setSelecting(false));
+      void selectMatch(activeIndex);
     }
   };
 
@@ -134,7 +149,7 @@ export function GuestMatchupList({ onSelect }: Props) {
       <div className="guest-matchup-copy">
         <span>GUEST MATCHUPS</span>
         <h1>Choose a game to review.</h1>
-        <p>Use Arrow Up or Arrow Down to move. Press Enter to select.</p>
+        <p>Click a game, or use Arrow Up / Arrow Down and Enter.</p>
       </div>
       {query.isPending && <div className="guest-matchup-status" role="status">Loading matchups…</div>}
       {query.isError && <div className="guest-matchup-status guest-matchup-error" role="alert">Matchups unavailable. Press Enter to retry.</div>}
@@ -159,6 +174,15 @@ export function GuestMatchupList({ onSelect }: Props) {
                   role="option"
                   aria-selected={index === activeIndex}
                   className={`guest-matchup-card ${index === activeIndex ? "active" : ""}`}
+                  tabIndex={-1}
+                  onClick={() => void selectMatch(index)}
+                  onKeyDown={(event) => {
+                    if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      void selectMatch(index);
+                    }
+                  }}
                 >
                   <strong>{cardText(match)}</strong>
                   <small>Boards {match.game_ids.A} / {match.game_ids.B} · {match.ply_counts.A}/{match.ply_counts.B} plies · {formatRelativeAge(match.end_time)}</small>

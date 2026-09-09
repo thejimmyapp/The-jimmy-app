@@ -105,6 +105,9 @@ const saveMoment = async (glyph: keyof typeof glyphKey, note: string, useButton 
   fireEvent.click(within(moves).getAllByRole("button")[0]);
   fireEvent.keyDown(within(wizard).getByRole("group", { name: "Required move glyph" }), { key: glyphKey[glyph] });
   const board = within(wizard).getByLabelText(/alternative chessboard/);
+  // Guard the production composition targeted by the wizard-only sizing rule.
+  expect(board.closest(".wizard-step__board-moves > .board-panel")).not.toBeNull();
+  expect(board.parentElement?.classList.contains("horizontal-pockets")).toBe(true);
   const squares = within(board).getAllByRole("button");
   const sideToMove = board.closest(".board-panel")?.querySelector(".board-heading > span:last-child")?.textContent ?? "";
   const piecePattern = sideToMove.startsWith("Black") ? / [kqrbnp]$/ : / [KQRBNP]$/;
