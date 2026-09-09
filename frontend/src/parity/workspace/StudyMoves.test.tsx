@@ -13,6 +13,13 @@ const game: GamePayload = {
   timeline: events.map(([global_ply, board, local_ply, move]) => ({ global_ply, board, local_ply, move, board_a: position, board_b: position })), second_board_available: true, limitations: [],
   outcome: { summary: "", detail: "", loser_username: null, termination: null, board: null, board_role: null, move_number: null },
 };
+const longGame: GamePayload = {
+  ...game,
+  timeline: [game.timeline[0], ...Array.from({ length: 40 }, (_, index) => {
+    const global_ply = index + 1;
+    return { global_ply, board: global_ply % 2 ? "A" as const : "B" as const, local_ply: Math.ceil(global_ply / 2), move: `Move ${global_ply}`, board_a: position, board_b: position };
+  })],
+};
 const reportUnexpectedReactError = console.error;
 beforeAll(() => vi.spyOn(console, "error").mockImplementation((message, ...details) => {
   if (typeof message === "string" && message.includes("is unrecognized in this browser")) return;
@@ -47,5 +54,21 @@ describe("synchronized board move lists", () => {
     const { container } = render(<StudyMoves game={game} globalPly={4} seek={seek} />);
     fireEvent.click(container.querySelector('move[data-node-id="3"]')!);
     expect(seek).toHaveBeenCalledWith(3);
+  });
+
+  it("autoscrolls the second list from its own scroll-container origin", () => {
+    const { container, rerender } = render(<StudyMoves game={longGame} globalPly={2} seek={() => undefined} />);
+    const boxes = container.querySelectorAll<HTMLElement>(".study-board-list .parity-tree");
+    Object.defineProperty(boxes[0], "clientHeight", { configurable: true, value: 100 });
+    Object.defineProperty(boxes[1], "clientHeight", { configurable: true, value: 100 });
+    boxes[0].getBoundingClientRect = () => ({ x: 0, y: 0, top: 0, left: 0, right: 300, bottom: 100, width: 300, height: 100, toJSON: () => ({}) });
+    boxes[1].getBoundingClientRect = () => ({ x: 0, y: 300, top: 300, left: 0, right: 300, bottom: 400, width: 300, height: 100, toJSON: () => ({}) });
+    const activeA = container.querySelector<HTMLElement>('move[data-node-id="39"]')!;
+    const activeB = container.querySelector<HTMLElement>('move[data-node-id="40"]')!;
+    activeA.getBoundingClientRect = () => ({ x: 0, y: 20, top: 20, left: 0, right: 100, bottom: 49, width: 100, height: 29, toJSON: () => ({}) });
+    activeB.getBoundingClientRect = () => ({ x: 0, y: 500, top: 500, left: 0, right: 100, bottom: 529, width: 100, height: 29, toJSON: () => ({}) });
+    rerender(<StudyMoves game={longGame} globalPly={40} seek={() => undefined} />);
+    expect(boxes[0].scrollTop).toBe(0);
+    expect(boxes[1].scrollTop).toBeCloseTo(500 - 300 - 100 / 3);
   });
 });
