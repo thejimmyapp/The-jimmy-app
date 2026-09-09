@@ -72,8 +72,10 @@ export function ParityTree({ tree, activeId, onSelect }: ParityTreeProps) {
     const box = movesRef.current;
     const active = box?.querySelector<HTMLElement>(`move[data-node-id="${activeId}"]`);
     if (!box || !active) return;
-    const activeTop = active.offsetTop;
-    const activeBottom = activeTop + active.offsetHeight;
+    const boxRect = box.getBoundingClientRect();
+    const activeRect = active.getBoundingClientRect();
+    const activeTop = activeRect.top - boxRect.top + box.scrollTop;
+    const activeBottom = activeRect.bottom - boxRect.top + box.scrollTop;
     if (activeTop < box.scrollTop || activeBottom > box.scrollTop + box.clientHeight) box.scrollTop = Math.max(0, activeTop - box.clientHeight / 3);
   }, [activeId]);
 

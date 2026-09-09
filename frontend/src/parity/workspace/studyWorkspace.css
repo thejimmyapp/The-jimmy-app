@@ -1,10 +1,6 @@
 .study-workspace { position: relative; width: 100%; height: 100%; min-height: 0; overflow-x: hidden; overflow-y: hidden; outline: none; background: rgb(22, 21, 18); color: rgb(208, 206, 202); font: 14px "Noto Sans", sans-serif; }
 .study-workspace[data-second-board-placement="under"] { overflow-y: auto; }
 .study-main-board { position: absolute; left: var(--study-board-x); top: var(--study-board-y); width: var(--study-board-size); }
-.study-player-bar { position: absolute; left: 0; display: flex; width: 100%; height: 22px; align-items: center; justify-content: space-between; padding: 0 8px; background: rgb(38, 36, 33); color: rgb(186, 186, 186); font: 12px/22px "Noto Sans", sans-serif; }
-.study-player-bar.top { bottom: 100%; }
-.study-player-bar.bottom { top: 100%; }
-.study-player-bar time { color: rgb(208, 206, 202); font-variant-numeric: tabular-nums; }
 .study-tools { position: absolute; left: var(--study-tools-x); top: 0; width: var(--study-tools-width); height: 100%; }
 .study-tools > .pocket-top { position: absolute; top: var(--study-pocket-top); }
 .study-tools > .pocket-bottom { position: absolute; top: var(--study-pocket-bottom); }
