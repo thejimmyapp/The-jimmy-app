@@ -1,0 +1,16 @@
+.study-underboard { position: absolute; color: rgb(186, 186, 186); font: var(--study-underboard-font-size) "Noto Sans", sans-serif; }
+.study-underboard-buttons { display: flex; width: 100%; height: var(--study-underboard-buttons-height); justify-content: space-between; }
+.study-underboard-buttons-left { display: grid; width: 75%; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.study-underboard-buttons-right { width: 25%; }
+.study-underboard button { position: relative; display: grid; height: 100%; place-items: center; border: 0; padding: 0; background: transparent; color: rgb(186, 186, 186); font: 300 var(--study-underboard-button-font-size) Roboto, sans-serif; cursor: pointer; }
+.study-underboard button:hover,
+.study-underboard button:focus-visible,
+.study-underboard button.active { outline: 0; color: rgb(214, 79, 0); }
+.study-underboard button svg { width: 24px; height: 24px; }
+.study-underboard-count { position: absolute; top: 2px; right: 8px; color: inherit; font: inherit; }
+.study-underboard-metadata { overflow: hidden; border-radius: 7px; background: rgb(38, 36, 33); box-shadow: 0 2px 2px rgb(0 0 0 / 8%), 0 3px 1px -2px rgb(0 0 0 / 18%), 0 1px 5px rgb(0 0 0 / 10%); }
+.study-underboard-metadata h2 { display: flex; height: var(--study-underboard-heading-height); align-items: center; margin: 0; overflow: hidden; border-bottom: 1px solid rgb(64, 64, 64); padding: 0 var(--study-underboard-heading-padding); background: linear-gradient(rgb(60, 57, 52), rgb(51, 49, 46)); color: rgb(186, 186, 186); font: 300 var(--study-underboard-heading-font-size) Roboto, sans-serif; text-overflow: ellipsis; white-space: nowrap; box-shadow: inset 0 1px 3px -2px rgb(115, 115, 115), inset 0 -4px 8px -3px rgb(54 50 43 / 80%); }
+.study-underboard-metadata table { width: 100%; border-collapse: collapse; color: rgb(186, 186, 186); font: inherit; }
+.study-underboard-metadata tr { height: var(--study-underboard-row-height); }
+.study-underboard-metadata th { width: 1%; padding: 0 calc(var(--study-underboard-heading-padding) * .3) 0 var(--study-underboard-heading-padding); color: rgb(148, 148, 148); font: 700 var(--study-underboard-font-size) "Noto Sans", sans-serif; text-align: left; white-space: nowrap; }
+.study-underboard-metadata td { padding: 0; font: inherit; }

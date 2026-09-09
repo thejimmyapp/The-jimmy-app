@@ -1,9 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { useCoachStore } from "./store";
-import type { GamePayload, ReplayPosition } from "./types";
+import type { GamePayload, NormalizedMatch, ReplayPosition } from "./types";
 
 const apiMock = vi.hoisted(() => ({
   guestSession: vi.fn(), resetGuestSession: vi.fn(), accountMe: vi.fn(), claimAccount: vi.fn(), listMyMoments: vi.fn(), listPublicMoments: vi.fn(), games: vi.fn(),
@@ -15,7 +15,7 @@ vi.mock("./api", async (importOriginal) => ({ ...(await importOriginal<typeof im
 vi.mock("./socket", () => ({ applyRoomSnapshot: vi.fn(), connectRoomSocket: vi.fn(), disconnectRoomSocket: vi.fn(), sendRoomEvent: vi.fn() }));
 vi.mock("./components/BoardPanel", () => ({ BoardPanel: () => <div data-testid="legacy-review-board" /> }));
 vi.mock("./components/SidePanel", () => ({ SidePanel: () => <div data-testid="legacy-review-dock" /> }));
-vi.mock("./parity/workspace/StudyWorkspace", () => ({ StudyWorkspace: () => <section aria-label="Study review workspace" /> }));
+vi.mock("./parity/workspace/StudyWorkspace", () => ({ StudyWorkspace: ({ onSaveMoment }: { onSaveMoment?: () => void }) => <section aria-label="Study review workspace"><button type="button" onClick={onSaveMoment}>Save moment</button></section> }));
 
 const position: ReplayPosition = {
   ply: 0, label: "Start", board: Array.from({ length: 8 }, () => Array(8).fill("")), side_to_move: "White", variant_fen: "", white_pocket: "", black_pocket: "",
@@ -25,8 +25,18 @@ const game: GamePayload = {
   game: { id: 42, played_at: "", result: "*", opponent: null, opponent_rating: null, partner: null, user_color: "white", time_control: "180" },
   players: { board_a_white: "A White", board_a_black: "A Black", board_b_white: "B White", board_b_black: "B Black" },
   moves_a: [], moves_b: [], positions_a: [position], positions_b: [position],
-  timeline: [{ global_ply: 0, board: "A", local_ply: 0, move: "Start", board_a: position, board_b: position }],
+  timeline: [
+    { global_ply: 0, board: "A", local_ply: 0, move: "Start", board_a: position, board_b: position },
+    { global_ply: 1, board: "A", local_ply: 1, move: "e4", board_a: position, board_b: position },
+  ],
   second_board_available: true, limitations: [], outcome: { summary: "", detail: "", loser_username: null, termination: null, board: null, board_role: null, move_number: null },
+};
+const match: NormalizedMatch = {
+  game_ids: { A: 42, B: 43 }, end_time: 1, seats: {
+    "A-white": { name: "A White", rating: 2200 }, "A-black": { name: "A Black", rating: 2100 },
+    "B-white": { name: "B White", rating: 2000 }, "B-black": { name: "B Black", rating: 1900 },
+  }, ply_counts: { A: 1, B: 0 }, decisive_board: "A", loser_seat: "A-black", action: "checkmated",
+  highest_rated: { name: "A White", rating: 2200, seat: "A-white", outcome: "WON" }, loser_relative_to_highest: "oppo",
 };
 
 function renderApp() {
@@ -62,5 +72,13 @@ describe("opt-in study UI mount", () => {
     expect(screen.queryByTestId("legacy-review-board")).toBeNull();
     expect(screen.queryByTestId("legacy-review-dock")).toBeNull();
     expect(screen.getByRole("navigation", { name: "Main views" })).not.toBeNull();
+  });
+
+  it("routes the study Save moment tab through the existing moment editor handler", () => {
+    history.replaceState(null, "", "/?ui=study");
+    useCoachStore.setState({ game, guestMatch: match, globalPly: 1, mode: "review" });
+    renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "Save moment" }));
+    expect(screen.getByLabelText("Learning moment wizard steps 1 through 4")).not.toBeNull();
   });
 });

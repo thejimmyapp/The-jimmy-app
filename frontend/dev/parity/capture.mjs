@@ -287,6 +287,67 @@ async function captureJimmyReferences(browser) {
   writeFileSync(metaPath, `${JSON.stringify(meta, null, 2)}\n`);
 }
 
+async function captureJimmyUnderboards(browser) {
+  const userAgent = await installedChromeUserAgent(browser);
+  const underboards = {};
+  for (const item of jimmyReferenceCases) {
+    const { context, page } = await newPage(browser, { viewport: item.viewport, userAgent, locale: "en-US" });
+    const response = await page.goto(referenceUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    const boardPresent = response?.status() === 200 && await page.waitForSelector("cg-board", { timeout: 90_000 }).then(() => true, () => false);
+    if (!response?.ok() || !boardPresent) {
+      const title = await page.title(); await context.close();
+      throw new Error(`${item.id} returned HTTP ${response?.status() ?? "unknown"} with cg-board=${boardPresent}: ${title}`);
+    }
+    const chapter = page.locator(`.study__chapters button[data-id="${referenceChapter}"]`);
+    if (await chapter.count() && !(await chapter.first().evaluate((element) => element.classList.contains("active")))) await chapter.first().click();
+    await page.waitForSelector(".analyse__underboard", { timeout: 90_000 });
+    await settle(page); await page.keyboard.press("ArrowRight"); await settle(page);
+    underboards[item.id] = await page.evaluate(() => {
+      const rectFor = (element) => {
+        if (!element) return null;
+        const box = element.getBoundingClientRect();
+        return { x: box.x, y: box.y, width: box.width, height: box.height, top: box.top, right: box.right, bottom: box.bottom, left: box.left };
+      };
+      const styleFor = (element) => {
+        if (!element) return null;
+        const style = getComputedStyle(element);
+        return {
+          rect: rectFor(element), margin: style.margin, background: style.background, backgroundColor: style.backgroundColor,
+          color: style.color, font: style.font, height: style.height, padding: style.padding, borderRadius: style.borderRadius,
+          boxShadow: style.boxShadow, display: style.display, justifyContent: style.justifyContent,
+        };
+      };
+      const underboard = document.querySelector(".analyse__underboard");
+      const buttons = underboard?.querySelector(".study__buttons") ?? null;
+      const metadata = underboard?.querySelector(".study__metadata") ?? null;
+      const heading = metadata?.querySelector("h2") ?? null;
+      const headingStyle = heading ? getComputedStyle(heading) : null;
+      const table = metadata?.querySelector("table") ?? null;
+      return {
+        frameRelativeY: underboard ? underboard.getBoundingClientRect().y - 60 : null,
+        underboard: styleFor(underboard),
+        children: underboard ? [...underboard.children].map((element) => ({ tagName: element.tagName.toLowerCase(), className: element.className, ...styleFor(element) })) : [],
+        buttons: styleFor(buttons),
+        buttonItems: buttons ? [...buttons.querySelectorAll("button, a")].map((element) => {
+          const style = getComputedStyle(element); const before = getComputedStyle(element, "::before");
+          const iconFont = /lichess/i.test(`${style.fontFamily} ${before.fontFamily}`) || (before.content !== "none" && before.content !== "normal");
+          return { ...styleFor(element), tagName: element.tagName.toLowerCase(), className: element.className, title: element.getAttribute("title"), ariaLabel: element.getAttribute("aria-label"), text: element.textContent, beforeContent: before.content, iconFont };
+        }) : [],
+        metadata: styleFor(metadata),
+        heading: heading ? { ...styleFor(heading), borderBottom: headingStyle?.borderBottom ?? null, text: heading.textContent } : null,
+        table: styleFor(table),
+        rows: table ? [...table.querySelectorAll("tr")].map((row) => ({ rect: rectFor(row), height: getComputedStyle(row).height, cells: [...row.children].map((cell) => ({ text: cell.textContent, ...styleFor(cell) })) })) : [],
+      };
+    });
+    console.log(`${item.id}: ${JSON.stringify(underboards[item.id])}`);
+    await context.close();
+  }
+  const metaPath = join(referenceDir, "reference-meta.json");
+  const meta = JSON.parse(readFileSync(metaPath, "utf8"));
+  meta.jimmyUnderboards = underboards;
+  writeFileSync(metaPath, `${JSON.stringify(meta, null, 2)}\n`);
+}
+
 async function waitForServer(url) {
   for (let attempt = 0; attempt < 80; attempt += 1) {
     try { if ((await fetch(url)).ok) return; } catch { /* Vite is still starting. */ }
@@ -441,6 +502,7 @@ try {
   }
   else if (mode === "reference-responsive") await captureResponsiveReferences(browser);
   else if (mode === "reference-jimmy") await captureJimmyReferences(browser);
+  else if (mode === "reference-jimmy-underboard") await captureJimmyUnderboards(browser);
   else {
     await captureCandidate(browser);
     if (referenceComplete) compareAll();

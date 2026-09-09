@@ -8,11 +8,13 @@ import { studyLayoutForBox, type ParityLayout } from "../layout";
 import { ParityPocket } from "../pocket/ParityPocket";
 import { parityKeyboardAction, type ParityNavigationAction } from "../tree/treeNavigation";
 import { replayToParity } from "../adapters/replayToParity";
+import { StudyUnderboard } from "../underboard/StudyUnderboard";
 import { StudyMoves } from "./StudyMoves";
 import { StudyPlayerBar } from "./StudyPlayerBar";
 import "./studyWorkspace.css";
 
 const fallbackFrame = () => ({ width: Math.max(0, window.innerWidth - 68), height: Math.max(0, window.innerHeight - 58) });
+const playerBarHeight = 22.390625;
 
 function reviewerOrientation(game: GamePayload): "white" | "black" {
   return game.game.user_color === "black" ? "black" : "white";
@@ -34,7 +36,13 @@ function pocketColor(position: ReplayPosition, orientation: "white" | "black", e
   return { color, pocket: color === "white" ? position.white_pocket : position.black_pocket } as const;
 }
 
-export function StudyWorkspace() {
+export interface StudyWorkspaceProps {
+  onSaveMoment?: () => void;
+  onOpenLibrary?: () => void;
+  savedMomentCount?: number;
+}
+
+export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount = 0 }: StudyWorkspaceProps = {}) {
   const { game, globalPly, seek } = useCoachStore();
   const [frame, setFrame] = useState(fallbackFrame);
   const [flipped, setFlipped] = useState(false);
@@ -56,7 +64,9 @@ export function StudyWorkspace() {
   const layout = studyLayoutForBox(frame.width, frame.height);
   const smallLayout = compactLayout(layout);
   const secondBoard = layout.secondBoard!;
-  const secondBoardTop = secondBoard.placement === "side" ? layout.board.y : layout.board.y + layout.board.size + 8 + smallLayout.tools.pocketHeight;
+  const secondBoardTop = secondBoard.placement === "side"
+    ? layout.board.y + smallLayout.tools.pocketHeight
+    : layout.board.y + layout.board.size + playerBarHeight + 8 + smallLayout.tools.pocketHeight;
   const baseOrientation = reviewerOrientation(game);
   const orientation = flipped ? (baseOrientation === "white" ? "black" : "white") : baseOrientation;
   const boardAReplay = currentPosition(game, globalPly, "A");
@@ -116,5 +126,6 @@ export function StudyWorkspace() {
       <ParityPocket {...bottom} position="bottom" usable={boardA.position.side_to_move.toLowerCase() === bottom.color} orientation={orientation} layout={layout} />
       <div className="study-controls"><ParityControls onNavigate={navigate} /></div>
     </aside>
+    <StudyUnderboard game={game} layout={layout} savedMomentCount={savedMomentCount} onSaveMoment={onSaveMoment} onOpenLibrary={onOpenLibrary} />
   </section>;
 }
