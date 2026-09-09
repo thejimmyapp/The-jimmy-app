@@ -38,9 +38,10 @@ export interface StudyWorkspaceProps {
   onSaveMoment?: () => void;
   onOpenLibrary?: () => void;
   savedMomentCount?: number;
+  saveMomentDisabled?: boolean;
 }
 
-export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount = 0 }: StudyWorkspaceProps = {}) {
+export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount = 0, saveMomentDisabled = false }: StudyWorkspaceProps = {}) {
   const { game, globalPly, seek } = useCoachStore();
   const [frame, setFrame] = useState(fallbackFrame);
   const [flipped, setFlipped] = useState(false);
@@ -133,6 +134,6 @@ export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount =
       <ParityPocket {...bottom} position="bottom" usable={boardA.position.side_to_move.toLowerCase() === bottom.color} orientation={orientation} layout={layout} />
       <div className="study-controls"><ParityControls onNavigate={navigate} /></div>
     </aside>
-    <StudyUnderboard game={game} layout={layout} savedMomentCount={savedMomentCount} onSaveMoment={onSaveMoment} onOpenLibrary={onOpenLibrary} onInfoVisibilityChange={setUnderboardInfoVisible} />
+    <StudyUnderboard game={game} layout={layout} savedMomentCount={savedMomentCount} onSaveMoment={onSaveMoment} onOpenLibrary={onOpenLibrary} onInfoVisibilityChange={setUnderboardInfoVisible} saveMomentDisabled={saveMomentDisabled} />
   </section>;
 }

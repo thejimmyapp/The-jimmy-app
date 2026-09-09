@@ -34,4 +34,11 @@ describe("Jimmy study underboard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Match info" }));
     expect(screen.getByRole("heading")).not.toBeNull();
   });
+
+  it("renders the Save moment departure as disabled and aria-disabled", () => {
+    render(<StudyUnderboard game={game} layout={PARITY_LAYOUTS.jimmy1440} saveMomentDisabled />);
+    const save = screen.getByRole("button", { name: "Save moment" });
+    expect((save as HTMLButtonElement).disabled).toBe(true);
+    expect(save.getAttribute("aria-disabled")).toBe("true");
+  });
 });
