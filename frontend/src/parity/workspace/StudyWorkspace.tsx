@@ -9,6 +9,7 @@ import { ParityPocket } from "../pocket/ParityPocket";
 import { parityKeyboardAction, type ParityNavigationAction } from "../tree/treeNavigation";
 import { replayToParity } from "../adapters/replayToParity";
 import { StudyMoves } from "./StudyMoves";
+import { StudyPlayerBar } from "./StudyPlayerBar";
 import "./studyWorkspace.css";
 
 const fallbackFrame = () => ({ width: Math.max(0, window.innerWidth - 68), height: Math.max(0, window.innerHeight - 58) });
@@ -25,10 +26,6 @@ function compactLayout(layout: ParityLayout): ParityLayout {
     board: { ...layout.board, size, squareSize: size / 8, ranksWidth: 8, filesHeight: 13 },
     tools: { ...layout.tools, width: size, pocketHeight, pocketSlotSize: pocketHeight },
   };
-}
-
-function PlayerBar({ name, clock, position }: { name: string; clock: string; position: "top" | "bottom" }) {
-  return <div className={`study-player-bar ${position}`}><span>{name}</span><time>{clock}</time></div>;
 }
 
 function pocketColor(position: ReplayPosition, orientation: "white" | "black", edge: "top" | "bottom") {
@@ -89,6 +86,8 @@ export function StudyWorkspace() {
   const players = { white: game.players.board_a_white, black: game.players.board_a_black };
   const bottomSide = orientation;
   const topSide = bottomSide === "white" ? "black" : "white";
+  const reviewerSide = reviewerOrientation(game);
+  const ratingFor = (side: "white" | "black") => side === reviewerSide ? null : game.game.opponent_rating;
   const style = {
     "--study-board-x": `${layout.board.x}px`, "--study-board-y": `${layout.board.y}px`, "--study-board-size": `${layout.board.size}px`,
     "--study-tools-x": `${layout.tools.x}px`, "--study-tools-width": `${layout.tools.width}px`, "--study-pocket-top": `${layout.tools.pocketTopY}px`,
@@ -106,9 +105,9 @@ export function StudyWorkspace() {
       <ParityPocket {...pocketColor(boardBReplay, orientation, "bottom")} position="bottom" usable={boardB.position.side_to_move.toLowerCase() === pocketColor(boardBReplay, orientation, "bottom").color} orientation={orientation} layout={smallLayout} />
     </aside>}
     <div className="study-main-board">
-      <PlayerBar position="top" name={players[topSide]} clock={topSide === "white" ? boardAReplay.white_clock : boardAReplay.black_clock} />
+      <StudyPlayerBar position="top" name={players[topSide]} rating={ratingFor(topSide)} clock={topSide === "white" ? boardAReplay.white_clock : boardAReplay.black_clock} />
       <ParityBoard position={boardA.position} orientation={orientation} layout={layout} theme={parityBoardTheme("brown")} lastMove={boardA.lastMove} check={boardA.check} showCoords />
-      <PlayerBar position="bottom" name={players[bottomSide]} clock={bottomSide === "white" ? boardAReplay.white_clock : boardAReplay.black_clock} />
+      <StudyPlayerBar position="bot" name={players[bottomSide]} rating={ratingFor(bottomSide)} clock={bottomSide === "white" ? boardAReplay.white_clock : boardAReplay.black_clock} />
     </div>
     <aside className="study-tools">
       <ParityPocket {...top} position="top" usable={boardA.position.side_to_move.toLowerCase() === top.color} orientation={orientation} layout={layout} />

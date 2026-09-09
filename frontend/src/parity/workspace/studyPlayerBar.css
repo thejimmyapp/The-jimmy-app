@@ -1,0 +1,9 @@
+.study__player { position: absolute; left: 0; width: 100%; }
+.study__player-top { bottom: 100%; }
+.study__player-bot { top: 100%; }
+.study__player .left { flex: 1 1 100%; min-width: 0; }
+.study__player .info { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.study__player .material { display: flex; height: 24px; flex: 0 1 auto; align-items: center; padding: 0 6px; }
+.study__player-top .material { margin-top: 2.8px; }
+.study__player-bot .material { margin-top: 2.1px; }
+.study__player time { color: inherit; font: inherit; font-variant-numeric: tabular-nums; white-space: nowrap; }
