@@ -1,0 +1,14 @@
+.study-action-menu { position: absolute; z-index: 4; right: 0; bottom: calc(100% - var(--study-pocket-bottom)); display: flex; width: 100%; height: 199.9375px; flex-direction: column; background: rgb(38, 36, 33); color: rgb(186, 186, 186); font: 14px "Noto Sans", sans-serif; }
+.study-action-menu-title { height: 23.9375px; padding: 0 7px; background: rgb(57, 67, 48); font: 12.6px/23.94px "Noto Sans", sans-serif; }
+.study-action-menu-inner { display: grid; height: 176px; padding: 4px; grid-template-rows: repeat(3, 56px); }
+.study-action-menu-inner > button,
+.study-menu-theme-row { display: flex; min-width: 0; align-items: center; border: 0; padding: 0 14px; background: transparent; color: inherit; font: inherit; text-align: left; }
+.study-action-menu-inner > button { cursor: pointer; }
+.study-action-menu-inner > button:hover,
+.study-action-menu-inner > button:focus-visible { outline: 0; background: rgb(255 255 255 / 5%); color: rgb(214, 79, 0); }
+.study-menu-icon { display: inline-grid; width: 36px; flex: 0 0 36px; place-items: center; font-size: 20px; }
+.study-menu-theme-row { justify-content: space-between; }
+.study-menu-theme-row > span:first-child { display: flex; align-items: center; }
+.study-menu-theme-switch { display: inline-grid; overflow: hidden; border-radius: 7px; grid-template-columns: 1fr 1fr; }
+.study-menu-theme-switch button { border: 0; padding: 7px 9px; background: rgb(0 0 0 / 18%); color: rgb(148, 148, 148); font: 500 12.6px Roboto, sans-serif; cursor: pointer; }
+.study-menu-theme-switch button[aria-pressed="true"] { background: rgb(214, 79, 0); color: white; }

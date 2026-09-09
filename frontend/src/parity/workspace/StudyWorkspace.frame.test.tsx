@@ -75,4 +75,14 @@ describe("stage-frame study workspace", () => {
     act(() => resize([{ contentRect: { width: 956, height: 710 } } as ResizeObserverEntry], {} as ResizeObserver));
     expect(container.querySelector<HTMLElement>(".study-workspace")?.style.getPropertyValue("--study-side-top")).toBe("1090px");
   });
+
+  it("renders collaboration under the compact board only in the wide side placement", () => {
+    const { container, queryByTestId } = render(<StudyWorkspace collaborate={<button data-testid="collaborate-action">Invite partner</button>} />);
+    act(() => resize([{ contentRect: { width: 1372, height: 842 } } as ResizeObserverEntry], {} as ResizeObserver));
+    expect(queryByTestId("collaborate-action")).not.toBeNull();
+    expect(container.querySelector<HTMLElement>(".study-side")?.style.top).toBe("");
+    expect(container.querySelector<HTMLElement>(".study-workspace")?.style.getPropertyValue("--study-collaborate-top")).toBe("394.203125px");
+    act(() => resize([{ contentRect: { width: 1132, height: 742 } } as ResizeObserverEntry], {} as ResizeObserver));
+    expect(queryByTestId("collaborate-action")).toBeNull();
+  });
 });

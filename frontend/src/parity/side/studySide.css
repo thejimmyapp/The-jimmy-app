@@ -1,0 +1,10 @@
+.study-side { position: absolute; left: var(--study-side-x); top: var(--study-collaborate-top); display: flex; width: var(--study-side-column-width); height: 300.65625px; flex-direction: column; overflow: hidden; border-radius: 7px; background: rgb(38, 36, 33); color: rgb(186, 186, 186); font: 14px "Noto Sans", sans-serif; box-shadow: 0 2px 2px rgb(0 0 0 / 8%), 0 3px 1px -2px rgb(0 0 0 / 18%), 0 1px 5px rgb(0 0 0 / 10%); }
+.study-side-header { display: flex; height: 35.1875px; flex: 0 0 35.1875px; align-items: center; justify-content: space-between; padding: 5.6px 10px; font: 300 14px Roboto, sans-serif; }
+.study-side-toggle { position: relative; display: block; width: 40px; height: 24px; border-radius: 12px; background: rgb(214, 79, 0); }
+.study-side-toggle i { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgb(0 0 0 / 45%); }
+.study-side-body { display: flex; min-height: 0; flex: 1; flex-wrap: wrap; align-content: flex-start; gap: 8px; overflow: auto; padding: 10px; }
+.study-side-body.header-actions { min-width: 0; align-items: center; justify-content: flex-start; white-space: nowrap; }
+.study-side-body.header-actions button { display: flex; height: 32px; align-items: center; gap: 6px; border: 1px solid #2a3951; border-radius: 4px; padding: 0 10px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.study-side-body.header-actions .share-button { min-width: 142px; justify-content: center; border-color: #34506f; background: #142035; color: #f2f7ff; }
+.study-side-body.header-actions .coach-button { border-color: #4b426f; background: #19162a; color: #d8caff; }
+.study-side-body .viewer-pill { display: flex; height: 32px; min-width: 42px; align-items: center; gap: 6px; border: 1px solid #275f70; border-radius: 4px; padding: 0 9px; background: #0d2530; color: #88f4ff; font-size: 11px; font-weight: 900; }

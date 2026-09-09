@@ -4,6 +4,8 @@
 .parity-control-row .placeholder { width: 35px; height: 100%; cursor: default; }
 .parity-control-row .practice { margin-left: 35px; }
 .parity-control-row .menu { margin-left: 4px; }
+.parity-control-row .menu { cursor: pointer; }
+.parity-control-row .menu.active { color: rgb(214, 79, 0); }
 .parity-move-controls { display: grid; flex: 1; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: center; margin-left: 4px; }
 .parity-move-controls .move { display: grid; height: 34px; place-items: center; }
 .parity-move-controls svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2.2; }

@@ -27,7 +27,7 @@ beforeAll(() => vi.spyOn(console, "error").mockImplementation((message, ...detai
 afterAll(() => vi.restoreAllMocks());
 
 describe("study workspace", () => {
-  beforeEach(() => useCoachStore.setState({ game, globalPly: 1, mode: "review" }));
+  beforeEach(() => { localStorage.clear(); useCoachStore.setState({ game, globalPly: 1, mode: "review" }); });
   afterEach(() => { cleanup(); useCoachStore.setState({ game: null, globalPly: 0 }); });
 
   it("renders synchronized main and departure-tagged second boards, and hides the second when unavailable", () => {
@@ -55,5 +55,22 @@ describe("study workspace", () => {
     expect(seek).toHaveBeenLastCalledWith(0);
     fireEvent.keyDown(workspace, { key: "ArrowRight", shiftKey: true });
     expect(seek).toHaveBeenLastCalledWith(2);
+  });
+
+  it("opens and closes the menu, flips, and persists the selected board theme", () => {
+    const { container, getByRole, queryByRole } = render(<StudyWorkspace />);
+    const workspace = container.querySelector<HTMLElement>(".study-workspace")!;
+    fireEvent.click(getByRole("button", { name: "Menu" }));
+    expect(getByRole("region", { name: "Study menu" })).not.toBeNull();
+    fireEvent.click(getByRole("button", { name: "Flip board" }));
+    expect(workspace.dataset.orientation).toBe("white");
+    fireEvent.click(getByRole("button", { name: "Wood" }));
+    expect(container.querySelectorAll('.parity-board[data-theme="wood"]')).toHaveLength(2);
+    expect(localStorage.getItem("thejimmyapp.parity.theme")).toBe("wood");
+    fireEvent.keyDown(workspace, { key: "Escape" });
+    expect(queryByRole("region", { name: "Study menu" })).toBeNull();
+    fireEvent.click(getByRole("button", { name: "Menu" }));
+    fireEvent.click(getByRole("button", { name: "Menu" }));
+    expect(queryByRole("region", { name: "Study menu" })).toBeNull();
   });
 });

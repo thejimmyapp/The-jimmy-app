@@ -5871,5 +5871,1005 @@
         }
       ]
     }
+  },
+  "jimmyMenu": {
+    "viewport": {
+      "width": 1372,
+      "height": 902
+    },
+    "frame": {
+      "width": 1372,
+      "height": 842
+    },
+    "capturedAt": "2026-09-09T01:35:51.057Z",
+    "practiceButton": {
+      "practiceButton": [
+        {
+          "tagName": "button",
+          "className": "fbt",
+          "text": "",
+          "rect": {
+            "x": 1080.234375,
+            "y": 767.1875,
+            "width": 35,
+            "height": 42,
+            "top": 767.1875,
+            "right": 1115.234375,
+            "bottom": 809.1875,
+            "left": 1080.234375
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(148, 148, 148)",
+          "font": "14px / 21px \"Noto Sans\", sans-serif",
+          "height": "42px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(148, 148, 148)",
+          "borderRadius": "0px 0px 7px 7px",
+          "boxShadow": "none",
+          "display": "block",
+          "alignItems": "normal",
+          "justifyContent": "normal"
+        }
+      ]
+    },
+    "opened": {
+      "panel": [
+        {
+          "tagName": "div",
+          "className": "action-menu sub-box reduced",
+          "rect": {
+            "x": 1045.234375,
+            "y": 507.25,
+            "width": 313.046875,
+            "height": 199.9375,
+            "top": 507.25,
+            "right": 1358.28125,
+            "bottom": 707.1875,
+            "left": 1045.234375
+          },
+          "background": "rgb(38, 36, 33) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgb(38, 36, 33)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "199.938px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "flex",
+          "alignItems": "normal",
+          "justifyContent": "normal"
+        }
+      ],
+      "title": [
+        {
+          "tagName": "div",
+          "className": "title",
+          "text": "Analysis board",
+          "rect": {
+            "x": 1045.234375,
+            "y": 507.25,
+            "width": 313.046875,
+            "height": 23.9375,
+            "top": 507.25,
+            "right": 1358.28125,
+            "bottom": 531.1875,
+            "left": 1045.234375
+          },
+          "background": "oklab(0.406082 -0.0407613 0.0500833) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "oklab(0.406082 -0.0407613 0.0500833)",
+          "color": "rgb(186, 186, 186)",
+          "font": "12.6px / 23.94px \"Noto Sans\", sans-serif",
+          "height": "23.9375px",
+          "padding": "0px 7px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "block",
+          "alignItems": "normal",
+          "justifyContent": "normal"
+        }
+      ],
+      "inner": [
+        {
+          "tagName": "div",
+          "className": "inner",
+          "rect": {
+            "x": 1045.234375,
+            "y": 531.1875,
+            "width": 313.046875,
+            "height": 173,
+            "top": 531.1875,
+            "right": 1358.28125,
+            "bottom": 704.1875,
+            "left": 1045.234375
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "173px",
+          "padding": "4px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "flex",
+          "alignItems": "normal",
+          "justifyContent": "normal"
+        }
+      ],
+      "toolRows": [
+        {
+          "tagName": "a",
+          "className": "",
+          "text": "Flip board",
+          "rect": {
+            "x": 1049.234375,
+            "y": 535.1875,
+            "width": 145.515625,
+            "height": 56,
+            "top": 535.1875,
+            "right": 1194.75,
+            "bottom": 591.1875,
+            "left": 1049.234375
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "56px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "flex",
+          "alignItems": "center",
+          "justifyContent": "normal"
+        },
+        {
+          "tagName": "a",
+          "className": "",
+          "text": "Board editor",
+          "rect": {
+            "x": 1208.75,
+            "y": 535.1875,
+            "width": 145.53125,
+            "height": 56,
+            "top": 535.1875,
+            "right": 1354.28125,
+            "bottom": 591.1875,
+            "left": 1208.75
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "56px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "flex",
+          "alignItems": "center",
+          "justifyContent": "normal"
+        },
+        {
+          "tagName": "button",
+          "className": "",
+          "text": "Settings",
+          "rect": {
+            "x": 1049.234375,
+            "y": 591.1875,
+            "width": 145.515625,
+            "height": 56,
+            "top": 591.1875,
+            "right": 1194.75,
+            "bottom": 647.1875,
+            "left": 1049.234375
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "56px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "flex",
+          "alignItems": "center",
+          "justifyContent": "normal"
+        }
+      ],
+      "sectionHeaders": [
+        {
+          "tagName": "h2",
+          "className": "",
+          "text": "Replay mode",
+          "rect": {
+            "x": 1049.234375,
+            "y": 651.1875,
+            "width": 305.046875,
+            "height": 16,
+            "top": 651.1875,
+            "right": 1354.28125,
+            "bottom": 667.1875,
+            "left": 1049.234375
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "300 14px Roboto, sans-serif",
+          "height": "16px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "table",
+          "alignItems": "normal",
+          "justifyContent": "normal"
+        }
+      ],
+      "replayRows": [
+        {
+          "tagName": "a",
+          "className": "button button-empty",
+          "text": "Fast",
+          "rect": {
+            "x": 1049.234375,
+            "y": 671.1875,
+            "width": 150.375,
+            "height": 29,
+            "top": 671.1875,
+            "right": 1199.609375,
+            "bottom": 700.1875,
+            "left": 1049.234375
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(148, 148, 148)",
+          "font": "500 12.6px Roboto, sans-serif",
+          "height": "29px",
+          "padding": "7px 0px",
+          "margin": "0px",
+          "border": "0px none rgb(148, 148, 148)",
+          "borderRadius": "7px",
+          "boxShadow": "none",
+          "display": "block",
+          "alignItems": "normal",
+          "justifyContent": "normal"
+        },
+        {
+          "tagName": "a",
+          "className": "button button-empty",
+          "text": "Slow",
+          "rect": {
+            "x": 1199.609375,
+            "y": 671.1875,
+            "width": 154.671875,
+            "height": 29,
+            "top": 671.1875,
+            "right": 1354.28125,
+            "bottom": 700.1875,
+            "left": 1199.609375
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(148, 148, 148)",
+          "font": "500 12.6px Roboto, sans-serif",
+          "height": "29px",
+          "padding": "7px 0px",
+          "margin": "0px",
+          "border": "0px none rgb(148, 148, 148)",
+          "borderRadius": "7px",
+          "boxShadow": "none",
+          "display": "block",
+          "alignItems": "normal",
+          "justifyContent": "normal"
+        }
+      ],
+      "controls": [
+        {
+          "tagName": "a",
+          "text": "Flip board",
+          "type": null,
+          "title": "Hotkey: f",
+          "ariaLabel": null,
+          "checked": null
+        },
+        {
+          "tagName": "a",
+          "text": "Board editor",
+          "type": null,
+          "title": "Hotkey: b",
+          "ariaLabel": null,
+          "checked": null
+        },
+        {
+          "tagName": "button",
+          "text": "Settings",
+          "type": null,
+          "title": "Settings",
+          "ariaLabel": null,
+          "checked": null
+        },
+        {
+          "tagName": "a",
+          "text": "Fast",
+          "type": null,
+          "title": null,
+          "ariaLabel": null,
+          "checked": null
+        },
+        {
+          "tagName": "a",
+          "text": "Slow",
+          "type": null,
+          "title": null,
+          "ariaLabel": null,
+          "checked": null
+        }
+      ]
+    },
+    "closeBehavior": {
+      "clickAgain": "closes",
+      "Escape": "remains open"
+    }
+  },
+  "jimmySide": {
+    "viewport": {
+      "width": 1372,
+      "height": 902
+    },
+    "frame": {
+      "width": 1372,
+      "height": 842
+    },
+    "capturedAt": "2026-09-09T01:35:51.057Z",
+    "chapterSide": {
+      "side": [
+        {
+          "tagName": "div",
+          "className": "study__side",
+          "rect": {
+            "x": 13.71875,
+            "y": 82.703125,
+            "width": 323.03125,
+            "height": 566.65625,
+            "top": 82.703125,
+            "right": 336.75,
+            "bottom": 649.359375,
+            "left": 13.71875
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "566.656px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "block",
+          "alignItems": "normal",
+          "justifyContent": "normal"
+        }
+      ],
+      "tabs": [
+        {
+          "tagName": "div",
+          "className": "tabs-horiz",
+          "rect": {
+            "x": 13.71875,
+            "y": 82.703125,
+            "width": 323.03125,
+            "height": 35,
+            "top": 82.703125,
+            "right": 336.75,
+            "bottom": 117.703125,
+            "left": 13.71875
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(148, 148, 148)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "35px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(148, 148, 148)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "flex",
+          "alignItems": "flex-end",
+          "justifyContent": "center"
+        }
+      ],
+      "tabRows": [
+        {
+          "tagName": "button",
+          "className": "chapters active",
+          "text": "63 Chapters",
+          "rect": {
+            "x": 13.71875,
+            "y": 85.703125,
+            "width": 147.75,
+            "height": 32,
+            "top": 85.703125,
+            "right": 161.46875,
+            "bottom": 117.703125,
+            "left": 13.71875
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(214, 79, 0)",
+          "font": "300 14px Roboto, sans-serif",
+          "height": "32px",
+          "padding": "7px 2.8px",
+          "margin": "0px",
+          "border": "",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "block",
+          "alignItems": "normal",
+          "justifyContent": "normal"
+        },
+        {
+          "tagName": "button",
+          "className": "members",
+          "text": "5 Members",
+          "rect": {
+            "x": 161.46875,
+            "y": 85.703125,
+            "width": 142.984375,
+            "height": 32,
+            "top": 85.703125,
+            "right": 304.453125,
+            "bottom": 117.703125,
+            "left": 161.46875
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "300 14px Roboto, sans-serif",
+          "height": "32px",
+          "padding": "7px 2.8px",
+          "margin": "0px",
+          "border": "",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "block",
+          "alignItems": "normal",
+          "justifyContent": "normal"
+        },
+        {
+          "tagName": "button",
+          "className": "search narrow",
+          "text": "",
+          "rect": {
+            "x": 304.453125,
+            "y": 82.703125,
+            "width": 32.296875,
+            "height": 35,
+            "top": 82.703125,
+            "right": 336.75,
+            "bottom": 117.703125,
+            "left": 304.453125
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "300 14px Roboto, sans-serif",
+          "height": "35px",
+          "padding": "7px 0px",
+          "margin": "0px",
+          "border": "",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "block",
+          "alignItems": "normal",
+          "justifyContent": "normal"
+        }
+      ],
+      "chapterList": [
+        {
+          "tagName": "div",
+          "className": "study-list",
+          "rect": {
+            "x": 13.71875,
+            "y": 117.703125,
+            "width": 323.03125,
+            "height": 168,
+            "top": 117.703125,
+            "right": 336.75,
+            "bottom": 285.703125,
+            "left": 13.71875
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "168px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "flex",
+          "alignItems": "normal",
+          "justifyContent": "normal"
+        }
+      ],
+      "chapterRows": [
+        {
+          "tagName": "button",
+          "className": "",
+          "rect": {
+            "x": 13.71875,
+            "y": -1023.296875,
+            "width": 323.03125,
+            "height": 28,
+            "top": -1023.296875,
+            "right": 336.75,
+            "bottom": -995.296875,
+            "left": 13.71875
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "28px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "flex",
+          "alignItems": "stretch",
+          "justifyContent": "space-between"
+        },
+        {
+          "tagName": "button",
+          "className": "active",
+          "rect": {
+            "x": 13.71875,
+            "y": 180.703125,
+            "width": 323.03125,
+            "height": 42,
+            "top": 180.703125,
+            "right": 336.75,
+            "bottom": 222.703125,
+            "left": 13.71875
+          },
+          "background": "oklab(0.300827 -0.00416503 -0.00890944) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "oklab(0.300827 -0.00416503 -0.00890944)",
+          "color": "rgb(54, 146, 231)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "42px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(54, 146, 231)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "flex",
+          "alignItems": "stretch",
+          "justifyContent": "space-between"
+        }
+      ],
+      "activeChapter": [
+        {
+          "tagName": "button",
+          "className": "active",
+          "rect": {
+            "x": 13.71875,
+            "y": 180.703125,
+            "width": 323.03125,
+            "height": 42,
+            "top": 180.703125,
+            "right": 336.75,
+            "bottom": 222.703125,
+            "left": 13.71875
+          },
+          "background": "oklab(0.300827 -0.00416503 -0.00890944) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "oklab(0.300827 -0.00416503 -0.00890944)",
+          "color": "rgb(54, 146, 231)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "42px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(54, 146, 231)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "flex",
+          "alignItems": "stretch",
+          "justifyContent": "space-between"
+        }
+      ],
+      "chat": [
+        {
+          "tagName": "section",
+          "className": "mchat mchat-optional",
+          "rect": {
+            "x": 13.71875,
+            "y": 307.703125,
+            "width": 323.03125,
+            "height": 300.65625,
+            "top": 307.703125,
+            "right": 336.75,
+            "bottom": 608.359375,
+            "left": 13.71875
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "300.656px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "7px",
+          "boxShadow": "rgba(0, 0, 0, 0.08) 0px 2px 2px 0px, rgba(0, 0, 0, 0.18) 0px 3px 1px -2px, rgba(0, 0, 0, 0.1) 0px 1px 5px 0px",
+          "display": "flex",
+          "alignItems": "normal",
+          "justifyContent": "stretch"
+        }
+      ],
+      "chatHeader": [
+        {
+          "tagName": "div",
+          "className": "mchat__tabs nb_1",
+          "text": "Chat room",
+          "rect": {
+            "x": 13.71875,
+            "y": 307.703125,
+            "width": 323.03125,
+            "height": 35.1875,
+            "top": 307.703125,
+            "right": 336.75,
+            "bottom": 342.890625,
+            "left": 13.71875
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "35.1875px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "flex",
+          "alignItems": "normal",
+          "justifyContent": "normal"
+        }
+      ],
+      "chatTabs": [
+        {
+          "tagName": "button",
+          "className": "mchat__tab discussion mchat__tab-active",
+          "rect": {
+            "x": 13.71875,
+            "y": 307.703125,
+            "width": 323.03125,
+            "height": 35.1875,
+            "top": 307.703125,
+            "right": 336.75,
+            "bottom": 342.890625,
+            "left": 13.71875
+          },
+          "background": "rgb(38, 36, 33) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgb(38, 36, 33)",
+          "color": "rgb(186, 186, 186)",
+          "font": "300 14px Roboto, sans-serif",
+          "height": "35.1875px",
+          "padding": "5.6px 10px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "7px 7px 0px 0px",
+          "boxShadow": "none",
+          "display": "flex",
+          "alignItems": "center",
+          "justifyContent": "space-between"
+        }
+      ],
+      "chatToggle": [
+        {
+          "tagName": "span",
+          "className": "cmn-toggle",
+          "rect": {
+            "x": 286.75,
+            "y": 313.296875,
+            "width": 40,
+            "height": 24,
+            "top": 313.296875,
+            "right": 326.75,
+            "bottom": 337.296875,
+            "left": 286.75
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "300 14px Roboto, sans-serif",
+          "height": "24px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "block",
+          "alignItems": "normal",
+          "justifyContent": "normal"
+        }
+      ],
+      "chatMessages": [
+        {
+          "tagName": "ol",
+          "className": "mchat__messages chat-v-1",
+          "rect": {
+            "x": 13.71875,
+            "y": 342.890625,
+            "width": 323.03125,
+            "height": 265.46875,
+            "top": 342.890625,
+            "right": 336.75,
+            "bottom": 608.359375,
+            "left": 13.71875
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "12.6px \"Noto Sans\", sans-serif",
+          "height": "265.469px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "block",
+          "alignItems": "normal",
+          "justifyContent": "normal"
+        }
+      ],
+      "chatMessageRows": [
+        {
+          "tagName": "li",
+          "className": "",
+          "rect": {
+            "x": 13.71875,
+            "y": -3935.109375,
+            "width": 323.03125,
+            "height": 57.96875,
+            "top": -3935.109375,
+            "right": 336.75,
+            "bottom": -3877.140625,
+            "left": 13.71875
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "12.6px / 15.12px \"Noto Sans\", sans-serif",
+          "height": "57.9688px",
+          "padding": "6.3px 5px 6.3px 10px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "list-item",
+          "alignItems": "normal",
+          "justifyContent": "normal"
+        },
+        {
+          "tagName": "li",
+          "className": "",
+          "rect": {
+            "x": 13.71875,
+            "y": 579.90625,
+            "width": 323.03125,
+            "height": 28.078125,
+            "top": 579.90625,
+            "right": 336.75,
+            "bottom": 607.984375,
+            "left": 13.71875
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "12.6px / 15.12px \"Noto Sans\", sans-serif",
+          "height": "28.0781px",
+          "padding": "6.3px 5px 6.3px 10px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "list-item",
+          "alignItems": "normal",
+          "justifyContent": "normal"
+        }
+      ],
+      "chatInput": []
+    },
+    "memberSide": {
+      "memberList": [
+        {
+          "tagName": "div",
+          "className": "study-list",
+          "rect": {
+            "x": 13.71875,
+            "y": 117.703125,
+            "width": 323.03125,
+            "height": 168,
+            "top": 117.703125,
+            "right": 336.75,
+            "bottom": 285.703125,
+            "left": 13.71875
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "168px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "flex",
+          "alignItems": "normal",
+          "justifyContent": "normal"
+        }
+      ],
+      "memberRows": [
+        {
+          "tagName": "div",
+          "className": "",
+          "text": "kc_chess",
+          "rect": {
+            "x": 13.71875,
+            "y": 117.703125,
+            "width": 323.03125,
+            "height": 33,
+            "top": 117.703125,
+            "right": 336.75,
+            "bottom": 150.703125,
+            "left": 13.71875
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "33px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "flex",
+          "alignItems": "stretch",
+          "justifyContent": "space-between"
+        },
+        {
+          "tagName": "div",
+          "className": "",
+          "text": "RyanTime",
+          "rect": {
+            "x": 13.71875,
+            "y": 150.703125,
+            "width": 323.03125,
+            "height": 33,
+            "top": 150.703125,
+            "right": 336.75,
+            "bottom": 183.703125,
+            "left": 13.71875
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "33px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "flex",
+          "alignItems": "stretch",
+          "justifyContent": "space-between"
+        },
+        {
+          "tagName": "div",
+          "className": "",
+          "text": "arogers2895",
+          "rect": {
+            "x": 13.71875,
+            "y": 183.703125,
+            "width": 323.03125,
+            "height": 33,
+            "top": 183.703125,
+            "right": 336.75,
+            "bottom": 216.703125,
+            "left": 13.71875
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "33px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "flex",
+          "alignItems": "stretch",
+          "justifyContent": "space-between"
+        },
+        {
+          "tagName": "div",
+          "className": "",
+          "text": "h-hess28",
+          "rect": {
+            "x": 13.71875,
+            "y": 216.703125,
+            "width": 323.03125,
+            "height": 33,
+            "top": 216.703125,
+            "right": 336.75,
+            "bottom": 249.703125,
+            "left": 13.71875
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "33px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "flex",
+          "alignItems": "stretch",
+          "justifyContent": "space-between"
+        },
+        {
+          "tagName": "div",
+          "className": "",
+          "text": "BlueShirtBrownShirt",
+          "rect": {
+            "x": 13.71875,
+            "y": 249.703125,
+            "width": 323.03125,
+            "height": 33,
+            "top": 249.703125,
+            "right": 336.75,
+            "bottom": 282.703125,
+            "left": 13.71875
+          },
+          "background": "rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(186, 186, 186)",
+          "font": "14px \"Noto Sans\", sans-serif",
+          "height": "33px",
+          "padding": "0px",
+          "margin": "0px",
+          "border": "0px none rgb(186, 186, 186)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "display": "flex",
+          "alignItems": "stretch",
+          "justifyContent": "space-between"
+        }
+      ]
+    }
   }
 }

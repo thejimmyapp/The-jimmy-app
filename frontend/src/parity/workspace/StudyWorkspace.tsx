@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { currentPosition, useCoachStore } from "../../store";
 import type { GamePayload, ReplayPosition } from "../../types";
 import { ParityBoard } from "../board/ParityBoard";
-import { parityBoardTheme } from "../board/themes";
+import { parityBoardTheme, type ParityBoardThemeId } from "../board/themes";
 import { ParityControls } from "../controls/ParityControls";
 import { studyLayoutForBox, type ParityLayout } from "../layout";
 import { ParityPocket } from "../pocket/ParityPocket";
 import { parityKeyboardAction, type ParityNavigationAction } from "../tree/treeNavigation";
 import { replayToParity } from "../adapters/replayToParity";
 import { StudyUnderboard } from "../underboard/StudyUnderboard";
+import { StudyMenu } from "../menu/StudyMenu";
+import { StudySide } from "../side/StudySide";
 import { StudyMoves } from "./StudyMoves";
 import { StudyPlayerBar } from "./StudyPlayerBar";
 import "./studyWorkspace.css";
@@ -38,13 +40,18 @@ export interface StudyWorkspaceProps {
   onSaveMoment?: () => void;
   onOpenLibrary?: () => void;
   savedMomentCount?: number;
+  saveMomentDisabled?: boolean;
+  collaborate?: ReactNode;
+  onClassicView?: () => void;
 }
 
-export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount = 0 }: StudyWorkspaceProps = {}) {
+export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount = 0, saveMomentDisabled = false, collaborate, onClassicView = () => undefined }: StudyWorkspaceProps = {}) {
   const { game, globalPly, seek } = useCoachStore();
   const [frame, setFrame] = useState(fallbackFrame);
   const [flipped, setFlipped] = useState(false);
   const [underboardInfoVisible, setUnderboardInfoVisible] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<ParityBoardThemeId>(() => localStorage.getItem("thejimmyapp.parity.theme") === "wood" ? "wood" : "brown");
   const workspaceRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const workspace = workspaceRef.current;
@@ -74,6 +81,7 @@ export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount =
   const secondBoardTop = secondBoard.placement === "side"
     ? layout.board.y + smallLayout.tools.pocketHeight
     : underboard.y + underboardHeight + 8 + smallLayout.tools.pocketHeight;
+  const collaborateTop = secondBoardTop + smallLayout.board.size + smallLayout.tools.pocketHeight + 8;
   const baseOrientation = reviewerOrientation(game);
   const orientation = flipped ? (baseOrientation === "white" ? "black" : "white") : baseOrientation;
   const boardAReplay = currentPosition(game, globalPly, "A");
@@ -90,6 +98,11 @@ export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount =
     else move(activeIndex + (action === "prev" ? -1 : 1));
   };
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === "Escape" && menuOpen) {
+      event.preventDefault();
+      setMenuOpen(false);
+      return;
+    }
     const action = parityKeyboardAction(event.key);
     if (!action) return;
     event.preventDefault();
@@ -112,27 +125,33 @@ export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount =
     "--study-moves-height": `${layout.tools.movesBottom - layout.tools.movesTop}px`, "--study-controls-y": `${layout.tools.controlsY}px`, "--study-controls-height": `${layout.tools.controlsHeight}px`,
     "--study-side-size": `${smallLayout.board.size}px`, "--study-side-pocket-height": `${smallLayout.tools.pocketHeight}px`,
     "--study-side-x": `${secondBoard.x}px`, "--study-side-top": `${secondBoardTop}px`, "--study-side-column-width": `${secondBoard.width}px`,
+    "--study-collaborate-top": `${collaborateTop}px`,
   } as CSSProperties;
 
   return <section ref={workspaceRef} className="study-workspace" aria-label="Study review workspace" tabIndex={0} onKeyDown={onKeyDown} data-layout={layout.id} data-frame={`${Math.round(frame.width)}x${Math.round(frame.height)}`} data-orientation={orientation} data-second-board-placement={secondBoard.placement} style={style}>
     {game.second_board_available && boardBReplay && boardB && <aside className="study-second-board" data-jimmy-departure="second-board" data-placement={secondBoard.placement}>
       {/* Jimmy departure: the synchronized second board uses the measured side column or flows beneath the main board. */}
       <ParityPocket {...pocketColor(boardBReplay, orientation, "top")} position="top" usable={boardB.position.side_to_move.toLowerCase() === pocketColor(boardBReplay, orientation, "top").color} orientation={orientation} layout={smallLayout} />
-      <ParityBoard position={boardB.position} orientation={orientation} layout={smallLayout} theme={parityBoardTheme("brown")} lastMove={boardB.lastMove} check={boardB.check} showCoords />
+      <ParityBoard position={boardB.position} orientation={orientation} layout={smallLayout} theme={parityBoardTheme(theme)} lastMove={boardB.lastMove} check={boardB.check} showCoords />
       <ParityPocket {...pocketColor(boardBReplay, orientation, "bottom")} position="bottom" usable={boardB.position.side_to_move.toLowerCase() === pocketColor(boardBReplay, orientation, "bottom").color} orientation={orientation} layout={smallLayout} />
     </aside>}
     <div className="study-main-board">
       <StudyPlayerBar position="top" name={players[topSide]} rating={ratingFor(topSide)} clock={topSide === "white" ? boardAReplay.white_clock : boardAReplay.black_clock} />
-      <ParityBoard position={boardA.position} orientation={orientation} layout={layout} theme={parityBoardTheme("brown")} lastMove={boardA.lastMove} check={boardA.check} showCoords />
+      <ParityBoard position={boardA.position} orientation={orientation} layout={layout} theme={parityBoardTheme(theme)} lastMove={boardA.lastMove} check={boardA.check} showCoords />
       <StudyPlayerBar position="bot" name={players[bottomSide]} rating={ratingFor(bottomSide)} clock={bottomSide === "white" ? boardAReplay.white_clock : boardAReplay.black_clock} />
     </div>
     <aside className="study-tools">
+      {menuOpen && <StudyMenu theme={theme} onFlip={() => setFlipped((current) => !current)} onThemeChange={(nextTheme) => {
+        setTheme(nextTheme);
+        localStorage.setItem("thejimmyapp.parity.theme", nextTheme);
+      }} onClassicView={onClassicView} />}
       <ParityPocket {...top} position="top" usable={boardA.position.side_to_move.toLowerCase() === top.color} orientation={orientation} layout={layout} />
       <div className="study-moves"><StudyMoves game={game} globalPly={globalPly} seek={seek} /></div>
       <div className="study-fork" />
       <ParityPocket {...bottom} position="bottom" usable={boardA.position.side_to_move.toLowerCase() === bottom.color} orientation={orientation} layout={layout} />
-      <div className="study-controls"><ParityControls onNavigate={navigate} /></div>
+      <div className="study-controls"><ParityControls onNavigate={navigate} menuOpen={menuOpen} onMenuToggle={() => setMenuOpen((current) => !current)} /></div>
     </aside>
-    <StudyUnderboard game={game} layout={layout} savedMomentCount={savedMomentCount} onSaveMoment={onSaveMoment} onOpenLibrary={onOpenLibrary} onInfoVisibilityChange={setUnderboardInfoVisible} />
+    {secondBoard.placement === "side" && game.second_board_available && boardBReplay && boardB && collaborate && <StudySide>{collaborate}</StudySide>}
+    <StudyUnderboard game={game} layout={layout} savedMomentCount={savedMomentCount} onSaveMoment={onSaveMoment} onOpenLibrary={onOpenLibrary} onInfoVisibilityChange={setUnderboardInfoVisible} saveMomentDisabled={saveMomentDisabled} />
   </section>;
 }

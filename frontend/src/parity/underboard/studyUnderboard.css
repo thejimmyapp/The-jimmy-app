@@ -6,6 +6,7 @@
 .study-underboard button:hover,
 .study-underboard button:focus-visible,
 .study-underboard button.active { outline: 0; color: rgb(214, 79, 0); }
+.study-underboard button:disabled { cursor: default; opacity: .5; }
 .study-underboard button svg { width: 24px; height: 24px; }
 .study-underboard-count { position: absolute; top: 2px; right: 8px; color: inherit; font: inherit; }
 .study-underboard-metadata { overflow: hidden; border-radius: 7px; background: rgb(38, 36, 33); box-shadow: 0 2px 2px rgb(0 0 0 / 8%), 0 3px 1px -2px rgb(0 0 0 / 18%), 0 1px 5px rgb(0 0 0 / 10%); }

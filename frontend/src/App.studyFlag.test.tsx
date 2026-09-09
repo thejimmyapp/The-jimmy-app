@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { useCoachStore } from "./store";
@@ -15,7 +16,7 @@ vi.mock("./api", async (importOriginal) => ({ ...(await importOriginal<typeof im
 vi.mock("./socket", () => ({ applyRoomSnapshot: vi.fn(), connectRoomSocket: vi.fn(), disconnectRoomSocket: vi.fn(), sendRoomEvent: vi.fn() }));
 vi.mock("./components/BoardPanel", () => ({ BoardPanel: () => <div data-testid="legacy-review-board" /> }));
 vi.mock("./components/SidePanel", () => ({ SidePanel: () => <div data-testid="legacy-review-dock" /> }));
-vi.mock("./parity/workspace/StudyWorkspace", () => ({ StudyWorkspace: ({ onSaveMoment }: { onSaveMoment?: () => void }) => <section aria-label="Study review workspace"><button type="button" onClick={onSaveMoment}>Save moment</button></section> }));
+vi.mock("./parity/workspace/StudyWorkspace", () => ({ StudyWorkspace: ({ onSaveMoment, saveMomentDisabled, collaborate, onClassicView }: { onSaveMoment?: () => void; saveMomentDisabled?: boolean; collaborate?: ReactNode; onClassicView?: () => void }) => <section aria-label="Study review workspace"><button type="button" onClick={onSaveMoment} disabled={saveMomentDisabled} aria-disabled={saveMomentDisabled}>Save moment</button><button type="button" onClick={onClassicView}>Classic view</button><div data-testid="study-collaborate">{collaborate}</div></section> }));
 
 const position: ReplayPosition = {
   ply: 0, label: "Start", board: Array.from({ length: 8 }, () => Array(8).fill("")), side_to_move: "White", variant_fen: "", white_pocket: "", black_pocket: "",
@@ -72,6 +73,8 @@ describe("opt-in study UI mount", () => {
     expect(screen.queryByTestId("legacy-review-board")).toBeNull();
     expect(screen.queryByTestId("legacy-review-dock")).toBeNull();
     expect(screen.getByRole("navigation", { name: "Main views" })).not.toBeNull();
+    expect(screen.getByTestId("study-collaborate").textContent).toContain("Invite partner");
+    expect(screen.getByTestId("study-collaborate").textContent).toContain("Team Coach");
   });
 
   it("routes the study Save moment tab through the existing moment editor handler", () => {
@@ -80,5 +83,26 @@ describe("opt-in study UI mount", () => {
     renderApp();
     fireEvent.click(screen.getByRole("button", { name: "Save moment" }));
     expect(screen.getByLabelText("Learning moment wizard steps 1 through 4")).not.toBeNull();
+  });
+
+  it("disables Save moment at global ply 0 and enables it at a capturable ply", () => {
+    history.replaceState(null, "", "/?ui=study");
+    useCoachStore.setState({ game, guestMatch: match, globalPly: 0, mode: "review" });
+    renderApp();
+    expect((screen.getByRole("button", { name: "Save moment" }) as HTMLButtonElement).disabled).toBe(true);
+    act(() => useCoachStore.setState({ globalPly: 1 }));
+    expect((screen.getByRole("button", { name: "Save moment" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("returns to the legacy review surface and clears both study flags", () => {
+    history.replaceState(null, "", "/?game=42&ui=study");
+    localStorage.setItem("thejimmyapp.ui", "study");
+    renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "Classic view" }));
+    expect(screen.queryByRole("region", { name: "Study review workspace" })).toBeNull();
+    expect(screen.getByTestId("legacy-review-board")).not.toBeNull();
+    expect(screen.getByTestId("legacy-review-dock")).not.toBeNull();
+    expect(location.search).toBe("?game=42");
+    expect(localStorage.getItem("thejimmyapp.ui")).toBeNull();
   });
 });
