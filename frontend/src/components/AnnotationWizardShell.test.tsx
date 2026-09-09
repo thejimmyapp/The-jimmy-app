@@ -184,4 +184,53 @@ describe("AnnotationWizardShell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Play N@g5 on board" }));
     expect(screen.getByRole("heading", { name: "Instead, play N@g5" })).toBeTruthy();
   });
+
+  it.each([1, 2, 3, 4])("keeps one enabled Cancel outside the locked sections at step %s", (step) => {
+    const onCancel = vi.fn();
+    const { container } = render(<AnnotationWizardShell move_options={moves} alternative_move_options={alternativeMoves} onCancel={onCancel} onSave={vi.fn()} />);
+    if (step >= 2) fireEvent.click(screen.getByRole("button", { name: "17A Nxf7" }));
+    if (step >= 3) fireEvent.keyDown(screen.getByRole("group", { name: "Required move glyph" }), { key: "1" });
+    if (step >= 4) fireEvent.click(screen.getByRole("button", { name: "Q@h5" }));
+
+    const cancelButtons = screen.getAllByRole("button", { name: "Cancel", hidden: true });
+    expect(cancelButtons).toHaveLength(1);
+    const cancel = screen.getByRole("button", { name: "Cancel" }) as HTMLButtonElement;
+    expect(cancel.disabled).toBe(false);
+    expect(cancel.closest(".wizard-step")).toBeNull();
+    expect(cancel.closest("[inert], [aria-hidden='true']")).toBeNull();
+    const stepOne = container.querySelector(".wizard-step--move")!;
+    expect(cancel.compareDocumentPosition(stepOne) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    const answer = container.querySelector(".wizard-step--answer")!;
+    expect(answer.hasAttribute("inert")).toBe(step < 4);
+    expect(answer.getAttribute("aria-hidden")).toBe(String(step < 4));
+    expect(answer.textContent).not.toContain("Cancel");
+    const save = screen.getByRole("button", { name: "Save moment", hidden: true }) as HTMLButtonElement;
+    expect(answer.contains(save)).toBe(true);
+    expect(save.disabled).toBe(true);
+    fireEvent.click(cancel);
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it("disables Cancel during save and enables it again afterward", () => {
+    const onCancel = vi.fn();
+    const { rerender } = render(<AnnotationWizardShell move_options={moves} onCancel={onCancel} saving />);
+    const cancel = screen.getByRole("button", { name: "Cancel" }) as HTMLButtonElement;
+    expect(cancel.disabled).toBe(true);
+    fireEvent.click(cancel);
+    expect(onCancel).not.toHaveBeenCalled();
+    rerender(<AnnotationWizardShell move_options={moves} onCancel={onCancel} saving={false} />);
+    expect(cancel.disabled).toBe(false);
+    fireEvent.click(cancel);
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it("only renders the Cancel row when onCancel is provided, independently of onSave", () => {
+    const { container, rerender } = render(<AnnotationWizardShell move_options={moves} onSave={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: "Cancel", hidden: true })).toBeNull();
+    expect(container.querySelector(".annotation-wizard > .wizard-step__actions")).toBeNull();
+    rerender(<AnnotationWizardShell move_options={moves} onCancel={vi.fn()} />);
+    expect(screen.getAllByRole("button", { name: "Cancel" })).toHaveLength(1);
+    expect(container.querySelector(".annotation-wizard > .wizard-step__actions")).not.toBeNull();
+  });
+
 });
