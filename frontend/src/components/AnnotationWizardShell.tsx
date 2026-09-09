@@ -66,6 +66,9 @@ export function AnnotationWizardShell({ move_options, alternative_move_options =
         <span>LEARNING MOMENT WIZARD</span>
         <strong>{currentStep} of 4</strong>
       </header>
+      {onCancel && <div className="wizard-step__actions">
+        <button type="button" onClick={onCancel} disabled={saving}>Cancel</button>
+      </div>}
 
       <section className={`wizard-step wizard-step--move ${selectedMove ? "is-complete" : "is-active"}`} aria-labelledby="wizard-step-1-title">
         <span className="wizard-step__number">step 1 of 4</span>
@@ -151,7 +154,6 @@ export function AnnotationWizardShell({ move_options, alternative_move_options =
         </label>
         {onSave && (
           <div className="wizard-step__actions">
-            {onCancel && <button type="button" onClick={onCancel} disabled={saving}>Cancel</button>}
             <button type="button" className="primary" onClick={() => void save()} disabled={!selectedMove || !glyph || !alternativeMove || !hasWrittenAnswer || saving}>
               {saving ? "Saving…" : "Save moment"}
             </button>
