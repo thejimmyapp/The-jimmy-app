@@ -73,4 +73,17 @@ describe("study workspace", () => {
     fireEvent.click(getByRole("button", { name: "Menu" }));
     expect(queryByRole("region", { name: "Study menu" })).toBeNull();
   });
+
+  it("toggles evaluation with l and does not mount analysis while off", () => {
+    const { container, queryByTestId } = render(<StudyWorkspace analysis={<div data-testid="analysis-node">locked analysis</div>} />);
+    const workspace = container.querySelector<HTMLElement>(".study-workspace")!;
+    expect(workspace.dataset.evaluation).toBe("off");
+    expect(queryByTestId("analysis-node")).toBeNull();
+    fireEvent.keyDown(workspace, { key: "l" });
+    expect(workspace.dataset.evaluation).toBe("on");
+    expect(queryByTestId("analysis-node")).not.toBeNull();
+    fireEvent.keyDown(workspace, { key: "l" });
+    expect(workspace.dataset.evaluation).toBe("off");
+    expect(queryByTestId("analysis-node")).toBeNull();
+  });
 });

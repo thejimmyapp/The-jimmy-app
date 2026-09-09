@@ -1,0 +1,13 @@
+.study-eval { position: absolute; z-index: 3; top: var(--study-eval-top); display: flex; width: 100%; height: 44px; align-items: flex-start; padding: 3px 0 0; background: linear-gradient(rgb(60, 57, 52), rgb(51, 49, 46)); color: rgb(186, 186, 186); font: 14px "Noto Sans", sans-serif; box-shadow: inset 0 1px 3px -2px rgb(115, 115, 115), inset 0 -4px 8px -3px rgb(54 50 43 / 80%); }
+.study-eval-toggle { display: flex; width: 40px; height: 41px; flex: 0 0 40px; align-items: center; margin-left: 6px; }
+.study-eval-toggle button { position: relative; width: 40px; height: 24px; border: 0; border-radius: 7px; padding: 0; background: rgb(107, 107, 107); cursor: pointer; }
+.study-eval-toggle button span { position: absolute; top: .5px; left: 0; width: 23px; height: 23px; border-radius: 6px; background: linear-gradient(rgb(60, 57, 52), rgb(51, 49, 46)); box-shadow: inset 0 1px 3px -2px rgb(115, 115, 115), inset 0 -4px 8px -3px rgb(54 50 43 / 80%), 0 1px 3px rgb(0 0 0 / 20%); transition: left 120ms ease;
+}
+.study-eval-toggle button[aria-checked="true"] { background: rgb(98, 153, 36); }
+.study-eval-toggle button[aria-checked="true"] span { left: 17px; background: linear-gradient(rgb(68, 65, 59), rgb(59, 57, 53)); box-shadow: inset 0 1px 3px -2px rgb(102, 102, 102), inset 0 -5px 16px -3px rgb(60 55 47 / 80%), 0 2px 4px rgb(0 0 0 / 24%); }
+.study-eval-pearl { display: block; width: 67.59375px; height: 41px; flex: 0 0 67.59375px; margin-left: 6px; color: rgb(186, 186, 186); font: 700 22.4px/38px "Noto Sans", sans-serif; }
+.study-eval-engine { min-width: 0; height: 38px; flex: 1; margin: 3px 0 0 6px; overflow: hidden; color: rgb(148, 148, 148); font: 12px/16px "Noto Sans", sans-serif; white-space: nowrap; }
+.study-eval-engine .technology { margin-left: 5px; color: rgb(98, 153, 36); }
+.study-eval-engine small { display: block; overflow: hidden; color: inherit; font: inherit; text-overflow: ellipsis; }
+.study-eval-settings { width: 31.203125px; height: 44px; flex: 0 0 31.203125px; margin: -3px 6px 0 0; border: 0; padding: 0 6px; background: transparent; color: rgb(148, 148, 148); font: 16px "Noto Sans", sans-serif; opacity: 1; }
+.study-eval-analysis { position: absolute; z-index: 5; top: 44px; right: 0; width: 100%; max-height: 360px; overflow: auto; background: rgb(38, 36, 33); color: rgb(186, 186, 186); font: 13px/26px "Noto Sans", sans-serif; box-shadow: 0 2px 5px rgb(0 0 0 / 28%); }

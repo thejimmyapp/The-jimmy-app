@@ -137,6 +137,25 @@ try {
     }
     await context.close();
   }
+  if (process.env.PARITY_CAPTURE_EVAL === "1") {
+    const context = await browser.newContext({ viewport: cases[0].frame, deviceScaleFactor: 1, colorScheme: "dark", locale: "en-US" });
+    const page = await context.newPage();
+    await page.goto(`${candidateUrl}?study=0&ply=1&frame=1372x842`, { waitUntil: "networkidle" });
+    await page.waitForSelector('.study-workspace[data-layout="jimmy1440"][data-evaluation="off"]'); await page.evaluate(() => document.fonts.ready); await page.waitForTimeout(300);
+    await page.screenshot({ path: join(reportDir, "frame-1372x842-eval-off.png") });
+    await page.keyboard.press("l"); await page.waitForSelector('.study-workspace[data-evaluation="on"]'); await page.waitForTimeout(150);
+    await page.screenshot({ path: join(reportDir, "frame-1372x842-eval-on.png") });
+    for (const state of ["off", "on"]) {
+      const candidate = PNG.sync.read(readFileSync(join(reportDir, `frame-1372x842-eval-${state}.png`)));
+      const reference = PNG.sync.read(readFileSync(join(referenceDir, `analysis-1372x902-${state}.png`)));
+      const referenceFrame = crop(reference, { x: 0, y: 60, width: 1372, height: 842 });
+      const joined = new PNG({ width: 2752, height: 842 });
+      PNG.bitblt(candidate, joined, 0, 0, 1372, 842, 0, 0);
+      PNG.bitblt(referenceFrame, joined, 0, 0, 1372, 842, 1380, 0);
+      writeFileSync(join(reportDir, `frame-1372x842-eval-${state}-vs-analysis.png`), PNG.sync.write(joined));
+    }
+    await context.close();
+  }
   const wide = PNG.sync.read(readFileSync(join(reportDir, "frame-1372x842.png")));
   const referenceWide = PNG.sync.read(readFileSync(join(referenceDir, "jimmy1440-S1.png")));
   const referenceFrame = crop(referenceWide, { x: 0, y: 60, width: 1372, height: 842 });

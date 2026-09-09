@@ -39,6 +39,7 @@ describe("Lichess-column parity move tree", () => {
     expect(treeNavigationTarget(tree, mainline[4].id, "Home")).toBe("root");
     expect(treeNavigationTarget(tree, mainline[4].id, "End")).toBe(mainline.at(-1)?.id);
     expect(parityKeyboardAction("f")).toEqual({ type: "flip" });
+    expect(parityKeyboardAction("l")).toEqual({ type: "evaluation" });
     expect(parityKeyboardAction("Escape")).toBeNull();
   });
 

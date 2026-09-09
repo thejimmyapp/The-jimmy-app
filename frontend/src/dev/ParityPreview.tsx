@@ -55,6 +55,7 @@ export function ParityPreview() {
       setOrientation((current) => current === "black" ? "white" : "black");
       return;
     }
+    if (action.type === "evaluation") return;
     event.preventDefault();
     setActiveId((current) => treeNavigationTarget(tree, current, action.key, event.shiftKey));
   };
