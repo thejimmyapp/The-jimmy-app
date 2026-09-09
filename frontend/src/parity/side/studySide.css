@@ -1,10 +1,25 @@
 .study-side { position: absolute; left: var(--study-side-x); top: var(--study-collaborate-top); display: flex; width: var(--study-side-column-width); height: 300.65625px; flex-direction: column; overflow: hidden; border-radius: 7px; background: rgb(38, 36, 33); color: rgb(186, 186, 186); font: 14px "Noto Sans", sans-serif; box-shadow: 0 2px 2px rgb(0 0 0 / 8%), 0 3px 1px -2px rgb(0 0 0 / 18%), 0 1px 5px rgb(0 0 0 / 10%); }
-.study-side-header { display: flex; height: 35.1875px; flex: 0 0 35.1875px; align-items: center; justify-content: space-between; padding: 5.6px 10px; font: 300 14px Roboto, sans-serif; }
-.study-side-toggle { position: relative; display: block; width: 40px; height: 24px; border-radius: 12px; background: rgb(214, 79, 0); }
-.study-side-toggle i { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgb(0 0 0 / 45%); }
-.study-side-body { display: flex; min-height: 0; flex: 1; flex-wrap: wrap; align-content: flex-start; gap: 8px; overflow: auto; padding: 10px; }
-.study-side-body.header-actions { min-width: 0; align-items: center; justify-content: flex-start; white-space: nowrap; }
-.study-side-body.header-actions button { display: flex; height: 32px; align-items: center; gap: 6px; border: 1px solid #2a3951; border-radius: 4px; padding: 0 10px; font-size: 11px; font-weight: 700; cursor: pointer; }
-.study-side-body.header-actions .share-button { min-width: 142px; justify-content: center; border-color: #34506f; background: #142035; color: #f2f7ff; }
-.study-side-body.header-actions .coach-button { border-color: #4b426f; background: #19162a; color: #d8caff; }
-.study-side-body .viewer-pill { display: flex; height: 32px; min-width: 42px; align-items: center; gap: 6px; border: 1px solid #275f70; border-radius: 4px; padding: 0 9px; background: #0d2530; color: #88f4ff; font-size: 11px; font-weight: 900; }
+.study-side-actions { display: flex; min-width: 0; min-height: 42px; flex: 0 0 42px; align-items: center; gap: 6px; overflow-x: auto; padding: 5px 7px; white-space: nowrap; }
+.study-side-actions button { display: flex; height: 32px; align-items: center; gap: 6px; border: 1px solid #2a3951; border-radius: 4px; padding: 0 8px; font-size: 10px; font-weight: 700; cursor: pointer; }
+.study-side-actions .share-button { min-width: 126px; justify-content: center; border-color: #34506f; background: #142035; color: #f2f7ff; }
+.study-side-actions .coach-button { border-color: #4b426f; background: #19162a; color: #d8caff; }
+.study-side-actions .viewer-pill { display: flex; height: 32px; min-width: 36px; align-items: center; gap: 6px; border: 1px solid #275f70; border-radius: 4px; padding: 0 7px; background: #0d2530; color: #88f4ff; font-size: 10px; font-weight: 900; }
+.study-side-panel { position: relative; display: flex; min-height: 0; flex: 1; flex-direction: column; overflow: hidden; }
+.study-side .utility-secondary-tabs { display: grid; height: 35.1875px; flex: 0 0 35.1875px; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 0; background: transparent; }
+.study-side .utility-secondary-tabs button { border: 0; padding: 5.6px 10px; background: rgb(38, 36, 33); color: rgb(186, 186, 186); font: 300 14px Roboto, sans-serif; }
+.study-side .utility-secondary-tabs button.active { background: rgb(38, 36, 33); color: rgb(214, 79, 0); box-shadow: inset 0 -2px rgb(214, 79, 0); }
+.study-side .collaborate-pane { display: flex; min-height: 0; flex: 1; flex-direction: column; overflow: hidden; }
+.study-side .presence { display: flex; height: 30px; flex: 0 0 30px; align-items: center; padding: 7px 10px; border-bottom: 1px solid rgb(255 255 255 / 8%); color: rgb(148, 148, 148); font-size: 10px; }
+.study-side .presence-dot { display: inline-block; width: 6px; height: 6px; flex: 0 0 6px; margin-right: 6px; border-radius: 50%; background: rgb(98, 153, 36); }
+.study-side .notification-enable { margin-left: auto; border: 0; background: transparent; color: rgb(148, 148, 148); font-size: 9px; }
+.study-side .message-list { min-height: 0; flex: 1; overflow-y: auto; padding: 7px; }
+.study-side .message-list article { margin-bottom: 5px; padding: 6px; border: 1px solid rgb(255 255 255 / 8%); border-radius: 3px; background: rgb(31, 29, 27); }
+.study-side .message-list article header { display: flex; justify-content: space-between; color: rgb(148, 148, 148); font-size: 10px; }
+.study-side .message-list article header button { border: 0; background: transparent; color: rgb(214, 79, 0); font-size: 9px; }
+.study-side .message-list article p { margin: 4px 0 0; color: rgb(186, 186, 186); font-size: 11px; line-height: 1.35; }
+.study-side .composer { display: grid; height: 56px; flex: 0 0 56px; grid-template-columns: 1fr 34px; gap: 6px; padding: 6px; border-top: 1px solid rgb(255 255 255 / 8%); }
+.study-side .composer textarea { min-width: 0; resize: none; border: 1px solid rgb(255 255 255 / 12%); border-radius: 3px; padding: 6px; background: rgb(31, 29, 27); color: rgb(186, 186, 186); font-size: 10px; }
+.study-side .composer button { border: 1px solid rgb(214 79 0 / 55%); border-radius: 3px; background: rgb(55, 37, 27); color: rgb(214, 79, 0); }
+.study-side .empty-panel { padding: 24px 12px; color: rgb(148, 148, 148); text-align: center; font-size: 10px; }
+.study-collaboration-lock { position: absolute; z-index: 2; top: 8px; right: 9px; display: flex; align-items: center; gap: 4px; color: rgb(148, 148, 148); font: 700 9px Roboto, sans-serif; }
+.study-side .capability-locked { opacity: .42; filter: grayscale(1); }

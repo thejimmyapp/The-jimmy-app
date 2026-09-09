@@ -11,6 +11,7 @@ import { replayToParity } from "../adapters/replayToParity";
 import { StudyUnderboard } from "../underboard/StudyUnderboard";
 import { StudyMenu } from "../menu/StudyMenu";
 import { StudySide } from "../side/StudySide";
+import { STUDY_EVAL_ROW_HEIGHT, StudyEval } from "../eval/StudyEval";
 import { StudyMoves } from "./StudyMoves";
 import { StudyPlayerBar } from "./StudyPlayerBar";
 import "./studyWorkspace.css";
@@ -42,16 +43,20 @@ export interface StudyWorkspaceProps {
   savedMomentCount?: number;
   saveMomentDisabled?: boolean;
   collaborate?: ReactNode;
+  collaboratePanel?: ReactNode;
   onClassicView?: () => void;
+  analysis?: ReactNode;
+  showEvaluation?: boolean;
 }
 
-export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount = 0, saveMomentDisabled = false, collaborate, onClassicView = () => undefined }: StudyWorkspaceProps = {}) {
+export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount = 0, saveMomentDisabled = false, collaborate, collaboratePanel, onClassicView = () => undefined, analysis, showEvaluation = true }: StudyWorkspaceProps = {}) {
   const { game, globalPly, seek } = useCoachStore();
   const [frame, setFrame] = useState(fallbackFrame);
   const [flipped, setFlipped] = useState(false);
   const [underboardInfoVisible, setUnderboardInfoVisible] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [theme, setTheme] = useState<ParityBoardThemeId>(() => localStorage.getItem("thejimmyapp.parity.theme") === "wood" ? "wood" : "brown");
+  const [evaluationEnabled, setEvaluationEnabled] = useState(false);
   const workspaceRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const workspace = workspaceRef.current;
@@ -107,6 +112,7 @@ export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount =
     if (!action) return;
     event.preventDefault();
     if (action.type === "flip") { setFlipped((current) => !current); return; }
+    if (action.type === "evaluation") { if (showEvaluation) setEvaluationEnabled((current) => !current); return; }
     if (action.key === "Home" || action.key === "ArrowUp") move(0);
     else if (action.key === "End" || action.key === "ArrowDown") move(frames.length - 1);
     else move(activeIndex + (action.key === "ArrowLeft" ? -1 : 1) * (event.shiftKey ? 10 : 1));
@@ -118,17 +124,18 @@ export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount =
   const topSide = bottomSide === "white" ? "black" : "white";
   const reviewerSide = reviewerOrientation(game);
   const ratingFor = (side: "white" | "black") => side === reviewerSide ? null : game.game.opponent_rating;
+  const evaluationOffset = showEvaluation ? STUDY_EVAL_ROW_HEIGHT + (evaluationEnabled ? 26 : 0) : 0;
   const style = {
     "--study-board-x": `${layout.board.x}px`, "--study-board-y": `${layout.board.y}px`, "--study-board-size": `${layout.board.size}px`,
     "--study-tools-x": `${layout.tools.x}px`, "--study-tools-width": `${layout.tools.width}px`, "--study-pocket-top": `${layout.tools.pocketTopY}px`,
-    "--study-pocket-bottom": `${layout.tools.pocketBottomY}px`, "--study-moves-top": `${layout.tools.movesTop}px`,
-    "--study-moves-height": `${layout.tools.movesBottom - layout.tools.movesTop}px`, "--study-controls-y": `${layout.tools.controlsY}px`, "--study-controls-height": `${layout.tools.controlsHeight}px`,
+    "--study-pocket-bottom": `${layout.tools.pocketBottomY}px`, "--study-eval-top": `${layout.tools.movesTop}px`, "--study-moves-top": `${layout.tools.movesTop + evaluationOffset}px`,
+    "--study-moves-height": `${layout.tools.movesBottom - layout.tools.movesTop - evaluationOffset}px`, "--study-controls-y": `${layout.tools.controlsY}px`, "--study-controls-height": `${layout.tools.controlsHeight}px`,
     "--study-side-size": `${smallLayout.board.size}px`, "--study-side-pocket-height": `${smallLayout.tools.pocketHeight}px`,
     "--study-side-x": `${secondBoard.x}px`, "--study-side-top": `${secondBoardTop}px`, "--study-side-column-width": `${secondBoard.width}px`,
     "--study-collaborate-top": `${collaborateTop}px`,
   } as CSSProperties;
 
-  return <section ref={workspaceRef} className="study-workspace" aria-label="Study review workspace" tabIndex={0} onKeyDown={onKeyDown} data-layout={layout.id} data-frame={`${Math.round(frame.width)}x${Math.round(frame.height)}`} data-orientation={orientation} data-second-board-placement={secondBoard.placement} style={style}>
+  return <section ref={workspaceRef} className="study-workspace" aria-label="Study review workspace" tabIndex={0} onKeyDown={onKeyDown} data-layout={layout.id} data-frame={`${Math.round(frame.width)}x${Math.round(frame.height)}`} data-orientation={orientation} data-evaluation={showEvaluation ? (evaluationEnabled ? "on" : "off") : "none"} data-second-board-placement={secondBoard.placement} style={style}>
     {game.second_board_available && boardBReplay && boardB && <aside className="study-second-board" data-jimmy-departure="second-board" data-placement={secondBoard.placement}>
       {/* Jimmy departure: the synchronized second board uses the measured side column or flows beneath the main board. */}
       <ParityPocket {...pocketColor(boardBReplay, orientation, "top")} position="top" usable={boardB.position.side_to_move.toLowerCase() === pocketColor(boardBReplay, orientation, "top").color} orientation={orientation} layout={smallLayout} />
@@ -141,6 +148,7 @@ export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount =
       <StudyPlayerBar position="bot" name={players[bottomSide]} rating={ratingFor(bottomSide)} clock={bottomSide === "white" ? boardAReplay.white_clock : boardAReplay.black_clock} />
     </div>
     <aside className="study-tools">
+      {showEvaluation && <StudyEval enabled={evaluationEnabled} analysis={analysis} onToggle={() => setEvaluationEnabled((current) => !current)} />}
       {menuOpen && <StudyMenu theme={theme} onFlip={() => setFlipped((current) => !current)} onThemeChange={(nextTheme) => {
         setTheme(nextTheme);
         localStorage.setItem("thejimmyapp.parity.theme", nextTheme);
@@ -151,7 +159,7 @@ export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount =
       <ParityPocket {...bottom} position="bottom" usable={boardA.position.side_to_move.toLowerCase() === bottom.color} orientation={orientation} layout={layout} />
       <div className="study-controls"><ParityControls onNavigate={navigate} menuOpen={menuOpen} onMenuToggle={() => setMenuOpen((current) => !current)} /></div>
     </aside>
-    {secondBoard.placement === "side" && game.second_board_available && boardBReplay && boardB && collaborate && <StudySide>{collaborate}</StudySide>}
+    {secondBoard.placement === "side" && game.second_board_available && boardBReplay && boardB && collaboratePanel && <StudySide actions={collaborate}>{collaboratePanel}</StudySide>}
     <StudyUnderboard game={game} layout={layout} savedMomentCount={savedMomentCount} onSaveMoment={onSaveMoment} onOpenLibrary={onOpenLibrary} onInfoVisibilityChange={setUnderboardInfoVisible} saveMomentDisabled={saveMomentDisabled} />
   </section>;
 }

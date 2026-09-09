@@ -411,6 +411,87 @@ async function captureJimmyEngine(browser) {
   await context.close();
 }
 
+async function captureJimmyAnalysisEngine(browser) {
+  const analysisUrl = "https://lichess.org/analysis/crazyhouse";
+  const userAgent = await installedChromeUserAgent(browser);
+  const item = jimmyReferenceCases[0];
+  const { context, page } = await newPage(browser, { viewport: item.viewport, userAgent, locale: "en-US" });
+  const response = await page.goto(analysisUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
+  const boardPresent = response?.status() === 200 && await page.waitForSelector("cg-board", { timeout: 90_000 }).then(() => true, () => false);
+  const cevalPresent = boardPresent && await page.waitForSelector(".ceval", { timeout: 8_000 }).then(() => true, () => false);
+  if (!response?.ok() || !boardPresent || !cevalPresent) {
+    const title = await page.title(); await context.close();
+    throw new Error(`Analysis engine unavailable: HTTP ${response?.status() ?? "unknown"}, cg-board=${boardPresent}, ceval=${cevalPresent}, title=${title}`);
+  }
+  await settle(page);
+
+  const engineState = () => page.evaluate(() => {
+    const rectFor = (element) => {
+      if (!element) return null;
+      const box = element.getBoundingClientRect();
+      return { x: box.x, y: box.y, width: box.width, height: box.height, top: box.top, right: box.right, bottom: box.bottom, left: box.left };
+    };
+    const styleFor = (element, pseudo = null) => {
+      if (!element) return null;
+      const style = getComputedStyle(element, pseudo);
+      return {
+        tagName: element.tagName.toLowerCase(), className: element.className, text: element.textContent?.trim() ?? "", rect: rectFor(element),
+        background: style.background, backgroundColor: style.backgroundColor, color: style.color, font: style.font,
+        width: style.width, height: style.height, padding: style.padding, margin: style.margin, border: style.border,
+        borderRadius: style.borderRadius, boxShadow: style.boxShadow, display: style.display,
+        gridTemplateColumns: style.gridTemplateColumns, gridTemplateRows: style.gridTemplateRows,
+      };
+    };
+    const switchLabel = document.querySelector(".ceval .cmn-toggle label");
+    const elements = {
+      board: document.querySelector("cg-board"), tools: document.querySelector(".analyse__tools"), pocketTop: document.querySelector(".pocket-top"),
+      ceval: document.querySelector(".ceval"), pvBox: document.querySelector(".pv_box"), moves: document.querySelector(".analyse__moves"),
+      pocketBottom: document.querySelector(".pocket-bottom"), controls: document.querySelector(".analyse__controls"),
+    };
+    const colorRules = [];
+    for (const sheet of document.styleSheets) {
+      let rules;
+      try { rules = sheet.cssRules; } catch { continue; }
+      for (const rule of rules ?? []) {
+        if ("selectorText" in rule && /ceval.*pearl|pearl.*(mate|good|bad)/i.test(rule.selectorText)) colorRules.push({ selector: rule.selectorText, cssText: rule.style.cssText });
+      }
+    }
+    return {
+      elements: Object.fromEntries(Object.entries(elements).map(([name, element]) => [name, styleFor(element)])),
+      toolsChildren: [...document.querySelector(".analyse__tools").children].map(styleFor),
+      cevalChildren: [...document.querySelector(".ceval").children].map(styleFor), pearl: styleFor(document.querySelector(".ceval pearl")),
+      engine: styleFor(document.querySelector(".ceval .engine")), engineParts: [...document.querySelectorAll(".ceval .engine > *")].map(styleFor),
+      switch: styleFor(document.querySelector(".ceval .cmn-toggle")), switchInput: styleFor(document.querySelector(".ceval .cmn-toggle input")),
+      switchLabel: styleFor(switchLabel), switchTrack: styleFor(switchLabel, "::before"), switchKnob: styleFor(switchLabel, "::after"),
+      threat: styleFor(document.querySelector(".ceval .show-threat")), settings: styleFor(document.querySelector(".ceval .settings-gear")),
+      pvRows: [...document.querySelectorAll(".pv_box > .pv")].map(styleFor), colorRules,
+    };
+  });
+
+  const off = await engineState();
+  await page.screenshot({ path: join(referenceDir, "analysis-1372x902-off.png") });
+  await page.locator(".ceval .cmn-toggle label").click();
+  const firstEvaluationAppeared = await page.waitForFunction(() => Boolean(document.querySelector(".ceval pearl")?.textContent?.trim() || document.querySelector(".pv_box")?.textContent?.trim()), { timeout: 8_000 }).then(() => true, () => false);
+  await settle(page);
+  const on = await engineState();
+  await page.screenshot({ path: join(referenceDir, "analysis-1372x902-on.png") });
+  const shifts = Object.fromEntries(Object.keys(off.elements).map((name) => [name, {
+    deltaY: off.elements[name]?.rect && on.elements[name]?.rect ? Number((on.elements[name].rect.y - off.elements[name].rect.y).toFixed(4)) : null,
+    off: off.elements[name]?.rect ?? null, on: on.elements[name]?.rect ?? null,
+  }]));
+  const metaPath = join(referenceDir, "reference-meta.json");
+  const meta = JSON.parse(readFileSync(metaPath, "utf8"));
+  meta.jimmyEngine = meta.jimmyEngine ?? {};
+  meta.jimmyEngine.analysisBoard = {
+    url: analysisUrl, viewport: item.viewport, frame: item.frame, capturedAt: new Date().toISOString(),
+    screenshots: { off: "analysis-1372x902-off.png", on: "analysis-1372x902-on.png" },
+    firstEvaluationAppeared, off, on, shifts,
+  };
+  writeFileSync(metaPath, `${JSON.stringify(meta, null, 2)}\n`);
+  console.log(`jimmyEngine.analysisBoard: ${JSON.stringify(meta.jimmyEngine.analysisBoard)}`);
+  await context.close();
+}
+
 async function captureJimmyMenuAndSide(browser) {
   const userAgent = await installedChromeUserAgent(browser);
   const item = jimmyReferenceCases[0];
@@ -490,6 +571,39 @@ async function captureJimmyMenuAndSide(browser) {
   writeFileSync(metaPath, `${JSON.stringify(meta, null, 2)}\n`);
   console.log(`jimmyMenu: ${JSON.stringify(meta.jimmyMenu)}`);
   console.log(`jimmySide: ${JSON.stringify(meta.jimmySide)}`);
+  await context.close();
+}
+
+async function captureJimmyMenuButton(browser) {
+  const userAgent = await installedChromeUserAgent(browser);
+  const item = jimmyReferenceCases[0];
+  const { context, page } = await newPage(browser, { viewport: item.viewport, userAgent, locale: "en-US" });
+  const response = await page.goto(referenceUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
+  const boardPresent = response?.status() === 200 && await page.waitForSelector("cg-board", { timeout: 90_000 }).then(() => true, () => false);
+  if (!response?.ok() || !boardPresent) {
+    const title = await page.title(); await context.close();
+    throw new Error(`menu button returned HTTP ${response?.status() ?? "unknown"} with cg-board=${boardPresent}: ${title}`);
+  }
+  const chapter = page.locator(`.study__chapters button[data-id="${referenceChapter}"]`);
+  if (await chapter.count() && !(await chapter.first().evaluate((element) => element.classList.contains("active")))) await chapter.first().click();
+  await settle(page); await page.keyboard.press("ArrowRight"); await settle(page);
+  const menuButton = page.locator('button[title="Menu"]');
+  await menuButton.click(); await settle(page);
+  const controlsButton = await menuButton.evaluate((element) => {
+    const box = element.getBoundingClientRect(); const style = getComputedStyle(element);
+    return {
+      tagName: element.tagName.toLowerCase(), className: element.className,
+      rect: { x: box.x, y: box.y, width: box.width, height: box.height, top: box.top, right: box.right, bottom: box.bottom, left: box.left },
+      background: style.background, backgroundColor: style.backgroundColor, color: style.color, font: style.font,
+      height: style.height, padding: style.padding, margin: style.margin, border: style.border, borderRadius: style.borderRadius,
+      boxShadow: style.boxShadow, display: style.display, alignItems: style.alignItems, justifyContent: style.justifyContent,
+    };
+  });
+  const metaPath = join(referenceDir, "reference-meta.json");
+  const meta = JSON.parse(readFileSync(metaPath, "utf8"));
+  meta.jimmyMenu.opened.controlsButton = controlsButton;
+  writeFileSync(metaPath, `${JSON.stringify(meta, null, 2)}\n`);
+  console.log(`jimmyMenu.opened.controlsButton: ${JSON.stringify(controlsButton)}`);
   await context.close();
 }
 
@@ -649,7 +763,9 @@ try {
   else if (mode === "reference-jimmy") await captureJimmyReferences(browser);
   else if (mode === "reference-jimmy-underboard") await captureJimmyUnderboards(browser);
   else if (mode === "reference-jimmy-engine") await captureJimmyEngine(browser);
+  else if (mode === "reference-jimmy-analysis-engine") await captureJimmyAnalysisEngine(browser);
   else if (mode === "reference-jimmy-menu-side") await captureJimmyMenuAndSide(browser);
+  else if (mode === "reference-jimmy-menu-button") await captureJimmyMenuButton(browser);
   else {
     await captureCandidate(browser);
     if (referenceComplete) compareAll();

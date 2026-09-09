@@ -77,12 +77,43 @@ describe("stage-frame study workspace", () => {
   });
 
   it("renders collaboration under the compact board only in the wide side placement", () => {
-    const { container, queryByTestId } = render(<StudyWorkspace collaborate={<button data-testid="collaborate-action">Invite partner</button>} />);
+    const { container, queryByTestId } = render(<StudyWorkspace collaborate={<button data-testid="collaborate-action">Invite partner</button>} collaboratePanel={<div data-testid="collaborate-panel">Chat</div>} />);
     act(() => resize([{ contentRect: { width: 1372, height: 842 } } as ResizeObserverEntry], {} as ResizeObserver));
     expect(queryByTestId("collaborate-action")).not.toBeNull();
+    expect(queryByTestId("collaborate-panel")).not.toBeNull();
     expect(container.querySelector<HTMLElement>(".study-side")?.style.top).toBe("");
     expect(container.querySelector<HTMLElement>(".study-workspace")?.style.getPropertyValue("--study-collaborate-top")).toBe("394.203125px");
     act(() => resize([{ contentRect: { width: 1132, height: 742 } } as ResizeObserverEntry], {} as ResizeObserver));
     expect(queryByTestId("collaborate-action")).toBeNull();
+    expect(queryByTestId("collaborate-panel")).toBeNull();
+  });
+
+  it("reserves the measured 44px row OFF and 70px row plus PV band ON", () => {
+    const { container, getByRole, queryByTestId } = render(<StudyWorkspace analysis={<div data-testid="analysis-node">locked analysis</div>} />);
+    act(() => resize([{ contentRect: { width: 1372, height: 842 } } as ResizeObserverEntry], {} as ResizeObserver));
+    const workspace = container.querySelector<HTMLElement>(".study-workspace")!;
+    expect(workspace.style.getPropertyValue("--study-moves-top")).toBe("126.703125px");
+    expect(workspace.style.getPropertyValue("--study-moves-height")).toBe("520.484375px");
+    expect(workspace.style.getPropertyValue("--study-pocket-bottom")).toBe("647.1875px");
+    expect(workspace.style.getPropertyValue("--study-controls-y")).toBe("707.1875px");
+    expect(queryByTestId("analysis-node")).toBeNull();
+    fireEvent.click(getByRole("switch", { name: "Toggle local evaluation" }));
+    expect(workspace.style.getPropertyValue("--study-moves-top")).toBe("152.703125px");
+    expect(workspace.style.getPropertyValue("--study-moves-height")).toBe("494.484375px");
+    expect(workspace.style.getPropertyValue("--study-pocket-bottom")).toBe("647.1875px");
+    expect(workspace.style.getPropertyValue("--study-controls-y")).toBe("707.1875px");
+    expect(queryByTestId("analysis-node")).not.toBeNull();
+  });
+
+  it("preserves the frozen study geometry when the preview omits evaluation", () => {
+    const { container, queryByRole } = render(<StudyWorkspace showEvaluation={false} />);
+    act(() => resize([{ contentRect: { width: 1372, height: 842 } } as ResizeObserverEntry], {} as ResizeObserver));
+    const workspace = container.querySelector<HTMLElement>(".study-workspace")!;
+    expect(workspace.dataset.evaluation).toBe("none");
+    expect(workspace.style.getPropertyValue("--study-moves-top")).toBe("82.703125px");
+    expect(workspace.style.getPropertyValue("--study-moves-height")).toBe("564.484375px");
+    expect(queryByRole("switch", { name: "Toggle local evaluation" })).toBeNull();
+    fireEvent.keyDown(workspace, { key: "l" });
+    expect(workspace.dataset.evaluation).toBe("none");
   });
 });

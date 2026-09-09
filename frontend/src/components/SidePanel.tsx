@@ -1,14 +1,13 @@
-import { Bell, BookOpen, Copy, LockKeyhole, Search, Send, Trash2 } from "lucide-react";
-import { type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { BookOpen, Copy, LockKeyhole, Search, Trash2 } from "lucide-react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { isCapabilityLocked, savedMomentKey, type CapabilityKey, type CapabilityMap, type SavedLesson, type SavedMoment } from "../guestProgress";
 import { QUEST_COPY, QUEST_TARGET_MOMENTS, questRoomMessage } from "../quest";
-import { sendRoomEvent } from "../socket";
 import { useCoachStore } from "../store";
 import type { BoardId, GameSummary } from "../types";
+import { CollaboratePanel } from "./CollaboratePanel";
 
 type PrimaryTab = "review" | "analysis" | "games" | "library" | "collaborate" | "quest";
 type ReviewTab = "info" | "board";
-type CollaborateTab = "chat" | "notes";
 
 interface Props {
   onSelectGame: (game: GameSummary) => void;
@@ -51,19 +50,16 @@ const primaryCapability: Partial<Record<PrimaryTab, CapabilityKey>> = {
 export function SidePanel({ onSelectGame, loadingGame, boardContent, analysisContent, infoContent, savedLessons, savedMoments = [], savedMomentCount = savedMoments.length, questCompleted = false, questProgress = Math.min(QUEST_TARGET_MOMENTS, savedMomentCount), roomQuestRemainingSeconds = null, momentPlayers = {}, qualifyingGames, onOpenSavedLesson, onRemoveSavedLesson, onOpenSavedMoment, onCopySavedMoment, onRemoveSavedMoment, initialTab = "review", dockActions, dockPanel, capabilities, activeBoard = "A", boardFocusEnabled = false, onActiveBoardChange, dockBoardName = "Second Board", onSwapBoards }: Props) {
   const [primaryTab, setPrimaryTab] = useState<PrimaryTab>(initialTab);
   const [reviewTab, setReviewTab] = useState<ReviewTab>("info");
-  const [collaborateTab, setCollaborateTab] = useState<CollaborateTab>("chat");
-  const [draft, setDraft] = useState("");
   const [search, setSearch] = useState("");
   const [result, setResult] = useState("all");
   const [minRating, setMinRating] = useState(0);
   const [sort, setSort] = useState("newest");
   const [unreadChat, setUnreadChat] = useState(0);
-  const [lastNotice, setLastNotice] = useState("");
   const [unavailableLessons, setUnavailableLessons] = useState<string[]>([]);
   const [unavailableMoments, setUnavailableMoments] = useState<string[]>([]);
   const [copiedMoment, setCopiedMoment] = useState<string | null>(null);
   const [momentCopyError, setMomentCopyError] = useState<{ key: string; message: string } | null>(null);
-  const { games, game, guestMatch, messages, addMessage, displayName, globalPly, participants, roomId } = useCoachStore();
+  const { games, game, guestMatch, roomId } = useCoachStore();
 
   const filteredGames = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -87,45 +83,8 @@ export function SidePanel({ onSelectGame, loadingGame, boardContent, analysisCon
     }
   }, [boardFocusEnabled, game, guestMatch, onActiveBoardChange]);
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    if (!draft.trim()) return;
-    const item = { id: crypto.randomUUID(), author: displayName, content: draft.trim(), ply: globalPly, timestamp: new Date().toISOString() };
-    addMessage(item);
-    sendRoomEvent(collaborateTab === "chat" ? "chat.message" : "note.create", item);
-    setDraft("");
-  };
-
-  useEffect(() => {
-    if (primaryTab === "collaborate" && collaborateTab === "chat") {
-      setUnreadChat(0);
-      setLastNotice("");
-    }
-  }, [collaborateTab, primaryTab]);
-
-  useEffect(() => {
-    const onIncomingChat = (event: Event) => {
-      const item = (event as CustomEvent).detail as { author?: string; content?: string } | undefined;
-      if (primaryTab !== "collaborate" || collaborateTab !== "chat") {
-        setUnreadChat((current) => current + 1);
-        setLastNotice(`${item?.author ?? "Partner"}: ${item?.content ?? "New message"}`);
-      }
-      if (document.visibilityState === "hidden" && "Notification" in window && Notification.permission === "granted") {
-        new Notification("New Jimmy App chat message", { body: `${item?.author ?? "Partner"}: ${item?.content ?? ""}`.slice(0, 140) });
-      }
-    };
-    window.addEventListener("thejimmyapp:chat-message", onIncomingChat);
-    return () => window.removeEventListener("thejimmyapp:chat-message", onIncomingChat);
-  }, [collaborateTab, primaryTab]);
-
-  const enableBrowserNotifications = async () => {
-    if (!("Notification" in window) || Notification.permission !== "default") return;
-    await Notification.requestPermission();
-  };
-
   const choosePrimary = (tab: PrimaryTab) => {
     setPrimaryTab(tab);
-    if (tab === "collaborate" && collaborateTab === "chat") setUnreadChat(0);
   };
 
   const chooseReview = (tab: ReviewTab) => {
@@ -177,9 +136,7 @@ export function SidePanel({ onSelectGame, loadingGame, boardContent, analysisCon
       {primaryTab === "review" && <div className="utility-secondary-tabs" role="tablist" aria-label="Review views">
         {(["info", "board"] as ReviewTab[]).map((tab) => <button key={tab} role="tab" aria-selected={reviewTab === tab} className={reviewTab === tab ? "active" : ""} onClick={() => chooseReview(tab)}>{tab === "board" ? dockBoardName : "Info"}</button>)}
       </div>}
-      {primaryTab === "collaborate" && <div className="utility-secondary-tabs" role="tablist" aria-label="Collaboration views">
-        {(["chat", "notes"] as CollaborateTab[]).map((tab) => <button key={tab} role="tab" aria-selected={collaborateTab === tab} className={collaborateTab === tab ? "active" : ""} onClick={() => setCollaborateTab(tab)}>{tab[0].toUpperCase() + tab.slice(1)}{tab === "chat" && unreadChat > 0 && <span className="chat-unread">{unreadChat}</span>}</button>)}
-      </div>}
+      <CollaboratePanel active={primaryTab === "collaborate"} onUnreadChange={setUnreadChat} />
 
       <div className={`utility-pane board-pane ${primaryTab === "review" && reviewTab === "board" ? "active" : ""}`} aria-hidden={!(primaryTab === "review" && reviewTab === "board")}>{boardContent}</div>
 
@@ -249,12 +206,6 @@ export function SidePanel({ onSelectGame, loadingGame, boardContent, analysisCon
         <p>{QUEST_COPY}</p>
       </div>}
 
-      {primaryTab === "collaborate" && <div className="utility-pane collaborate-pane">
-        <div className="presence"><span className="presence-dot" />{roomId ? <span><strong>{participants.length || 1}</strong> watching · {(participants.length ? participants : [{ display_name: displayName, client_id: "local" }]).map((item) => item.display_name).join(", ")}</span> : <span>Solo review · <strong>Move {globalPly}</strong></span>}{collaborateTab === "chat" && "Notification" in window && Notification.permission === "default" && <button type="button" className="notification-enable" onClick={() => void enableBrowserNotifications()}><Bell size={12} /> Enable alerts</button>}</div>
-        {lastNotice && collaborateTab !== "chat" && <div className="chat-toast" role="status"><Bell size={13} /> {lastNotice}</div>}
-        <div className="message-list">{collaborateTab === "chat" ? messages.map((item) => <article key={item.id}><header><strong>{item.author}</strong><button title="Go to referenced move">A · {item.ply}</button></header><p>{item.content}</p></article>) : <div className="empty-panel">Notes attached to this room and move appear here.</div>}</div>
-        <form className="composer" onSubmit={submit}><textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={collaborateTab === "chat" ? "Message your partner" : "Add a shared note"} maxLength={5000} /><button aria-label="Send"><Send size={17} /></button></form>
-      </div>}
       {dockPanel && <div className="dock-panel-overlay">{dockPanel}</div>}
     </aside>
   );

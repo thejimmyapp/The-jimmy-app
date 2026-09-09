@@ -23,10 +23,11 @@ export function treeKeyboardTarget(tree: ParsedPgn, activeId: string, key: "Arro
 
 export type ParityNavigationAction = "first" | "prev" | "next" | "last";
 export type ParityNavigationKey = "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown" | "Home" | "End";
-export type ParityKeyboardAction = { type: "navigate"; key: ParityNavigationKey } | { type: "flip" } | null;
+export type ParityKeyboardAction = { type: "navigate"; key: ParityNavigationKey } | { type: "flip" } | { type: "evaluation" } | null;
 
 export function parityKeyboardAction(key: string): ParityKeyboardAction {
   if (key === "f") return { type: "flip" };
+  if (key === "l") return { type: "evaluation" };
   if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(key)) return { type: "navigate", key: key as ParityNavigationKey };
   return null;
 }

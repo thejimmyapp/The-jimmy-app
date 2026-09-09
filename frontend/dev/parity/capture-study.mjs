@@ -38,7 +38,7 @@ async function candidateGeometry(page) {
       board: box(".study-main-board cg-board"), ranks: box(".study-main-board coords.ranks"), files: box(".study-main-board coords.files"),
       pocketTop: box(".study-tools > .pocket-top"), pocketTopSlot: box(".study-tools > .pocket-top piece"),
       pocketBottom: box(".study-tools > .pocket-bottom"), pocketBottomSlot: box(".study-tools > .pocket-bottom piece"),
-      moves: box(".study-moves"), fork: box(".study-fork .parity-fork-options"), controls: box(".study-controls .analyse__controls"),
+      evaluation: box(".study-eval"), moves: box(".study-moves"), fork: box(".study-fork .parity-fork-options"), controls: box(".study-controls .analyse__controls"),
       controlButtons: [...document.querySelectorAll(".study-controls button[data-act]")].map((element) => ({ action: element.dataset.act, rect: box(`.study-controls button[data-act="${element.dataset.act}"]`) })),
       toolsColumn: box(".study-tools"), secondBoard: box(".study-second-board"), layout: document.querySelector(".study-workspace")?.getAttribute("data-layout"),
     };
@@ -102,7 +102,7 @@ try {
   for (const item of cases) {
     const context = await browser.newContext({ viewport: item.frame, deviceScaleFactor: 1, colorScheme: "dark", locale: "en-US" });
     const page = await context.newPage();
-    await page.goto(`${candidateUrl}?study=0&ply=1&frame=${item.frame.width}x${item.frame.height}`, { waitUntil: "networkidle" });
+    await page.goto(`${candidateUrl}?study=0&ply=1&frame=${item.frame.width}x${item.frame.height}&eval=none`, { waitUntil: "networkidle" });
     await page.waitForSelector(`.study-workspace[data-layout="${item.id}"]`); await page.evaluate(() => document.fonts.ready); await page.waitForTimeout(300);
     const captureName = `frame-${item.frame.width}x${item.frame.height}.png`;
     await page.screenshot({ path: join(reportDir, captureName) });
@@ -121,12 +121,13 @@ try {
   if (process.env.PARITY_CAPTURE_CHROME === "1") {
     const context = await browser.newContext({ viewport: cases[0].frame, deviceScaleFactor: 1, colorScheme: "dark", locale: "en-US" });
     const page = await context.newPage();
-    await page.goto(`${candidateUrl}?study=0&ply=1&frame=1372x842&chrome=1`, { waitUntil: "networkidle" });
+    await page.goto(`${candidateUrl}?study=0&ply=1&frame=1372x842&chrome=1&eval=none`, { waitUntil: "networkidle" });
     await page.waitForSelector('.study-workspace[data-layout="jimmy1440"]'); await page.evaluate(() => document.fonts.ready); await page.waitForTimeout(300);
-    await page.screenshot({ path: join(reportDir, "frame-1372x842-side.png") });
+    const sideName = process.env.PARITY_CAPTURE_SIDE_CHAT === "1" ? "side-chat" : "side";
+    await page.screenshot({ path: join(reportDir, `frame-1372x842-${sideName}.png`) });
     await page.getByRole("button", { name: "Menu" }).click(); await page.waitForSelector(".study-action-menu");
     await page.screenshot({ path: join(reportDir, "frame-1372x842-menu-open.png") });
-    for (const [name, referenceName] of [["side", "jimmy1440-side.png"], ["menu-open", "jimmy1440-menu-open.png"]]) {
+    for (const [name, referenceName] of [[sideName, "jimmy1440-side.png"], ["menu-open", "jimmy1440-menu-open.png"]]) {
       const candidate = PNG.sync.read(readFileSync(join(reportDir, `frame-1372x842-${name}.png`)));
       const reference = PNG.sync.read(readFileSync(join(referenceDir, referenceName)));
       const referenceFrame = crop(reference, { x: 0, y: 60, width: 1372, height: 842 });
@@ -134,6 +135,37 @@ try {
       PNG.bitblt(candidate, joined, 0, 0, 1372, 842, 0, 0);
       PNG.bitblt(referenceFrame, joined, 0, 0, 1372, 842, 1380, 0);
       writeFileSync(join(reportDir, `frame-1372x842-${name}-vs-jimmy1440.png`), PNG.sync.write(joined));
+    }
+    await context.close();
+  }
+  if (process.env.PARITY_CAPTURE_EVAL === "1") {
+    const context = await browser.newContext({ viewport: cases[0].frame, deviceScaleFactor: 1, colorScheme: "dark", locale: "en-US" });
+    const page = await context.newPage();
+    await page.goto(`${candidateUrl}?study=0&ply=1&frame=1372x842`, { waitUntil: "networkidle" });
+    await page.waitForSelector('.study-workspace[data-layout="jimmy1440"][data-evaluation="off"]'); await page.evaluate(() => document.fonts.ready); await page.waitForTimeout(300);
+    const baseMoves = expectedGeometry("jimmy1440").moves;
+    const expectedEvalMoves = (offset) => ({ ...baseMoves, y: baseMoves.y + offset, height: baseMoves.height - offset });
+    const offGeometry = await candidateGeometry(page);
+    const offFailures = [
+      ...Object.entries(delta(offGeometry.moves, expectedEvalMoves(44))).filter(([, value]) => Math.abs(value) > 1).map(([field, value]) => `evaluation.off.moves.${field}=${value}`),
+      ...(offGeometry.evaluation?.height === 44 ? [] : [`evaluation.off.row.height=${offGeometry.evaluation?.height ?? "missing"}`]),
+    ];
+    await page.screenshot({ path: join(reportDir, "frame-1372x842-eval-off.png") });
+    await page.keyboard.press("l"); await page.waitForSelector('.study-workspace[data-evaluation="on"]'); await page.waitForTimeout(150);
+    const onGeometry = await candidateGeometry(page);
+    const onFailures = Object.entries(delta(onGeometry.moves, expectedEvalMoves(70))).filter(([, value]) => Math.abs(value) > 1).map(([field, value]) => `evaluation.on.moves.${field}=${value}`);
+    const anchoredFailures = ["pocketTop", "pocketBottom", "controls"].flatMap((name) => Object.entries(delta(onGeometry[name], offGeometry[name])).filter(([, value]) => Math.abs(value) > 1).map(([field, value]) => `evaluation.anchor.${name}.${field}=${value}`));
+    results.evaluation = { rule: referenceMeta.jimmyEngine.rule, off: offGeometry, on: onGeometry, failures: [...offFailures, ...onFailures, ...anchoredFailures] };
+    console.log(`evaluation row: ${results.evaluation.failures.length ? `FAIL ${results.evaluation.failures.join(", ")}` : "PASS 44px OFF / 70px ON; pockets and controls anchored"}`);
+    await page.screenshot({ path: join(reportDir, "frame-1372x842-eval-on.png") });
+    for (const state of ["off", "on"]) {
+      const candidate = PNG.sync.read(readFileSync(join(reportDir, `frame-1372x842-eval-${state}.png`)));
+      const reference = PNG.sync.read(readFileSync(join(referenceDir, `analysis-1372x902-${state}.png`)));
+      const referenceFrame = crop(reference, { x: 0, y: 60, width: 1372, height: 842 });
+      const joined = new PNG({ width: 2752, height: 842 });
+      PNG.bitblt(candidate, joined, 0, 0, 1372, 842, 0, 0);
+      PNG.bitblt(referenceFrame, joined, 0, 0, 1372, 842, 1380, 0);
+      writeFileSync(join(reportDir, `frame-1372x842-eval-${state}-vs-analysis.png`), PNG.sync.write(joined));
     }
     await context.close();
   }
