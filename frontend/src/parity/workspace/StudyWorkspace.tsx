@@ -14,8 +14,6 @@ import { StudyPlayerBar } from "./StudyPlayerBar";
 import "./studyWorkspace.css";
 
 const fallbackFrame = () => ({ width: Math.max(0, window.innerWidth - 68), height: Math.max(0, window.innerHeight - 58) });
-const playerBarHeight = 22.390625;
-
 function reviewerOrientation(game: GamePayload): "white" | "black" {
   return game.game.user_color === "black" ? "black" : "white";
 }
@@ -46,11 +44,18 @@ export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount =
   const { game, globalPly, seek } = useCoachStore();
   const [frame, setFrame] = useState(fallbackFrame);
   const [flipped, setFlipped] = useState(false);
+  const [underboardInfoVisible, setUnderboardInfoVisible] = useState(true);
   const workspaceRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const workspace = workspaceRef.current;
     if (workspace && typeof ResizeObserver !== "undefined") {
-      const observer = new ResizeObserver(([entry]) => setFrame({ width: entry.contentRect.width, height: entry.contentRect.height }));
+      const observer = new ResizeObserver(([entry]) => {
+        const borderBox = Array.isArray(entry.borderBoxSize) ? entry.borderBoxSize[0] : entry.borderBoxSize;
+        setFrame({
+          width: (borderBox?.inlineSize ?? workspace.offsetWidth) || entry.contentRect.width,
+          height: (borderBox?.blockSize ?? workspace.offsetHeight) || entry.contentRect.height,
+        });
+      });
       observer.observe(workspace);
       return () => observer.disconnect();
     }
@@ -64,9 +69,11 @@ export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount =
   const layout = studyLayoutForBox(frame.width, frame.height);
   const smallLayout = compactLayout(layout);
   const secondBoard = layout.secondBoard!;
+  const underboard = layout.underboard!;
+  const underboardHeight = underboard.buttonsHeight + (underboardInfoVisible ? underboard.headingHeight + 9 * underboard.rowHeight : 0);
   const secondBoardTop = secondBoard.placement === "side"
     ? layout.board.y + smallLayout.tools.pocketHeight
-    : layout.board.y + layout.board.size + playerBarHeight + 8 + smallLayout.tools.pocketHeight;
+    : underboard.y + underboardHeight + 8 + smallLayout.tools.pocketHeight;
   const baseOrientation = reviewerOrientation(game);
   const orientation = flipped ? (baseOrientation === "white" ? "black" : "white") : baseOrientation;
   const boardAReplay = currentPosition(game, globalPly, "A");
@@ -126,6 +133,6 @@ export function StudyWorkspace({ onSaveMoment, onOpenLibrary, savedMomentCount =
       <ParityPocket {...bottom} position="bottom" usable={boardA.position.side_to_move.toLowerCase() === bottom.color} orientation={orientation} layout={layout} />
       <div className="study-controls"><ParityControls onNavigate={navigate} /></div>
     </aside>
-    <StudyUnderboard game={game} layout={layout} savedMomentCount={savedMomentCount} onSaveMoment={onSaveMoment} onOpenLibrary={onOpenLibrary} />
+    <StudyUnderboard game={game} layout={layout} savedMomentCount={savedMomentCount} onSaveMoment={onSaveMoment} onOpenLibrary={onOpenLibrary} onInfoVisibilityChange={setUnderboardInfoVisible} />
   </section>;
 }
