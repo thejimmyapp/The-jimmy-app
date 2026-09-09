@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { currentPosition, useCoachStore } from "../../store";
 import type { GamePayload, ReplayPosition } from "../../types";
 import { ParityBoard } from "../board/ParityBoard";
@@ -6,10 +6,9 @@ import { parityBoardTheme } from "../board/themes";
 import { ParityControls } from "../controls/ParityControls";
 import { PARITY_LAYOUTS, type ParityLayout } from "../layout";
 import { ParityPocket } from "../pocket/ParityPocket";
-import { ParityFork, ParityTree } from "../tree/ParityTree";
-import { parityKeyboardAction, pgnNodeById, type ParityNavigationAction } from "../tree/treeNavigation";
+import { parityKeyboardAction, type ParityNavigationAction } from "../tree/treeNavigation";
 import { replayToParity } from "../adapters/replayToParity";
-import { timelineToTree } from "../adapters/timelineToTree";
+import { StudyMoves } from "./StudyMoves";
 import "./studyWorkspace.css";
 
 function studyLayoutForWidth(width: number) {
@@ -48,7 +47,6 @@ export function StudyWorkspace() {
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
   const [flipped, setFlipped] = useState(false);
   const workspaceRef = useRef<HTMLElement>(null);
-  const tree = useMemo(() => timelineToTree(game?.timeline ?? []), [game?.timeline]);
   useEffect(() => {
     const resize = () => setViewportWidth(window.innerWidth);
     window.addEventListener("resize", resize);
@@ -68,7 +66,6 @@ export function StudyWorkspace() {
   const boardB = boardBReplay ? replayToParity(boardBReplay) : null;
   const frames = game.timeline;
   const activeIndex = Math.max(0, frames.findIndex((frame) => frame.global_ply === globalPly));
-  const activeId = String(frames[activeIndex]?.global_ply ?? globalPly);
   const move = (index: number) => frames.length && seek(frames[Math.max(0, Math.min(frames.length - 1, index))].global_ply);
   const navigate = (action: ParityNavigationAction) => {
     if (action === "first") move(0);
@@ -111,8 +108,8 @@ export function StudyWorkspace() {
     </div>
     <aside className="study-tools">
       <ParityPocket {...top} position="top" usable={boardA.position.side_to_move.toLowerCase() === top.color} orientation={orientation} layout={layout} />
-      <div className="study-moves"><ParityTree tree={tree} activeId={activeId} onSelect={(id) => seek(Number(id))} /></div>
-      <div className="study-fork"><ParityFork node={pgnNodeById(tree, activeId)} onSelect={(id) => seek(Number(id))} /></div>
+      <div className="study-moves"><StudyMoves game={game} globalPly={globalPly} seek={seek} /></div>
+      <div className="study-fork" />
       <ParityPocket {...bottom} position="bottom" usable={boardA.position.side_to_move.toLowerCase() === bottom.color} orientation={orientation} layout={layout} />
       <div className="study-controls"><ParityControls onNavigate={navigate} /></div>
     </aside>

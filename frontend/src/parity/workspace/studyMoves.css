@@ -1,0 +1,7 @@
+.study-board-lists { display: grid; width: 100%; height: 100%; grid-template-rows: minmax(0, 1fr) 1px minmax(0, 1fr); overflow: hidden; }
+.study-board-lists::after { content: ""; grid-row: 2; background: rgb(22, 21, 18); }
+.study-board-list { min-height: 0; overflow: hidden; }
+.study-board-list:first-of-type { grid-row: 1; }
+.study-board-list:nth-of-type(2) { grid-row: 3; }
+.study-board-list > header { height: 29.03125px; padding: 0 10px; background: rgb(51, 49, 46); color: rgb(107, 107, 107); font: 14px/28.98px "Noto Sans", sans-serif; text-align: left; }
+.study-board-list > .parity-tree { height: calc(100% - 29.03125px); }

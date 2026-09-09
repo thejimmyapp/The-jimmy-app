@@ -190,6 +190,35 @@ export function kingSquareInCheck(position: Pick<CrazyhousePosition, "board" | "
   return checkedKing(state, side);
 }
 
+function stateFromPosition(position: Pick<CrazyhousePosition, "board" | "white_pocket" | "black_pocket" | "side_to_move">, sideToMove = position.side_to_move): CrazyhouseState {
+  return {
+    ...position,
+    side_to_move: sideToMove,
+    board: position.board.map((row) => [...row]),
+    castlingRights: "",
+    enPassant: null,
+    promoted: new Set(),
+    lastMove: null,
+    check: null,
+  };
+}
+
+export function canLegallyReach(position: Pick<CrazyhousePosition, "board" | "white_pocket" | "black_pocket" | "side_to_move">, from: string, to: string, side: Side) {
+  const state = stateFromPosition(position, side);
+  const piece = pieceAt(state, from);
+  const target = pieceAt(state, to);
+  if (!piece || pieceSide(piece) !== side || (target && pieceSide(target) === side)) return false;
+  const capture = Boolean(target) || (piece.toUpperCase() === "P" && squareCoords(from).file !== squareCoords(to).file);
+  if (!canReach(state, from, to, piece.toUpperCase(), capture)) return false;
+  const probe = cloneState(state);
+  applyCoordinateMove(probe, from, to, null, capture);
+  return !checkedKing(probe, side);
+}
+
+export function isPositionCheckmate(position: Pick<CrazyhousePosition, "board" | "white_pocket" | "black_pocket" | "side_to_move">) {
+  return isCheckmate(stateFromPosition(position));
+}
+
 function removeCastlingRight(state: CrazyhouseState, chars: string) {
   for (const char of chars) state.castlingRights = state.castlingRights.replace(char, "");
 }
